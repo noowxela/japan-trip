@@ -1,0 +1,74 @@
+"use client";
+
+import { useEffect } from "react";
+import L from "leaflet";
+import { MapContainer, Marker, Popup, Polyline, TileLayer } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import Link from "next/link";
+import { CITY_COORDS } from "@/lib/types";
+
+type Pin = {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  dayId: string | null;
+  dayName: string | null;
+};
+
+type Props = {
+  hops: string[];
+  pins: Pin[];
+};
+
+export default function TripMap({ hops, pins }: Props) {
+  useEffect(() => {
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+      iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+      shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+    });
+  }, []);
+
+  const hopCoords = hops
+    .map((city) => CITY_COORDS[city])
+    .filter((coords): coords is [number, number] => Boolean(coords));
+  const firstPin = pins[0];
+  const mapCenter: [number, number] =
+    hopCoords[0] ??
+    (firstPin ? [firstPin.lat, firstPin.lng] : [35.6812, 139.7671]);
+
+  return (
+    <div className="h-[28rem] w-full overflow-hidden rounded-2xl">
+      <MapContainer
+        center={mapCenter}
+        zoom={6}
+        className="h-full w-full"
+        style={{ height: "100%", width: "100%" }}
+        scrollWheelZoom
+      >
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+      {hopCoords.length > 1 ? (
+        <Polyline positions={hopCoords} pathOptions={{ color: "#b42318" }} />
+      ) : null}
+      {pins.map((pin) => (
+        <Marker key={pin.id} position={[pin.lat, pin.lng]}>
+          <Popup>
+            <div className="text-sm">
+              <p className="font-medium">{pin.name}</p>
+              {pin.dayId ? (
+                <Link href={`/days/${pin.dayId}`} className="text-[#b42318] underline">
+                  {pin.dayName ?? "Open day"}
+                </Link>
+              ) : null}
+            </div>
+          </Popup>
+        </Marker>
+      ))}
+    </MapContainer>
+    </div>
+  );
+}
