@@ -1,10 +1,11 @@
 import { addStay } from "@/app/actions";
+import { formShellClass } from "@/components/page-shell";
 
 export function AddStayForm() {
   return (
     <form
       action={addStay}
-      className="grid gap-3 rounded-2xl border border-stone-200 bg-white p-4"
+      className={`${formShellClass} grid gap-3 rounded-2xl border border-stone-200 bg-white p-4`}
     >
       <p className="font-medium text-stone-900">Add a stay</p>
       <input

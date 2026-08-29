@@ -39,7 +39,7 @@ export default function TripMap({ hops, pins }: Props) {
     (firstPin ? [firstPin.lat, firstPin.lng] : [35.6812, 139.7671]);
 
   return (
-    <div className="h-[28rem] w-full overflow-hidden rounded-2xl">
+    <div className="h-[22rem] w-full overflow-hidden rounded-2xl sm:h-[28rem] md:h-[36rem]">
       <MapContainer
         center={mapCenter}
         zoom={6}

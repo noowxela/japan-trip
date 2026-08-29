@@ -1,6 +1,7 @@
 import { AddStayForm } from "@/components/add-stay-form";
 import { EmptyState } from "@/components/empty-state";
 import { Nav } from "@/components/nav";
+import { PageShell } from "@/components/page-shell";
 import { formatRange } from "@/lib/format";
 import { getStays } from "@/lib/trip";
 
@@ -12,7 +13,7 @@ export default async function StaysPage() {
   return (
     <>
       <Nav current="/lists" />
-      <main className="mx-auto flex max-w-xl flex-col gap-6 px-4 py-6">
+      <PageShell>
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-[#b42318]">
             Lodging
@@ -24,11 +25,11 @@ export default async function StaysPage() {
             Add a hotel below, or in the Stays database in Notion.
           </EmptyState>
         ) : (
-          <ul className="space-y-3">
+          <ul className="grid gap-3 sm:grid-cols-2">
             {stays.map((stay) => (
               <li
                 key={stay.id}
-                className="rounded-2xl border border-stone-200 bg-white p-4"
+                className="min-w-0 rounded-2xl border border-stone-200 bg-white p-4"
               >
                 <p className="text-xs text-stone-500">
                   {formatRange(stay.checkIn, stay.checkOut)}
@@ -57,7 +58,7 @@ export default async function StaysPage() {
           </ul>
         )}
         <AddStayForm />
-      </main>
+      </PageShell>
     </>
   );
 }

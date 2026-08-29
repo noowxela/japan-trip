@@ -1,11 +1,12 @@
 import { addDay } from "@/app/actions";
+import { formShellClass } from "@/components/page-shell";
 import { CITIES } from "@/lib/types";
 
 export function AddDayForm() {
   return (
     <form
       action={addDay}
-      className="grid gap-3 rounded-2xl border border-stone-200 bg-white p-4"
+      className={`${formShellClass} grid gap-3 rounded-2xl border border-stone-200 bg-white p-4`}
     >
       <p className="font-medium text-stone-900">Add a day</p>
       <input

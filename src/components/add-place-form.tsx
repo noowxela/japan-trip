@@ -3,6 +3,7 @@
 import nextDynamic from "next/dynamic";
 import { useMemo, useState, useTransition } from "react";
 import { addPlace, searchPlaces } from "@/app/actions";
+import { formShellClass } from "@/components/page-shell";
 import { PLACE_TYPES, type TripDay } from "@/lib/types";
 import type { PlaceSearchHit } from "@/lib/geocode";
 
@@ -58,7 +59,7 @@ export function AddPlaceForm({
   }
 
   return (
-    <div className="grid gap-3 rounded-2xl border border-stone-200 bg-white p-4">
+    <div className={`${formShellClass} grid gap-3 rounded-2xl border border-stone-200 bg-white p-4`}>
       <p className="font-medium text-stone-900">Add a place</p>
       <div className="flex gap-2">
         <input
@@ -77,7 +78,7 @@ export function AddPlaceForm({
           type="button"
           onClick={onSearch}
           disabled={pending || query.trim().length < 2}
-          className="rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="shrink-0 rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           {pending ? "…" : "Search"}
         </button>

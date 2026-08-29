@@ -44,10 +44,16 @@ export type Transit = {
   order: number | null;
 };
 
+export const SPEND_CURRENCIES = ["Yen", "RM"] as const;
+export type SpendCurrency = (typeof SPEND_CURRENCIES)[number];
+export const DEFAULT_SPEND_CURRENCY: SpendCurrency = "RM";
+export const JPY_PER_RM = 39.3;
+
 export type SpendItem = {
   id: string;
   name: string;
   amount: number;
+  currency: SpendCurrency;
   kind: string | null;
   category: string | null;
   notes: string;
@@ -64,6 +70,8 @@ export type AgendaItem = {
   order: number | null;
   visited?: boolean;
   mapsUrl?: string | null;
+  lat?: number | null;
+  lng?: number | null;
 };
 
 export const CITIES = ["Tokyo", "Kyoto", "Osaka", "Other"] as const;

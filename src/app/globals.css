@@ -12,7 +12,24 @@ body {
   color: var(--color-foreground);
 }
 
+input,
+select,
+textarea {
+  min-width: 0;
+  max-width: 100%;
+}
+
+input[type="time"]::-webkit-datetime-edit,
+input[type="date"]::-webkit-datetime-edit {
+  min-width: 0;
+}
+
 .leaflet-container {
   width: 100%;
   font-family: inherit;
+}
+
+.day-map-pin {
+  background: none;
+  border: none;
 }

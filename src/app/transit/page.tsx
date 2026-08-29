@@ -1,6 +1,7 @@
 import { AddTransitForm } from "@/components/add-transit-form";
 import { EmptyState } from "@/components/empty-state";
 import { Nav } from "@/components/nav";
+import { PageShell } from "@/components/page-shell";
 import { formatDay } from "@/lib/format";
 import { getDays, getTransit } from "@/lib/trip";
 
@@ -13,7 +14,7 @@ export default async function TransitPage() {
   return (
     <>
       <Nav current="/lists" />
-      <main className="mx-auto flex max-w-xl flex-col gap-6 px-4 py-6">
+      <PageShell>
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-[#b42318]">
             Moves
@@ -25,11 +26,11 @@ export default async function TransitPage() {
             Add a train or flight below, or in the Transit database in Notion.
           </EmptyState>
         ) : (
-          <ul className="space-y-3">
+          <ul className="grid gap-3 sm:grid-cols-2">
             {transit.map((item) => (
               <li
                 key={item.id}
-                className="rounded-2xl border border-stone-200 bg-white p-4"
+                className="min-w-0 rounded-2xl border border-stone-200 bg-white p-4"
               >
                 <p className="text-xs text-stone-500">
                   {[item.mode, item.date ? formatDay(item.date) : null]
@@ -61,7 +62,7 @@ export default async function TransitPage() {
           </ul>
         )}
         <AddTransitForm days={days} />
-      </main>
+      </PageShell>
     </>
   );
 }

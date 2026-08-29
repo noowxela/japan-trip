@@ -10,7 +10,7 @@ export function NotesForm({ id, notes }: { id: string; notes: string }) {
           name="notes"
           defaultValue={notes}
           rows={3}
-          className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 outline-none focus:border-[#b42318]"
+          className="mt-1 w-full min-w-0 rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 outline-none focus:border-[#b42318]"
         />
       </label>
       <button

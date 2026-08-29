@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Newsreader } from "next/font/google";
 import "./globals.css";
 
@@ -17,13 +17,18 @@ export const metadata: Metadata = {
   description: "Itinerary companion synced with Notion",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${newsreader.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-[#f6f1e8] font-sans text-stone-900">
+      <body className="min-h-full overflow-x-hidden bg-[#f6f1e8] font-sans text-stone-900">
         {children}
       </body>
     </html>

@@ -1,18 +1,20 @@
 import Link from "next/link";
 import { AddDayForm } from "@/components/add-day-form";
+import { DayCard } from "@/components/day-card";
 import { EmptyState } from "@/components/empty-state";
 import { Nav } from "@/components/nav";
-import { formatDay, formatYen, tokyoToday } from "@/lib/format";
+import { PageShell } from "@/components/page-shell";
+import { formatDay, formatRm, formatTripSpan, tokyoToday } from "@/lib/format";
 import { hasToken, isConfigured } from "@/lib/notion";
 import { moneySummary } from "@/lib/spend";
 import {
-  cityHops,
   getDays,
   getPlaces,
   getPlacesForDay,
   getSpend,
   getTransitForDay,
   pickFocusDay,
+  tripFlow,
 } from "@/lib/trip";
 
 export const dynamic = "force-dynamic";
@@ -22,12 +24,12 @@ export default async function HomePage() {
     return (
       <>
         <Nav current="/" />
-        <main className="mx-auto max-w-xl px-4 py-8">
+        <PageShell>
           <EmptyState title="Notion is not ready">
             Add NOTION_TOKEN and run <code>npm run setup:notion</code> then{" "}
             <code>npm run migrate:v2</code>.
           </EmptyState>
-        </main>
+        </PageShell>
       </>
     );
   }
@@ -37,7 +39,7 @@ export default async function HomePage() {
     getPlaces(),
     getSpend(),
   ]);
-  const hops = cityHops(days);
+  const hops = tripFlow(days);
   const today = tokyoToday();
   const focus = pickFocusDay(days, today);
   const focusPlaces = focus ? await getPlacesForDay(focus.id) : [];
@@ -49,13 +51,13 @@ export default async function HomePage() {
   const dated = days.filter((day) => day.date);
   const span =
     dated.length > 0
-      ? `${formatDay(dated[0].date)} – ${formatDay(dated[dated.length - 1].date)}`
+      ? formatTripSpan(dated[0].date, dated[dated.length - 1].date)
       : "Dates TBD";
 
   return (
     <>
       <Nav current="/" />
-      <main className="mx-auto flex max-w-xl flex-col gap-6 px-4 py-6">
+      <PageShell>
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-[#b42318]">
             Trip flow
@@ -67,8 +69,8 @@ export default async function HomePage() {
           ) : null}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-stone-200 bg-white p-4">
+        <div className="grid min-w-0 grid-cols-2 gap-3 md:max-w-xl">
+          <div className="min-w-0 rounded-2xl border border-stone-200 bg-white p-4">
             <p className="text-xs uppercase tracking-wide text-stone-500">
               Places
             </p>
@@ -79,14 +81,14 @@ export default async function HomePage() {
           </div>
           <Link
             href="/spend"
-            className="rounded-2xl border border-stone-200 bg-white p-4"
+            className="min-w-0 rounded-2xl border border-stone-200 bg-white p-4"
           >
             <p className="text-xs uppercase tracking-wide text-stone-500">
               Spend
             </p>
-            <p className="mt-1 text-lg font-medium">{formatYen(money.actual)}</p>
+            <p className="mt-1 text-lg font-medium break-words">{formatRm(money.actual)}</p>
             <p className="text-sm text-stone-500">
-              of {formatYen(money.estimate)} est.
+              of {formatRm(money.estimate)} est.
             </p>
           </Link>
         </div>
@@ -94,7 +96,7 @@ export default async function HomePage() {
         {focus ? (
           <Link
             href={`/days/${focus.id}`}
-            className="block rounded-2xl border border-stone-200 bg-white p-4"
+            className="block min-w-0 rounded-2xl border border-stone-200 bg-white p-4 md:max-w-xl"
           >
             <p className="text-xs uppercase tracking-wide text-[#b42318]">
               {dateKey(focus.date) === today ? "Today" : "Next"}
@@ -131,26 +133,17 @@ export default async function HomePage() {
               Add a day here, or in the Days database in Notion.
             </EmptyState>
           ) : (
-            <ul className="space-y-3">
+            <ul className="grid gap-3 sm:grid-cols-2">
               {days.map((day) => (
-                <li key={day.id}>
-                  <Link
-                    href={`/days/${day.id}`}
-                    className="block rounded-2xl border border-stone-200 bg-white p-4 hover:border-[#b42318]/40"
-                  >
-                    <p className="text-xs uppercase tracking-wide text-stone-500">
-                      {formatDay(day.date)}
-                      {day.city ? ` · ${day.city}` : ""}
-                    </p>
-                    <p className="mt-1 text-lg font-medium">{day.name}</p>
-                  </Link>
+                <li key={day.id} className="min-w-0">
+                  <DayCard day={day} />
                 </li>
               ))}
             </ul>
           )}
         </section>
         <AddDayForm />
-      </main>
+      </PageShell>
     </>
   );
 }

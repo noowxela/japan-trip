@@ -1,8 +1,11 @@
 import { AddPlaceForm } from "@/components/add-place-form";
 import { EmptyState } from "@/components/empty-state";
+import { MapsPinLink } from "@/components/maps-pin-link";
 import { Nav } from "@/components/nav";
+import { PageShell } from "@/components/page-shell";
 import { NotesForm } from "@/components/notes-form";
 import { VisitedToggle } from "@/components/visited-toggle";
+import { coordsOfPlace } from "@/lib/geocode";
 import { getDays, getPlaces } from "@/lib/trip";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +17,7 @@ export default async function PlacesPage() {
   return (
     <>
       <Nav current="/lists" />
-      <main className="mx-auto flex max-w-xl flex-col gap-6 px-4 py-6">
+      <PageShell>
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-[#b42318]">
             Guide
@@ -26,34 +29,34 @@ export default async function PlacesPage() {
             Add a place below, or in the Places database in Notion.
           </EmptyState>
         ) : (
-          <ul className="space-y-3">
+          <ul className="grid gap-3 sm:grid-cols-2">
             {places.map((place) => (
               <li
                 key={place.id}
-                className="rounded-2xl border border-stone-200 bg-white p-4"
+                className="min-w-0 rounded-2xl border border-stone-200 bg-white p-4"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-xs text-stone-500">
                       {[place.type, place.area].filter(Boolean).join(" · ")}
                     </p>
-                    <p className="text-lg font-medium">{place.name}</p>
+                    <p className="flex items-start gap-1">
+                      <span className="text-lg font-medium break-words">
+                        {place.name}
+                      </span>
+                      <MapsPinLink
+                        name={place.name}
+                        lat={coordsOfPlace(place)?.lat}
+                        lng={coordsOfPlace(place)?.lng}
+                        mapsUrl={place.mapsUrl}
+                      />
+                    </p>
                     <p className="text-sm text-stone-500">
                       {place.dayIds
                         .map((id) => dayNames.get(id))
                         .filter(Boolean)
                         .join(", ") || "Unscheduled"}
                     </p>
-                    {place.mapsUrl ? (
-                      <a
-                        href={place.mapsUrl}
-                        className="text-sm text-[#b42318] underline"
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Maps
-                      </a>
-                    ) : null}
                   </div>
                   <VisitedToggle id={place.id} visited={place.visited} />
                 </div>
@@ -63,7 +66,7 @@ export default async function PlacesPage() {
           </ul>
         )}
         <AddPlaceForm days={days} />
-      </main>
+      </PageShell>
     </>
   );
 }

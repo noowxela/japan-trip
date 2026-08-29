@@ -1,9 +1,22 @@
-import type { SpendItem } from "@/lib/types";
+import {
+  DEFAULT_SPEND_CURRENCY,
+  JPY_PER_RM,
+  type SpendCurrency,
+  type SpendItem,
+} from "@/lib/types";
 
-export function sumYen(items: SpendItem[], kind?: string) {
+export function parseSpendCurrency(value: string | null): SpendCurrency {
+  return value === "Yen" ? "Yen" : DEFAULT_SPEND_CURRENCY;
+}
+
+export function toRm(amount: number, currency: SpendCurrency) {
+  return currency === "Yen" ? amount / JPY_PER_RM : amount;
+}
+
+export function sumRm(items: SpendItem[], kind?: string) {
   return items
     .filter((item) => (kind ? item.kind === kind : true))
-    .reduce((sum, item) => sum + item.amount, 0);
+    .reduce((sum, item) => sum + toRm(item.amount, item.currency), 0);
 }
 
 export function byDay(items: SpendItem[], dayId: string) {
@@ -14,14 +27,14 @@ export function byCategory(items: SpendItem[]) {
   const map = new Map<string, number>();
   for (const item of items) {
     const key = item.category ?? "Other";
-    map.set(key, (map.get(key) ?? 0) + item.amount);
+    map.set(key, (map.get(key) ?? 0) + toRm(item.amount, item.currency));
   }
   return [...map.entries()].sort((a, b) => b[1] - a[1]);
 }
 
 export function moneySummary(items: SpendItem[]) {
-  const estimate = sumYen(items, "Estimate");
-  const actual = sumYen(items, "Actual");
+  const estimate = sumRm(items, "Estimate");
+  const actual = sumRm(items, "Actual");
   return {
     estimate,
     actual,

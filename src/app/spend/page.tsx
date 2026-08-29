@@ -1,7 +1,8 @@
 import { AddSpendForm } from "@/components/add-spend-form";
 import { EmptyState } from "@/components/empty-state";
 import { Nav } from "@/components/nav";
-import { formatYen } from "@/lib/format";
+import { PageShell } from "@/components/page-shell";
+import { formatRm, formatSpend } from "@/lib/format";
 import { byCategory, moneySummary } from "@/lib/spend";
 import { getDays, getSpend } from "@/lib/trip";
 
@@ -18,33 +19,33 @@ export default async function SpendPage() {
   return (
     <>
       <Nav current="/spend" />
-      <main className="mx-auto flex max-w-xl flex-col gap-6 px-4 py-6">
+      <PageShell>
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-[#b42318]">
-            Yen
+            RM
           </p>
           <h1 className="font-serif text-3xl tracking-tight">Spend</h1>
         </div>
-        <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="grid grid-cols-3 gap-2 text-center md:max-w-xl">
           <div className="rounded-2xl border border-stone-200 bg-white p-3">
             <p className="text-xs text-stone-500">Estimate</p>
-            <p className="text-sm font-medium">{formatYen(money.estimate)}</p>
+            <p className="text-sm font-medium">{formatRm(money.estimate)}</p>
           </div>
           <div className="rounded-2xl border border-stone-200 bg-white p-3">
             <p className="text-xs text-stone-500">Actual</p>
-            <p className="text-sm font-medium">{formatYen(money.actual)}</p>
+            <p className="text-sm font-medium">{formatRm(money.actual)}</p>
           </div>
           <div className="rounded-2xl border border-stone-200 bg-white p-3">
             <p className="text-xs text-stone-500">Left</p>
-            <p className="text-sm font-medium">{formatYen(money.remaining)}</p>
+            <p className="text-sm font-medium">{formatRm(money.remaining)}</p>
           </div>
         </div>
         {categories.length > 0 ? (
-          <ul className="space-y-1 text-sm text-stone-600">
+          <ul className="max-w-xl space-y-1 text-sm text-stone-600">
             {categories.map(([category, amount]) => (
               <li key={category} className="flex justify-between">
                 <span>{category}</span>
-                <span>{formatYen(amount)}</span>
+                <span>{formatRm(amount)}</span>
               </li>
             ))}
           </ul>
@@ -58,7 +59,7 @@ export default async function SpendPage() {
           </EmptyState>
         ) : null}
         <AddSpendForm days={days} />
-      </main>
+      </PageShell>
     </>
   );
 }
@@ -78,24 +79,27 @@ function SpendGroup({
       <h2 className="text-sm font-medium uppercase tracking-wide text-stone-500">
         {title}
       </h2>
-      <ul className="space-y-2">
+      <ul className="grid gap-2 sm:grid-cols-2">
         {items.map((item) => (
           <li
             key={item.id}
-            className="flex items-start justify-between gap-3 rounded-2xl border border-stone-200 bg-white p-4"
+            className="flex min-w-0 items-start justify-between gap-3 rounded-2xl border border-stone-200 bg-white p-4"
           >
             <div>
-              <p className="font-medium">{item.name}</p>
+              <p className="font-medium break-words">{item.name}</p>
               <p className="text-xs text-stone-500">
                 {[
                   item.category,
+                  item.currency,
                   item.dayIds.map((id) => dayNames.get(id)).filter(Boolean).join(", "),
                 ]
                   .filter(Boolean)
                   .join(" · ")}
               </p>
             </div>
-            <p className="text-sm font-medium">{formatYen(item.amount)}</p>
+            <p className="text-right text-sm font-medium whitespace-nowrap">
+              {formatSpend(item.amount, item.currency)}
+            </p>
           </li>
         ))}
       </ul>

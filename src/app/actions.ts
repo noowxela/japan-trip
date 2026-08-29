@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { geocodeJapan, searchPlacesJapan } from "@/lib/geocode";
+import { redirect } from "next/navigation";
+import { geocodeJapan, lookupLandmark, searchPlacesJapan } from "@/lib/geocode";
 import { ds, getNotion, textProp, titleProp } from "@/lib/notion";
+import { parseSpendCurrency } from "@/lib/spend";
 import { getDay } from "@/lib/trip";
 
 function revalidateTrip() {
@@ -18,7 +20,23 @@ function revalidateTrip() {
 
 function startValue(formData: FormData) {
   const start = String(formData.get("start") ?? "").trim();
-  return start || "";
+  const time = String(formData.get("time") ?? "").trim();
+  const dayDate = String(formData.get("dayDate") ?? "").trim().slice(0, 10);
+  const raw = start || (time && dayDate ? `${dayDate}T${time}` : "");
+  if (!raw) return "";
+  if (/T\d{2}:\d{2}$/.test(raw)) return `${raw}:00`;
+  return raw;
+}
+
+function startProp(start: string | null) {
+  if (!start) return { date: null };
+  if (!start.includes("T")) return { date: { start } };
+  return {
+    date: {
+      start,
+      time_zone: "Asia/Tokyo",
+    },
+  };
 }
 
 function orderValue(formData: FormData) {
@@ -43,6 +61,36 @@ export async function addDay(formData: FormData) {
     },
   });
   revalidateTrip();
+}
+
+export async function updateDay(formData: FormData) {
+  const id = String(formData.get("id") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+  const date = String(formData.get("date") ?? "").trim();
+  const city = String(formData.get("city") ?? "").trim();
+  if (!id || !name) return;
+  const notion = getNotion();
+  await notion.pages.update({
+    page_id: id,
+    properties: {
+      Name: titleProp(name),
+      Date: { date: date ? { start: date } : null },
+      City: { select: city ? { name: city } : null },
+    },
+  });
+  revalidateTrip();
+}
+
+export async function deleteDay(formData: FormData) {
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) return;
+  const notion = getNotion();
+  await notion.pages.update({
+    page_id: id,
+    in_trash: true,
+  });
+  revalidateTrip();
+  redirect("/");
 }
 
 export async function addPlace(formData: FormData) {
@@ -73,7 +121,7 @@ export async function addPlace(formData: FormData) {
       ...(mapsUrl ? { "Maps URL": { url: mapsUrl } } : {}),
       ...(notes ? { Notes: textProp(notes) } : {}),
       ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
-      ...(start ? { Start: { date: { start } } } : {}),
+      ...(start ? { Start: startProp(start) } : {}),
       ...(order !== null ? { Order: { number: order } } : {}),
       ...(picked
         ? { Lat: { number: picked.lat }, Lng: { number: picked.lng } }
@@ -84,13 +132,14 @@ export async function addPlace(formData: FormData) {
   if (!picked) {
     const day = dayId ? await getDay(dayId) : null;
     const query = [name, area, day?.city].filter(Boolean).join(" ");
-    const coords = await geocodeJapan(query);
+    const coords = await geocodeJapan(query, day?.city ?? undefined);
     if (coords) {
       await notion.pages.update({
         page_id: page.id,
         properties: {
           Lat: { number: coords.lat },
           Lng: { number: coords.lng },
+          ...(coords.mapsUrl ? { "Maps URL": { url: coords.mapsUrl } } : {}),
         },
       });
     }
@@ -124,6 +173,107 @@ export async function updatePlaceNotes(formData: FormData) {
     properties: { Notes: textProp(notes) },
   });
   revalidateTrip();
+}
+
+async function trashPage(id: string) {
+  const notion = getNotion();
+  await notion.pages.update({
+    page_id: id,
+    in_trash: true,
+  });
+  revalidateTrip();
+}
+
+export async function updatePlace(formData: FormData) {
+  const id = String(formData.get("id") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+  const type = String(formData.get("type") ?? "").trim();
+  const area = String(formData.get("area") ?? "").trim();
+  const mapsUrl = String(formData.get("mapsUrl") ?? "").trim();
+  const notes = String(formData.get("notes") ?? "").trim();
+  const dayId = String(formData.get("dayId") ?? "").trim();
+  const start = startValue(formData);
+  const order = orderValue(formData);
+  if (!id || !name) return;
+  const notion = getNotion();
+  const known = lookupLandmark(name);
+  await notion.pages.update({
+    page_id: id,
+    properties: {
+      Name: titleProp(name),
+      Type: { select: type ? { name: type } : null },
+      Area: textProp(area),
+      "Maps URL": { url: mapsUrl || known?.mapsUrl || null },
+      Notes: textProp(notes),
+      Day: { relation: dayId ? [{ id: dayId }] : [] },
+      Start: startProp(start || null),
+      Order: { number: order },
+      ...(known
+        ? { Lat: { number: known.lat }, Lng: { number: known.lng } }
+        : {}),
+    },
+  });
+  if (!known && !mapsUrl) {
+    const day = dayId ? await getDay(dayId) : null;
+    const coords = await geocodeJapan(
+      [name, area, day?.city].filter(Boolean).join(" "),
+      day?.city ?? undefined,
+    );
+    if (coords) {
+      await notion.pages.update({
+        page_id: id,
+        properties: {
+          Lat: { number: coords.lat },
+          Lng: { number: coords.lng },
+          "Maps URL": { url: coords.mapsUrl },
+        },
+      });
+    }
+  }
+  revalidateTrip();
+}
+
+export async function deletePlace(formData: FormData) {
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) return;
+  await trashPage(id);
+}
+
+export async function updateTransit(formData: FormData) {
+  const id = String(formData.get("id") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+  const mode = String(formData.get("mode") ?? "").trim();
+  const from = String(formData.get("from") ?? "").trim();
+  const to = String(formData.get("to") ?? "").trim();
+  const date = String(formData.get("date") ?? "").trim();
+  const bookingUrl = String(formData.get("bookingUrl") ?? "").trim();
+  const dayId = String(formData.get("dayId") ?? "").trim();
+  const start = startValue(formData);
+  const order = orderValue(formData);
+  if (!id || !name) return;
+  const notion = getNotion();
+  const dateStart = date || (start ? start.slice(0, 10) : "");
+  await notion.pages.update({
+    page_id: id,
+    properties: {
+      Name: titleProp(name),
+      Mode: { select: mode ? { name: mode } : null },
+      From: textProp(from),
+      To: textProp(to),
+      Date: { date: dateStart ? { start: dateStart } : null },
+      "Booking URL": { url: bookingUrl || null },
+      Day: { relation: dayId ? [{ id: dayId }] : [] },
+      Start: startProp(start || null),
+      Order: { number: order },
+    },
+  });
+  revalidateTrip();
+}
+
+export async function deleteTransit(formData: FormData) {
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) return;
+  await trashPage(id);
 }
 
 export async function addStay(formData: FormData) {
@@ -171,7 +321,7 @@ export async function addTransit(formData: FormData) {
       ...(date ? { Date: { date: { start: date } } } : {}),
       ...(bookingUrl ? { "Booking URL": { url: bookingUrl } } : {}),
       ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
-      ...(start ? { Start: { date: { start } } } : {}),
+      ...(start ? { Start: startProp(start) } : {}),
       ...(order !== null ? { Order: { number: order } } : {}),
     },
   });
@@ -185,6 +335,7 @@ export async function addSpend(formData: FormData) {
   const category = String(formData.get("category") ?? "").trim();
   const notes = String(formData.get("notes") ?? "").trim();
   const dayId = String(formData.get("dayId") ?? "").trim();
+  const currency = parseSpendCurrency(String(formData.get("currency") ?? ""));
   const amount = Number(amountRaw);
   if (!name || !Number.isFinite(amount)) return;
   const notion = getNotion();
@@ -193,6 +344,7 @@ export async function addSpend(formData: FormData) {
     properties: {
       Name: titleProp(name),
       Amount: { number: amount },
+      Currency: { select: { name: currency } },
       ...(kind ? { Kind: { select: { name: kind } } } : {}),
       ...(category ? { Category: { select: { name: category } } } : {}),
       ...(notes ? { Notes: textProp(notes) } : {}),

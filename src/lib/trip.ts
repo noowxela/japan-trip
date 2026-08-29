@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { dateKey } from "@/lib/format";
+import { coordsOfPlace } from "@/lib/geocode";
 import {
   checkboxOf,
   dateOf,
@@ -13,6 +14,7 @@ import {
   titleOf,
   urlOf,
 } from "@/lib/notion";
+import { parseSpendCurrency } from "@/lib/spend";
 import type {
   AgendaItem,
   Place,
@@ -81,6 +83,7 @@ function parseSpend(page: Awaited<ReturnType<typeof queryAll>>[number]): SpendIt
     id: page.id,
     name: titleOf(page),
     amount: numberOf(page, "Amount") ?? 0,
+    currency: parseSpendCurrency(selectOf(page, "Currency")),
     kind: selectOf(page, "Kind"),
     category: selectOf(page, "Category"),
     notes: richTextOf(page, "Notes"),
@@ -137,9 +140,17 @@ export async function getTransitForDay(dayId: string) {
 export function cityHops(days: TripDay[]) {
   const hops: string[] = [];
   for (const day of days) {
-    if (day.city && hops[hops.length - 1] !== day.city) hops.push(day.city);
+    if (!day.date || !day.city) continue;
+    if (hops[hops.length - 1] !== day.city) hops.push(day.city);
   }
   return hops;
+}
+
+export function tripFlow(days: TripDay[]) {
+  const hops = cityHops(days);
+  return hops.map((city, index) =>
+    hops.slice(0, index).includes(city) ? `${city} fly back` : city,
+  );
 }
 
 export function pickFocusDay(days: TripDay[], today: string) {
@@ -173,17 +184,22 @@ function sortAgenda(a: AgendaItem, b: AgendaItem) {
 
 export function buildAgenda(places: Place[], transit: Transit[]): AgendaItem[] {
   const items: AgendaItem[] = [
-    ...places.map((place) => ({
-      id: place.id,
-      kind: "place" as const,
-      name: place.name,
-      chip: place.type,
-      detail: place.area,
-      start: place.start,
-      order: place.order,
-      visited: place.visited,
-      mapsUrl: place.mapsUrl,
-    })),
+    ...places.map((place) => {
+      const coords = coordsOfPlace(place);
+      return {
+        id: place.id,
+        kind: "place" as const,
+        name: place.name,
+        chip: place.type,
+        detail: place.area,
+        start: place.start,
+        order: place.order,
+        visited: place.visited,
+        mapsUrl: place.mapsUrl,
+        lat: coords?.lat ?? null,
+        lng: coords?.lng ?? null,
+      };
+    }),
     ...transit.map((item) => ({
       id: item.id,
       kind: "transit" as const,
