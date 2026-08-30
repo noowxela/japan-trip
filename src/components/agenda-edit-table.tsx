@@ -115,7 +115,9 @@ export function AgendaEditTable({
     | { kind: "place"; place: Place }
     | { kind: "transit"; transit: Transit }
   > = [
-    ...places.map((place) => ({ kind: "place" as const, place })),
+    ...places
+      .filter((place) => !place.pending)
+      .map((place) => ({ kind: "place" as const, place })),
     ...transit.map((item) => ({ kind: "transit" as const, transit: item })),
   ].sort((a, b) => {
     const startA = (a.kind === "place" ? a.place.start : a.transit.start) ?? "9999";
@@ -201,19 +203,11 @@ function PlaceEditRow({
           ))}
         </select>
       </Field>
-      <Field label="Name" className="col-span-2 lg:col-span-1">
+      <Field label="Name" className="col-span-2 lg:col-span-2">
         <input
           name="name"
           required
           defaultValue={place.name}
-          className={cell}
-        />
-      </Field>
-      <Field label="Area" className="col-span-2 lg:col-span-1">
-        <input
-          name="area"
-          defaultValue={place.area}
-          placeholder="Area"
           className={cell}
         />
       </Field>

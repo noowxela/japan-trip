@@ -2,14 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddAgendaForm } from "@/components/add-agenda-form";
 import { AgendaEditTable } from "@/components/agenda-edit-table";
+import { DayAgendaBoard, PendingPanel } from "@/components/day-agenda-board";
 import { DayCard } from "@/components/day-card";
 import { DayMapLoader } from "@/components/day-map-loader";
-import { EmptyState } from "@/components/empty-state";
-import { MapsPinLink } from "@/components/maps-pin-link";
 import { Nav } from "@/components/nav";
 import { PageShell } from "@/components/page-shell";
-import { VisitedToggle } from "@/components/visited-toggle";
-import { formatRm, formatTime } from "@/lib/format";
+import { formatRm } from "@/lib/format";
+import { coordsOfPlace } from "@/lib/geocode";
 import { byDay, moneySummary } from "@/lib/spend";
 import {
   buildAgenda,
@@ -45,13 +44,48 @@ export default async function DayPage({
     getSpend(),
   ]);
   const agenda = buildAgenda(places, transit);
+  const pending = places.filter((place) => place.pending);
   const lodging = staysForDate(stays, day.date);
   const dayMoney = moneySummary(byDay(spend, id));
-  const mapPins = agenda.flatMap((item) =>
-    item.kind === "place" && item.lat != null && item.lng != null
-      ? [{ id: item.id, name: item.name, lat: item.lat, lng: item.lng }]
-      : [],
-  );
+  const mapPins = [
+    ...agenda.flatMap((item) => {
+      if (item.kind !== "place" || item.lat == null || item.lng == null) {
+        return [];
+      }
+      return [
+        {
+          id: item.id,
+          name: item.name,
+          lat: item.lat,
+          lng: item.lng,
+          kind:
+            item.chip === "Food" || item.chip === "Cafe"
+              ? ("food" as const)
+              : item.chip === "Sight"
+                ? ("sight" as const)
+                : ("other" as const),
+        },
+      ];
+    }),
+    ...pending.flatMap((place) => {
+      const coords = coordsOfPlace(place);
+      if (!coords) return [];
+      return [
+        {
+          id: place.id,
+          name: place.name,
+          lat: coords.lat,
+          lng: coords.lng,
+          kind:
+            place.type === "Food" || place.type === "Cafe"
+              ? ("food" as const)
+              : place.type === "Sight"
+                ? ("sight" as const)
+                : ("other" as const),
+        },
+      ];
+    }),
+  ];
 
   return (
     <>
@@ -94,64 +128,29 @@ export default async function DayPage({
           </div>
 
           {editing ? (
-            <div className="grid gap-4">
-              <AgendaEditTable
-                places={places}
-                transit={transit}
-                dayId={day.id}
-                dayDate={day.date}
-              />
-              <AddAgendaForm
-                days={days}
-                defaultDayId={day.id}
-                dayDate={day.date}
-              />
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+              <div className="grid gap-4">
+                <AgendaEditTable
+                  places={places}
+                  transit={transit}
+                  dayId={day.id}
+                  dayDate={day.date}
+                />
+                <AddAgendaForm
+                  days={days}
+                  defaultDayId={day.id}
+                  dayDate={day.date}
+                />
+              </div>
+              <PendingPanel pending={pending} dayId={day.id} />
             </div>
-          ) : agenda.length === 0 ? (
-            <EmptyState title="Nothing timed yet">
-              Tap Edit to add a place or transit for this day.
-            </EmptyState>
           ) : (
-            <ol className="relative space-y-0 border-l-2 border-stone-200 pl-5">
-              {agenda.map((item) => (
-                <li key={`${item.kind}-${item.id}`} className="relative pb-5 last:pb-0">
-                  <span className="absolute -left-[1.4rem] top-1.5 h-3 w-3 rounded-full bg-[#b42318]" />
-                  <div className="rounded-2xl border border-stone-200 bg-white p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-xs uppercase tracking-wide text-stone-500">
-                          {[formatTime(item.start) ?? "Anytime", item.chip]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </p>
-                        <p className="flex items-start gap-1">
-                          <span className="text-lg font-medium break-words">
-                            {item.name}
-                          </span>
-                          {item.kind === "place" ? (
-                            <MapsPinLink
-                              name={item.name}
-                              lat={item.lat}
-                              lng={item.lng}
-                              mapsUrl={item.mapsUrl}
-                            />
-                          ) : null}
-                        </p>
-                        {item.detail ? (
-                          <p className="text-sm text-stone-600">{item.detail}</p>
-                        ) : null}
-                      </div>
-                      {item.kind === "place" ? (
-                        <VisitedToggle
-                          id={item.id}
-                          visited={Boolean(item.visited)}
-                        />
-                      ) : null}
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ol>
+            <DayAgendaBoard
+              agenda={agenda}
+              pending={pending}
+              dayId={day.id}
+              dayDate={day.date}
+            />
           )}
         </section>
       </PageShell>

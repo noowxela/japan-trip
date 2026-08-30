@@ -39,7 +39,6 @@ function parsePlace(page: Awaited<ReturnType<typeof queryAll>>[number]): Place {
     id: page.id,
     name: titleOf(page),
     type: selectOf(page, "Type"),
-    area: richTextOf(page, "Area"),
     mapsUrl: urlOf(page, "Maps URL"),
     notes: richTextOf(page, "Notes"),
     visited: checkboxOf(page, "Visited"),
@@ -48,6 +47,7 @@ function parsePlace(page: Awaited<ReturnType<typeof queryAll>>[number]): Place {
     order: numberOf(page, "Order"),
     lat: numberOf(page, "Lat"),
     lng: numberOf(page, "Lng"),
+    pending: checkboxOf(page, "Pending"),
   };
 }
 
@@ -184,22 +184,24 @@ function sortAgenda(a: AgendaItem, b: AgendaItem) {
 
 export function buildAgenda(places: Place[], transit: Transit[]): AgendaItem[] {
   const items: AgendaItem[] = [
-    ...places.map((place) => {
-      const coords = coordsOfPlace(place);
-      return {
-        id: place.id,
-        kind: "place" as const,
-        name: place.name,
-        chip: place.type,
-        detail: place.area,
-        start: place.start,
-        order: place.order,
-        visited: place.visited,
-        mapsUrl: place.mapsUrl,
-        lat: coords?.lat ?? null,
-        lng: coords?.lng ?? null,
-      };
-    }),
+    ...places
+      .filter((place) => !place.pending)
+      .map((place) => {
+        const coords = coordsOfPlace(place);
+        return {
+          id: place.id,
+          kind: "place" as const,
+          name: place.name,
+          chip: place.type,
+          detail: "",
+          start: place.start,
+          order: place.order,
+          visited: place.visited,
+          mapsUrl: place.mapsUrl,
+          lat: coords?.lat ?? null,
+          lng: coords?.lng ?? null,
+        };
+      }),
     ...transit.map((item) => ({
       id: item.id,
       kind: "transit" as const,

@@ -5,12 +5,18 @@ export function MapsPinLink({
   lat,
   lng,
   mapsUrl,
+  tone = "sight",
 }: {
   name: string;
   lat?: number | null;
   lng?: number | null;
   mapsUrl?: string | null;
+  tone?: "sight" | "food";
 }) {
+  const color =
+    tone === "food"
+      ? "text-[#ea580c] hover:bg-[#ea580c]/10"
+      : "text-[#b42318] hover:bg-[#b42318]/10";
   return (
     <a
       href={googleMapsHref({ name, lat, lng, mapsUrl })}
@@ -18,7 +24,7 @@ export function MapsPinLink({
       rel="noreferrer"
       aria-label={`Open ${name} in Google Maps`}
       title="Open in Google Maps"
-      className="mt-0.5 inline-flex shrink-0 rounded-full p-1 text-[#b42318] hover:bg-[#b42318]/10"
+      className={`mt-0.5 inline-flex shrink-0 rounded-full p-1 ${color}`}
     >
       <svg
         viewBox="0 0 24 24"

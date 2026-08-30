@@ -5,6 +5,7 @@ import L from "leaflet";
 import { MapContainer, Marker, Popup, Polyline, TileLayer } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import Link from "next/link";
+import { MapStyleSwitch, useMapStyle } from "@/components/map-style-switch";
 import { CITY_COORDS } from "@/lib/types";
 
 type Pin = {
@@ -37,9 +38,10 @@ export default function TripMap({ hops, pins }: Props) {
   const mapCenter: [number, number] =
     hopCoords[0] ??
     (firstPin ? [firstPin.lat, firstPin.lng] : [35.6812, 139.7671]);
+  const { id: styleId, pick, tiles } = useMapStyle();
 
   return (
-    <div className="h-[22rem] w-full overflow-hidden rounded-2xl sm:h-[28rem] md:h-[36rem]">
+    <div className="relative h-[22rem] w-full overflow-hidden rounded-2xl sm:h-[28rem] md:h-[36rem]">
       <MapContainer
         center={mapCenter}
         zoom={6}
@@ -48,8 +50,9 @@ export default function TripMap({ hops, pins }: Props) {
         scrollWheelZoom
       >
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        key={styleId}
+        attribution={tiles.attribution}
+        url={tiles.url}
       />
       {hopCoords.length > 1 ? (
         <Polyline positions={hopCoords} pathOptions={{ color: "#b42318" }} />
@@ -69,6 +72,7 @@ export default function TripMap({ hops, pins }: Props) {
         </Marker>
       ))}
     </MapContainer>
+      <MapStyleSwitch id={styleId} onChange={pick} />
     </div>
   );
 }

@@ -10,7 +10,6 @@ export type Place = {
   id: string;
   name: string;
   type: string | null;
-  area: string;
   mapsUrl: string | null;
   notes: string;
   visited: boolean;
@@ -19,6 +18,7 @@ export type Place = {
   order: number | null;
   lat: number | null;
   lng: number | null;
+  pending: boolean;
 };
 
 export type Stay = {

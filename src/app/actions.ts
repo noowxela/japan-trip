@@ -96,7 +96,6 @@ export async function deleteDay(formData: FormData) {
 export async function addPlace(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const type = String(formData.get("type") ?? "").trim();
-  const area = String(formData.get("area") ?? "").trim();
   const mapsUrl = String(formData.get("mapsUrl") ?? "").trim();
   const notes = String(formData.get("notes") ?? "").trim();
   const dayId = String(formData.get("dayId") ?? "").trim();
@@ -117,12 +116,12 @@ export async function addPlace(formData: FormData) {
     properties: {
       Name: titleProp(name),
       ...(type ? { Type: { select: { name: type } } } : {}),
-      ...(area ? { Area: textProp(area) } : {}),
       ...(mapsUrl ? { "Maps URL": { url: mapsUrl } } : {}),
       ...(notes ? { Notes: textProp(notes) } : {}),
       ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
       ...(start ? { Start: startProp(start) } : {}),
       ...(order !== null ? { Order: { number: order } } : {}),
+      Pending: { checkbox: false },
       ...(picked
         ? { Lat: { number: picked.lat }, Lng: { number: picked.lng } }
         : {}),
@@ -131,7 +130,7 @@ export async function addPlace(formData: FormData) {
 
   if (!picked) {
     const day = dayId ? await getDay(dayId) : null;
-    const query = [name, area, day?.city].filter(Boolean).join(" ");
+    const query = [name, day?.city].filter(Boolean).join(" ");
     const coords = await geocodeJapan(query, day?.city ?? undefined);
     if (coords) {
       await notion.pages.update({
@@ -188,7 +187,6 @@ export async function updatePlace(formData: FormData) {
   const id = String(formData.get("id") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const type = String(formData.get("type") ?? "").trim();
-  const area = String(formData.get("area") ?? "").trim();
   const mapsUrl = String(formData.get("mapsUrl") ?? "").trim();
   const notes = String(formData.get("notes") ?? "").trim();
   const dayId = String(formData.get("dayId") ?? "").trim();
@@ -202,12 +200,12 @@ export async function updatePlace(formData: FormData) {
     properties: {
       Name: titleProp(name),
       Type: { select: type ? { name: type } : null },
-      Area: textProp(area),
       "Maps URL": { url: mapsUrl || known?.mapsUrl || null },
       Notes: textProp(notes),
       Day: { relation: dayId ? [{ id: dayId }] : [] },
       Start: startProp(start || null),
       Order: { number: order },
+      Pending: { checkbox: false },
       ...(known
         ? { Lat: { number: known.lat }, Lng: { number: known.lng } }
         : {}),
@@ -216,7 +214,7 @@ export async function updatePlace(formData: FormData) {
   if (!known && !mapsUrl) {
     const day = dayId ? await getDay(dayId) : null;
     const coords = await geocodeJapan(
-      [name, area, day?.city].filter(Boolean).join(" "),
+      [name, day?.city].filter(Boolean).join(" "),
       day?.city ?? undefined,
     );
     if (coords) {
@@ -237,6 +235,39 @@ export async function deletePlace(formData: FormData) {
   const id = String(formData.get("id") ?? "").trim();
   if (!id) return;
   await trashPage(id);
+}
+
+export async function confirmPendingPlace(formData: FormData) {
+  const id = String(formData.get("id") ?? "").trim();
+  const dayId = String(formData.get("dayId") ?? "").trim();
+  const start = String(formData.get("start") ?? "").trim();
+  if (!id) return;
+  const notion = getNotion();
+  await notion.pages.update({
+    page_id: id,
+    properties: {
+      Pending: { checkbox: false },
+      ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
+      ...(start ? { Start: startProp(start) } : {}),
+    },
+  });
+  revalidateTrip();
+}
+
+export async function parkPlaceAsPending(formData: FormData) {
+  const id = String(formData.get("id") ?? "").trim();
+  const dayId = String(formData.get("dayId") ?? "").trim();
+  if (!id) return;
+  const notion = getNotion();
+  await notion.pages.update({
+    page_id: id,
+    properties: {
+      Pending: { checkbox: true },
+      ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
+      Start: startProp(null),
+    },
+  });
+  revalidateTrip();
 }
 
 export async function updateTransit(formData: FormData) {

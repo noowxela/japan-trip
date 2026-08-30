@@ -85,3 +85,18 @@ export function tokyoToday() {
 export function dateKey(value: string | null) {
   return value ? value.slice(0, 10) : null;
 }
+
+export function startBefore(
+  start: string | null,
+  dayDate: string | null,
+  minutes = 15,
+) {
+  const date = dateKey(dayDate);
+  const time = formatTime(start);
+  if (!date || !time) return "";
+  const [hour, minute] = time.split(":").map(Number);
+  const total = Math.max(0, hour * 60 + minute - minutes);
+  const hh = String(Math.floor(total / 60)).padStart(2, "0");
+  const mm = String(total % 60).padStart(2, "0");
+  return `${date}T${hh}:${mm}:00`;
+}

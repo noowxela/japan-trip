@@ -31,7 +31,6 @@ export function AddPlaceForm({
   const [results, setResults] = useState<PlaceSearchHit[]>([]);
   const [picked, setPicked] = useState<PlaceSearchHit | null>(null);
   const [name, setName] = useState("");
-  const [area, setArea] = useState("");
   const [mapsUrl, setMapsUrl] = useState("");
   const [error, setError] = useState("");
   const [pending, startSearch] = useTransition();
@@ -53,7 +52,6 @@ export function AddPlaceForm({
   function pick(hit: PlaceSearchHit) {
     setPicked(hit);
     setName(hit.name);
-    if (hit.area) setArea(hit.area);
     setMapsUrl(hit.mapsUrl);
     setResults([]);
   }
@@ -118,26 +116,17 @@ export function AddPlaceForm({
           placeholder="Senso-ji"
           className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]"
         />
-        <div className="grid grid-cols-2 gap-3">
-          <select
-            name="type"
-            defaultValue="Sight"
-            className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]"
-          >
-            {PLACE_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
-          <input
-            name="area"
-            value={area}
-            onChange={(event) => setArea(event.target.value)}
-            placeholder="Asakusa"
-            className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]"
-          />
-        </div>
+        <select
+          name="type"
+          defaultValue="Sight"
+          className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]"
+        >
+          {PLACE_TYPES.map((type) => (
+            <option key={type} value={type}>
+              {type}
+            </option>
+          ))}
+        </select>
         <input
           name="mapsUrl"
           type="url"

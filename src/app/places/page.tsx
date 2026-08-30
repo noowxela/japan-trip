@@ -37,9 +37,7 @@ export default async function PlacesPage() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-xs text-stone-500">
-                      {[place.type, place.area].filter(Boolean).join(" · ")}
-                    </p>
+                    <p className="text-xs text-stone-500">{place.type}</p>
                     <p className="flex items-start gap-1">
                       <span className="text-lg font-medium break-words">
                         {place.name}
@@ -49,6 +47,11 @@ export default async function PlacesPage() {
                         lat={coordsOfPlace(place)?.lat}
                         lng={coordsOfPlace(place)?.lng}
                         mapsUrl={place.mapsUrl}
+                        tone={
+                          place.type === "Food" || place.type === "Cafe"
+                            ? "food"
+                            : "sight"
+                        }
                       />
                     </p>
                     <p className="text-sm text-stone-500">

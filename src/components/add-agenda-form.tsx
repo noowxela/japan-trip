@@ -29,7 +29,6 @@ export function AddAgendaForm({
   const [results, setResults] = useState<PlaceSearchHit[]>([]);
   const [picked, setPicked] = useState<PlaceSearchHit | null>(null);
   const [name, setName] = useState("");
-  const [area, setArea] = useState("");
   const [error, setError] = useState("");
   const [pending, startSearch] = useTransition();
   const city = useMemo(
@@ -52,7 +51,6 @@ export function AddAgendaForm({
   function pick(hit: PlaceSearchHit) {
     setPicked(hit);
     setName(hit.name);
-    if (hit.area) setArea(hit.area);
     setResults([]);
   }
 
@@ -146,22 +144,13 @@ export function AddAgendaForm({
       />
 
       {kind === "place" ? (
-        <div className="grid grid-cols-2 gap-3">
-          <select name="type" defaultValue="Sight" className={field}>
-            {PLACE_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
-          <input
-            name="area"
-            value={area}
-            onChange={(event) => setArea(event.target.value)}
-            placeholder="Area"
-            className={field}
-          />
-        </div>
+        <select name="type" defaultValue="Sight" className={field}>
+          {PLACE_TYPES.map((type) => (
+            <option key={type} value={type}>
+              {type}
+            </option>
+          ))}
+        </select>
       ) : (
         <>
           <select name="mode" defaultValue="Metro" className={field}>

@@ -1,7 +1,6 @@
 export type PlaceSearchHit = {
   name: string;
   displayName: string;
-  area: string;
   lat: number;
   lng: number;
   mapsUrl: string;
@@ -12,15 +11,6 @@ type NominatimHit = {
   lon: string;
   name?: string;
   display_name?: string;
-  address?: {
-    suburb?: string;
-    neighbourhood?: string;
-    quarter?: string;
-    city_district?: string;
-    town?: string;
-    city?: string;
-    village?: string;
-  };
 };
 
 function mapsUrl(lat: number, lng: number) {
@@ -28,7 +18,9 @@ function mapsUrl(lat: number, lng: number) {
 }
 
 const LANDMARKS: { match: RegExp; lat: number; lng: number }[] = [
-  { match: /fushimi\s*inari|伏見稲荷/i, lat: 34.96714, lng: 135.77268 },
+  { match: /土井活鰻|doi\s*katsu|doikatsuman/i, lat: 34.96955, lng: 135.76814 },
+  { match: /oagari|おあがり|肉の隠れ家|volcano-?\s*steak/i, lat: 35.00497, lng: 135.7768 },
+  { match: /fushimi\s*inari\s*taisha|伏見稲荷大社/i, lat: 34.96714, lng: 135.77268 },
   { match: /kiyomizu|清水寺/i, lat: 34.99486, lng: 135.78504 },
   { match: /ninen|sannen|二年坂|三年坂/i, lat: 34.99755, lng: 135.78072 },
   { match: /kodai-?ji|高台寺/i, lat: 35.00062, lng: 135.78141 },
@@ -71,27 +63,12 @@ function cleanGeocodeQuery(query: string) {
   return latin || query;
 }
 
-function areaOf(hit: NominatimHit) {
-  const address = hit.address ?? {};
-  return (
-    address.suburb ||
-    address.neighbourhood ||
-    address.quarter ||
-    address.city_district ||
-    address.town ||
-    address.village ||
-    address.city ||
-    ""
-  );
-}
-
 export async function searchPlacesJapan(query: string, city?: string) {
   const q = query.trim();
   if (q.length < 2) return [];
   const url = new URL("https://nominatim.openstreetmap.org/search");
   url.searchParams.set("q", [q, city, "Japan"].filter(Boolean).join(", "));
   url.searchParams.set("format", "json");
-  url.searchParams.set("addressdetails", "1");
   url.searchParams.set("limit", "6");
   url.searchParams.set("countrycodes", "jp");
   const response = await fetch(url, {
@@ -109,7 +86,6 @@ export async function searchPlacesJapan(query: string, city?: string) {
       return {
         name,
         displayName: hit.display_name ?? name,
-        area: areaOf(hit),
         lat,
         lng,
         mapsUrl: mapsUrl(lat, lng),
