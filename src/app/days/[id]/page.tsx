@@ -102,12 +102,12 @@ export default async function DayPage({
 
   return (
     <>
-      <Nav current="/" />
+      <Nav current="/schedule" />
       <PageShell className={editing ? "" : "pb-28"}>
         <Breadcrumb
           items={[
-            { href: "/", label: "Home" },
-            { href: "/today", label: "Today" },
+            { href: "/", label: "Overview" },
+            { href: "/schedule", label: "Schedule" },
             { label: day.name },
           ]}
         />
