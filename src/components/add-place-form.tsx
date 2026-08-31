@@ -22,9 +22,13 @@ const PlacePreviewMap = nextDynamic(
 export function AddPlaceForm({
   days,
   defaultDayId,
+  embedded = false,
+  onSuccess,
 }: {
   days: TripDay[];
   defaultDayId?: string;
+  embedded?: boolean;
+  onSuccess?: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [dayId, setDayId] = useState(defaultDayId ?? "");
@@ -56,9 +60,13 @@ export function AddPlaceForm({
     setResults([]);
   }
 
+  const shellClass = embedded
+    ? "grid gap-3"
+    : `${formShellClass} grid gap-3 rounded-2xl border border-stone-200 bg-white p-4`;
+
   return (
-    <div className={`${formShellClass} grid gap-3 rounded-2xl border border-stone-200 bg-white p-4`}>
-      <p className="font-medium text-stone-900">Add a place</p>
+    <div className={shellClass}>
+      {!embedded ? <p className="font-medium text-stone-900">Add a place</p> : null}
       <div className="flex gap-2">
         <input
           value={query}
@@ -105,7 +113,13 @@ export function AddPlaceForm({
         </div>
       ) : null}
 
-      <form action={addPlace} className="grid gap-3">
+      <form
+        action={async (formData) => {
+          await addPlace(formData);
+          onSuccess?.();
+        }}
+        className="grid gap-3"
+      >
         <input type="hidden" name="lat" value={picked?.lat ?? ""} />
         <input type="hidden" name="lng" value={picked?.lng ?? ""} />
         <input
