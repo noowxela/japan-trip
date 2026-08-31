@@ -10,6 +10,12 @@ export function formatDay(date: string | null) {
   }).format(new Date(`${day}T12:00:00`));
 }
 
+export function formatTabDate(date: string | null) {
+  if (!date) return "—";
+  const d = new Date(`${date.slice(0, 10)}T12:00:00`);
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
 function tripDateParts(date: string) {
   const day = date.slice(0, 10);
   const d = new Date(`${day}T12:00:00`);

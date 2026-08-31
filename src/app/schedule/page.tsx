@@ -1,124 +1,120 @@
 import Link from "next/link";
-import { AddDayForm } from "@/components/add-day-form";
-import { DayCard } from "@/components/day-card";
 import { EmptyState } from "@/components/empty-state";
 import { Nav } from "@/components/nav";
-import { PageShell } from "@/components/page-shell";
-import { StatusBadge } from "@/components/status-badge";
-import { formatDay, formatTripSpan, tokyoToday } from "@/lib/format";
+import { ScheduleView } from "@/components/schedule-view";
+import { coordsOfPlace } from "@/lib/geocode";
+import { tokyoToday } from "@/lib/format";
 import { hasToken, isConfigured } from "@/lib/notion";
 import {
+  buildAgenda,
   getDays,
   getPlacesForDay,
   getTransitForDay,
   pickFocusDay,
-  tripFlow,
 } from "@/lib/trip";
 
 export const dynamic = "force-dynamic";
 
-export default async function SchedulePage() {
+export default async function SchedulePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ day?: string }>;
+}) {
   if (!hasToken() || !isConfigured()) {
     return (
       <>
         <Nav current="/schedule" />
-        <PageShell>
+        <div className="mx-auto max-w-xl px-4 py-6 pb-24 md:max-w-5xl md:px-8">
           <EmptyState title="Notion is not ready">
             Add NOTION_TOKEN and run <code>npm run setup:notion</code> then{" "}
             <code>npm run migrate:v2</code>.
           </EmptyState>
-        </PageShell>
+        </div>
       </>
     );
   }
 
+  const { day: dayParam } = await searchParams;
   const days = await getDays();
+
+  if (days.length === 0) {
+    return (
+      <>
+        <Nav current="/schedule" />
+        <div className="mx-auto max-w-xl px-4 py-6 pb-24 md:max-w-5xl md:px-8">
+          <EmptyState title="No days yet">
+            Add trip days in{" "}
+            <Link href="/settings" className="font-medium text-[#b42318]">
+              Settings
+            </Link>
+            .
+          </EmptyState>
+        </div>
+      </>
+    );
+  }
+
   const today = tokyoToday();
-  const focus = pickFocusDay(days, today);
-  const focusPlaces = focus ? await getPlacesForDay(focus.id) : [];
-  const focusTransit = focus ? await getTransitForDay(focus.id) : [];
-  const nextPlace = focusPlaces.find((place) => !place.visited && !place.pending) ?? null;
-  const nextTransit = focusTransit[0] ?? null;
-  const dated = days.filter((day) => day.date);
-  const span =
-    dated.length > 0
-      ? formatTripSpan(dated[0].date, dated[dated.length - 1].date)
-      : "Dates TBD";
-  const hops = tripFlow(days);
+  const defaultDay = pickFocusDay(days, today) ?? days[0];
+  const selectedDay =
+    days.find((day) => day.id === dayParam) ?? defaultDay;
+
+  const [places, transit] = await Promise.all([
+    getPlacesForDay(selectedDay.id),
+    getTransitForDay(selectedDay.id),
+  ]);
+  const agenda = buildAgenda(places, transit);
+  const pending = places.filter((place) => place.pending);
+  const mapPins = [
+    ...agenda.flatMap((item) => {
+      if (item.kind !== "place" || item.lat == null || item.lng == null) {
+        return [];
+      }
+      return [
+        {
+          id: item.id,
+          name: item.name,
+          lat: item.lat,
+          lng: item.lng,
+          kind:
+            item.chip === "Food" || item.chip === "Cafe"
+              ? ("food" as const)
+              : item.chip === "Sight"
+                ? ("sight" as const)
+                : ("other" as const),
+        },
+      ];
+    }),
+    ...pending.flatMap((place) => {
+      const coords = coordsOfPlace(place);
+      if (!coords) return [];
+      return [
+        {
+          id: place.id,
+          name: place.name,
+          lat: coords.lat,
+          lng: coords.lng,
+          kind:
+            place.type === "Food" || place.type === "Cafe"
+              ? ("food" as const)
+              : place.type === "Sight"
+                ? ("sight" as const)
+                : ("other" as const),
+        },
+      ];
+    }),
+  ];
 
   return (
     <>
       <Nav current="/schedule" />
-      <PageShell>
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-[#b42318]">
-            Itinerary
-          </p>
-          <h1 className="font-serif text-3xl tracking-tight">Schedule</h1>
-          <p className="mt-1 text-sm text-stone-500">{span}</p>
-          {hops.length > 0 ? (
-            <p className="mt-2 text-base font-medium">{hops.join(" → ")}</p>
-          ) : null}
-        </div>
-
-        {focus ? (
-          <Link
-            href={`/days/${focus.id}`}
-            className="block min-w-0 rounded-2xl border border-stone-200 bg-white p-4 md:max-w-xl"
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-xs uppercase tracking-wide text-[#b42318]">
-                {dateKey(focus.date) === today ? "Today" : "Next up"}
-              </p>
-              <StatusBadge status={focus.status} />
-            </div>
-            <p className="mt-1 font-serif text-2xl">{focus.name}</p>
-            <p className="text-sm text-stone-500">
-              {formatDay(focus.date)}
-              {focus.city ? ` · ${focus.city}` : ""}
-            </p>
-            {nextTransit ? (
-              <p className="mt-2 text-sm">
-                Next move: {nextTransit.mode ? `${nextTransit.mode} · ` : ""}
-                {nextTransit.name}
-              </p>
-            ) : null}
-            {nextPlace ? (
-              <p className="text-sm text-stone-600">
-                Next stop: {nextPlace.name}
-              </p>
-            ) : (
-              <p className="text-sm text-stone-500">No unvisited places yet</p>
-            )}
-          </Link>
-        ) : (
-          <EmptyState title="No days yet">Add a day to start the schedule.</EmptyState>
-        )}
-
-        <section className="space-y-3">
-          <h2 className="text-sm font-medium uppercase tracking-wide text-stone-500">
-            All days
-          </h2>
-          {days.length === 0 ? (
-            <EmptyState title="Empty itinerary">
-              Add a day here, or in the Days database in Notion.
-            </EmptyState>
-          ) : (
-            <ul className="grid gap-3 sm:grid-cols-2">
-              {days.map((day) => (
-                <li key={day.id} className="min-w-0">
-                  <DayCard day={day} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-        <AddDayForm />
-      </PageShell>
+      <ScheduleView
+        days={days}
+        selectedDay={selectedDay}
+        agenda={agenda}
+        pending={pending}
+        mapPins={mapPins}
+      />
     </>
   );
-}
-
-function dateKey(value: string | null) {
-  return value ? value.slice(0, 10) : null;
 }
