@@ -14,7 +14,7 @@ export function ScheduleDayTabs({
   const today = tokyoToday();
 
   return (
-    <div className="border-b border-stone-200 bg-white">
+    <div className="shrink-0 border-b border-stone-100 bg-white">
       <div className="mx-auto flex max-w-xl overflow-x-auto md:max-w-5xl">
         {days.map((day, index) => {
           const active = day.id === selectedId;
