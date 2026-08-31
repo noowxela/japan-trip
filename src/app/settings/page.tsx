@@ -1,7 +1,11 @@
 import Link from "next/link";
+import { AddDayForm } from "@/components/add-day-form";
+import { DayCard } from "@/components/day-card";
+import { EmptyState } from "@/components/empty-state";
 import { Nav } from "@/components/nav";
 import { PageShell } from "@/components/page-shell";
 import { hasToken, isConfigured } from "@/lib/notion";
+import { getDays } from "@/lib/trip";
 
 export const dynamic = "force-dynamic";
 
@@ -14,8 +18,9 @@ const secondaryLinks = [
   { href: "/transit", label: "Transit", detail: "Trains, flights, and moves" },
 ];
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
   const notionReady = hasToken() && isConfigured();
+  const days = notionReady ? await getDays() : [];
 
   return (
     <>
@@ -41,6 +46,28 @@ export default function SettingsPage() {
             </p>
           </div>
         </section>
+
+        {notionReady ? (
+          <section className="space-y-3">
+            <h2 className="text-sm font-medium uppercase tracking-wide text-stone-500">
+              Trip days
+            </h2>
+            {days.length === 0 ? (
+              <EmptyState title="No days yet">
+                Add your first day below, or in the Days database in Notion.
+              </EmptyState>
+            ) : (
+              <ul className="grid gap-3 sm:grid-cols-2">
+                {days.map((day) => (
+                  <li key={day.id} className="min-w-0">
+                    <DayCard day={day} href={`/schedule?day=${day.id}`} />
+                  </li>
+                ))}
+              </ul>
+            )}
+            <AddDayForm />
+          </section>
+        ) : null}
 
         <section className="space-y-3">
           <h2 className="text-sm font-medium uppercase tracking-wide text-stone-500">

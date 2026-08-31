@@ -71,9 +71,11 @@ function FitPins({
 export default function DayMap({
   city,
   pins,
+  className = "",
 }: {
   city: string | null;
   pins: DayMapPin[];
+  className?: string;
 }) {
   const fallback = (city && CITY_COORDS[city]) || CITY_COORDS.Kyoto;
   const path = pins.map((pin) => [pin.lat, pin.lng] as [number, number]);
@@ -84,7 +86,9 @@ export default function DayMap({
   const { id: styleId, pick, tiles } = useMapStyle();
 
   return (
-    <div className="relative h-52 w-full overflow-hidden rounded-2xl border border-stone-200 sm:h-64 md:h-72">
+    <div
+      className={`relative h-52 w-full overflow-hidden border-stone-200 sm:h-64 md:h-72 ${className || "rounded-2xl border"}`.trim()}
+    >
       <MapContainer
         center={fallback}
         zoom={12}

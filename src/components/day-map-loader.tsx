@@ -6,7 +6,7 @@ import type { DayMapPin } from "@/components/day-map";
 const DayMap = nextDynamic(() => import("@/components/day-map"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-52 items-center justify-center rounded-2xl border border-stone-200 bg-white text-sm text-stone-500 sm:h-64 md:h-72">
+    <div className="flex h-full min-h-[inherit] items-center justify-center bg-stone-100 text-sm text-stone-500">
       Loading map…
     </div>
   ),
@@ -15,9 +15,11 @@ const DayMap = nextDynamic(() => import("@/components/day-map"), {
 export function DayMapLoader({
   city,
   pins,
+  className = "",
 }: {
   city: string | null;
   pins: DayMapPin[];
+  className?: string;
 }) {
-  return <DayMap city={city} pins={pins} />;
+  return <DayMap city={city} pins={pins} className={className} />;
 }
