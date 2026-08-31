@@ -82,6 +82,59 @@ export function tokyoToday() {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
 }
 
+function dayDiff(from: string, to: string) {
+  const start = new Date(`${from}T12:00:00`);
+  const end = new Date(`${to}T12:00:00`);
+  return Math.round((end.getTime() - start.getTime()) / 86_400_000);
+}
+
+export function tripCountdown(
+  start: string | null,
+  end: string | null,
+  today: string,
+) {
+  const startKey = dateKey(start);
+  if (!startKey) return null;
+
+  const endKey = dateKey(end) ?? startKey;
+  const daysUntilStart = dayDiff(today, startKey);
+  const tripLength = dayDiff(startKey, endKey) + 1;
+
+  if (daysUntilStart > 0) {
+    const dayWord = daysUntilStart === 1 ? "day" : "days";
+    return {
+      label: "Countdown",
+      primary: `${daysUntilStart} ${dayWord}`,
+      secondary: "until departure",
+    };
+  }
+
+  if (daysUntilStart === 0) {
+    return {
+      label: "Countdown",
+      primary: "Today",
+      secondary: "departure day",
+    };
+  }
+
+  const daysSinceStart = -daysUntilStart;
+  if (today <= endKey) {
+    const dayNumber = daysSinceStart + 1;
+    return {
+      label: "On trip",
+      primary: `Day ${dayNumber}`,
+      secondary:
+        tripLength > 1 ? `of ${tripLength} · ${endKey.slice(5)} last day` : undefined,
+    };
+  }
+
+  return {
+    label: "Trip",
+    primary: "Complete",
+    secondary: "hope you had a great time",
+  };
+}
+
 export function dateKey(value: string | null) {
   return value ? value.slice(0, 10) : null;
 }

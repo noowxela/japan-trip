@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AddDayForm } from "@/components/add-day-form";
+import { CountdownWidget } from "@/components/countdown-widget";
 import { DayCard } from "@/components/day-card";
 import { EmptyState } from "@/components/empty-state";
 import { Nav } from "@/components/nav";
@@ -49,15 +50,19 @@ export default async function HomePage() {
   const visited = places.filter((place) => place.visited).length;
   const money = moneySummary(spend);
   const dated = days.filter((day) => day.date);
+  const tripStart = dated[0]?.date ?? null;
+  const tripEnd = dated[dated.length - 1]?.date ?? null;
   const span =
     dated.length > 0
-      ? formatTripSpan(dated[0].date, dated[dated.length - 1].date)
+      ? formatTripSpan(tripStart, tripEnd)
       : "Dates TBD";
 
   return (
     <>
       <Nav current="/" />
       <PageShell>
+        <CountdownWidget start={tripStart} end={tripEnd} today={today} />
+
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-[#b42318]">
             Trip flow
