@@ -22,10 +22,12 @@ type Pin = {
 
 export function TripMapLoader({
   hops,
+  hopPoints,
   pins,
 }: {
   hops: string[];
+  hopPoints?: [number, number][];
   pins: Pin[];
 }) {
-  return <TripMap hops={hops} pins={pins} />;
+  return <TripMap hops={hops} hopPoints={hopPoints} pins={pins} />;
 }

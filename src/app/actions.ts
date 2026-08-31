@@ -2,13 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { actionErr, actionOk, type ActionResult } from "@/lib/action-result";
 import { geocodeJapan, lookupLandmark, searchPlacesJapan } from "@/lib/geocode";
 import { ds, getNotion, textProp, titleProp } from "@/lib/notion";
 import { parseSpendCurrency } from "@/lib/spend";
-import { getDay } from "@/lib/trip";
+import { getDay, getPlacesForDay } from "@/lib/trip";
 
 function revalidateTrip() {
   revalidatePath("/");
+  revalidatePath("/today");
   revalidatePath("/places");
   revalidatePath("/stays");
   revalidatePath("/transit");
@@ -46,11 +48,24 @@ function orderValue(formData: FormData) {
   return Number.isFinite(n) ? n : null;
 }
 
-export async function addDay(formData: FormData) {
+function pendingValue(formData: FormData) {
+  return String(formData.get("pending") ?? "") === "true";
+}
+
+async function nextOrderForDay(dayId: string) {
+  const places = await getPlacesForDay(dayId);
+  const max = places.reduce(
+    (value, place) => Math.max(value, place.order ?? 0),
+    0,
+  );
+  return max + 1;
+}
+
+export async function addDay(formData: FormData): Promise<ActionResult> {
   const name = String(formData.get("name") ?? "").trim();
   const date = String(formData.get("date") ?? "").trim();
   const city = String(formData.get("city") ?? "").trim();
-  if (!name) return;
+  if (!name) return actionErr("Day name is required");
   const notion = getNotion();
   await notion.pages.create({
     parent: { data_source_id: ds("DAYS") },
@@ -61,14 +76,15 @@ export async function addDay(formData: FormData) {
     },
   });
   revalidateTrip();
+  return actionOk("Day added");
 }
 
-export async function updateDay(formData: FormData) {
+export async function updateDay(formData: FormData): Promise<ActionResult> {
   const id = String(formData.get("id") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const date = String(formData.get("date") ?? "").trim();
   const city = String(formData.get("city") ?? "").trim();
-  if (!id || !name) return;
+  if (!id || !name) return actionErr("Day name is required");
   const notion = getNotion();
   await notion.pages.update({
     page_id: id,
@@ -79,11 +95,12 @@ export async function updateDay(formData: FormData) {
     },
   });
   revalidateTrip();
+  return actionOk("Day saved");
 }
 
-export async function deleteDay(formData: FormData) {
+export async function deleteDay(formData: FormData): Promise<ActionResult> {
   const id = String(formData.get("id") ?? "").trim();
-  if (!id) return;
+  if (!id) return actionErr("Missing day");
   const notion = getNotion();
   await notion.pages.update({
     page_id: id,
@@ -93,7 +110,7 @@ export async function deleteDay(formData: FormData) {
   redirect("/");
 }
 
-export async function addPlace(formData: FormData) {
+export async function addPlace(formData: FormData): Promise<ActionResult> {
   const name = String(formData.get("name") ?? "").trim();
   const type = String(formData.get("type") ?? "").trim();
   const mapsUrl = String(formData.get("mapsUrl") ?? "").trim();
@@ -101,6 +118,7 @@ export async function addPlace(formData: FormData) {
   const dayId = String(formData.get("dayId") ?? "").trim();
   const start = startValue(formData);
   const order = orderValue(formData);
+  const pending = pendingValue(formData);
   const latRaw = String(formData.get("lat") ?? "").trim();
   const lngRaw = String(formData.get("lng") ?? "").trim();
   const lat = Number(latRaw);
@@ -109,7 +127,7 @@ export async function addPlace(formData: FormData) {
     latRaw && lngRaw && Number.isFinite(lat) && Number.isFinite(lng)
       ? { lat, lng }
       : null;
-  if (!name) return;
+  if (!name) return actionErr("Place name is required");
   const notion = getNotion();
   const page = await notion.pages.create({
     parent: { data_source_id: ds("PLACES") },
@@ -119,9 +137,9 @@ export async function addPlace(formData: FormData) {
       ...(mapsUrl ? { "Maps URL": { url: mapsUrl } } : {}),
       ...(notes ? { Notes: textProp(notes) } : {}),
       ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
-      ...(start ? { Start: startProp(start) } : {}),
-      ...(order !== null ? { Order: { number: order } } : {}),
-      Pending: { checkbox: false },
+      ...(start && !pending ? { Start: startProp(start) } : {}),
+      ...(order !== null && !pending ? { Order: { number: order } } : {}),
+      Pending: { checkbox: pending },
       ...(picked
         ? { Lat: { number: picked.lat }, Lng: { number: picked.lng } }
         : {}),
@@ -144,34 +162,37 @@ export async function addPlace(formData: FormData) {
     }
   }
   revalidateTrip();
+  return actionOk(pending ? "Maybe-spot saved" : "Place added");
 }
 
 export async function searchPlaces(query: string, city?: string) {
   return searchPlacesJapan(query, city);
 }
 
-export async function toggleVisited(formData: FormData) {
+export async function toggleVisited(formData: FormData): Promise<ActionResult> {
   const id = String(formData.get("id") ?? "");
   const visited = String(formData.get("visited") ?? "") === "true";
-  if (!id) return;
+  if (!id) return actionErr("Missing place");
   const notion = getNotion();
   await notion.pages.update({
     page_id: id,
     properties: { Visited: { checkbox: visited } },
   });
   revalidateTrip();
+  return actionOk(visited ? "Marked visited" : "Marked unvisited");
 }
 
-export async function updatePlaceNotes(formData: FormData) {
+export async function updatePlaceNotes(formData: FormData): Promise<ActionResult> {
   const id = String(formData.get("id") ?? "");
   const notes = String(formData.get("notes") ?? "");
-  if (!id) return;
+  if (!id) return actionErr("Missing place");
   const notion = getNotion();
   await notion.pages.update({
     page_id: id,
     properties: { Notes: textProp(notes) },
   });
   revalidateTrip();
+  return actionOk("Notes saved");
 }
 
 async function trashPage(id: string) {
@@ -183,7 +204,7 @@ async function trashPage(id: string) {
   revalidateTrip();
 }
 
-export async function updatePlace(formData: FormData) {
+export async function updatePlace(formData: FormData): Promise<ActionResult> {
   const id = String(formData.get("id") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const type = String(formData.get("type") ?? "").trim();
@@ -192,7 +213,7 @@ export async function updatePlace(formData: FormData) {
   const dayId = String(formData.get("dayId") ?? "").trim();
   const start = startValue(formData);
   const order = orderValue(formData);
-  if (!id || !name) return;
+  if (!id || !name) return actionErr("Place name is required");
   const notion = getNotion();
   const known = lookupLandmark(name);
   await notion.pages.update({
@@ -229,35 +250,44 @@ export async function updatePlace(formData: FormData) {
     }
   }
   revalidateTrip();
+  return actionOk("Place saved");
 }
 
-export async function deletePlace(formData: FormData) {
+export async function deletePlace(formData: FormData): Promise<ActionResult> {
   const id = String(formData.get("id") ?? "").trim();
-  if (!id) return;
+  if (!id) return actionErr("Missing place");
   await trashPage(id);
+  return actionOk("Place deleted");
 }
 
-export async function confirmPendingPlace(formData: FormData) {
+export async function confirmPendingPlace(formData: FormData): Promise<ActionResult> {
   const id = String(formData.get("id") ?? "").trim();
   const dayId = String(formData.get("dayId") ?? "").trim();
   const start = String(formData.get("start") ?? "").trim();
-  if (!id) return;
+  const slot = String(formData.get("slot") ?? "").trim();
+  if (!id) return actionErr("Missing place");
   const notion = getNotion();
+  let order: number | null = null;
+  if (dayId && slot === "end") {
+    order = await nextOrderForDay(dayId);
+  }
   await notion.pages.update({
     page_id: id,
     properties: {
       Pending: { checkbox: false },
       ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
       ...(start ? { Start: startProp(start) } : {}),
+      ...(order !== null ? { Order: { number: order } } : {}),
     },
   });
   revalidateTrip();
+  return actionOk("Added to agenda");
 }
 
-export async function parkPlaceAsPending(formData: FormData) {
+export async function parkPlaceAsPending(formData: FormData): Promise<ActionResult> {
   const id = String(formData.get("id") ?? "").trim();
   const dayId = String(formData.get("dayId") ?? "").trim();
-  if (!id) return;
+  if (!id) return actionErr("Missing place");
   const notion = getNotion();
   await notion.pages.update({
     page_id: id,
@@ -265,12 +295,14 @@ export async function parkPlaceAsPending(formData: FormData) {
       Pending: { checkbox: true },
       ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
       Start: startProp(null),
+      Order: { number: null },
     },
   });
   revalidateTrip();
+  return actionOk("Moved to pending");
 }
 
-export async function updateTransit(formData: FormData) {
+export async function updateTransit(formData: FormData): Promise<ActionResult> {
   const id = String(formData.get("id") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const mode = String(formData.get("mode") ?? "").trim();
@@ -281,7 +313,7 @@ export async function updateTransit(formData: FormData) {
   const dayId = String(formData.get("dayId") ?? "").trim();
   const start = startValue(formData);
   const order = orderValue(formData);
-  if (!id || !name) return;
+  if (!id || !name) return actionErr("Transit name is required");
   const notion = getNotion();
   const dateStart = date || (start ? start.slice(0, 10) : "");
   await notion.pages.update({
@@ -299,22 +331,24 @@ export async function updateTransit(formData: FormData) {
     },
   });
   revalidateTrip();
+  return actionOk("Transit saved");
 }
 
-export async function deleteTransit(formData: FormData) {
+export async function deleteTransit(formData: FormData): Promise<ActionResult> {
   const id = String(formData.get("id") ?? "").trim();
-  if (!id) return;
+  if (!id) return actionErr("Missing transit");
   await trashPage(id);
+  return actionOk("Transit deleted");
 }
 
-export async function addStay(formData: FormData) {
+export async function addStay(formData: FormData): Promise<ActionResult> {
   const name = String(formData.get("name") ?? "").trim();
   const checkIn = String(formData.get("checkIn") ?? "").trim();
   const checkOut = String(formData.get("checkOut") ?? "").trim();
   const address = String(formData.get("address") ?? "").trim();
   const bookingUrl = String(formData.get("bookingUrl") ?? "").trim();
   const confirmation = String(formData.get("confirmation") ?? "").trim();
-  if (!name) return;
+  if (!name) return actionErr("Stay name is required");
   const notion = getNotion();
   await notion.pages.create({
     parent: { data_source_id: ds("STAYS") },
@@ -328,9 +362,42 @@ export async function addStay(formData: FormData) {
     },
   });
   revalidateTrip();
+  return actionOk("Stay added");
 }
 
-export async function addTransit(formData: FormData) {
+export async function updateStay(formData: FormData): Promise<ActionResult> {
+  const id = String(formData.get("id") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+  const checkIn = String(formData.get("checkIn") ?? "").trim();
+  const checkOut = String(formData.get("checkOut") ?? "").trim();
+  const address = String(formData.get("address") ?? "").trim();
+  const bookingUrl = String(formData.get("bookingUrl") ?? "").trim();
+  const confirmation = String(formData.get("confirmation") ?? "").trim();
+  if (!id || !name) return actionErr("Stay name is required");
+  const notion = getNotion();
+  await notion.pages.update({
+    page_id: id,
+    properties: {
+      Name: titleProp(name),
+      "Check-in": { date: checkIn ? { start: checkIn } : null },
+      "Check-out": { date: checkOut ? { start: checkOut } : null },
+      Address: textProp(address),
+      "Booking URL": { url: bookingUrl || null },
+      Confirmation: textProp(confirmation),
+    },
+  });
+  revalidateTrip();
+  return actionOk("Stay saved");
+}
+
+export async function deleteStay(formData: FormData): Promise<ActionResult> {
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) return actionErr("Missing stay");
+  await trashPage(id);
+  return actionOk("Stay deleted");
+}
+
+export async function addTransit(formData: FormData): Promise<ActionResult> {
   const name = String(formData.get("name") ?? "").trim();
   const mode = String(formData.get("mode") ?? "").trim();
   const from = String(formData.get("from") ?? "").trim();
@@ -340,7 +407,7 @@ export async function addTransit(formData: FormData) {
   const dayId = String(formData.get("dayId") ?? "").trim();
   const start = startValue(formData);
   const order = orderValue(formData);
-  if (!name) return;
+  if (!name) return actionErr("Transit name is required");
   const notion = getNotion();
   await notion.pages.create({
     parent: { data_source_id: ds("TRANSIT") },
@@ -357,9 +424,10 @@ export async function addTransit(formData: FormData) {
     },
   });
   revalidateTrip();
+  return actionOk("Transit added");
 }
 
-export async function addSpend(formData: FormData) {
+export async function addSpend(formData: FormData): Promise<ActionResult> {
   const name = String(formData.get("name") ?? "").trim();
   const amountRaw = String(formData.get("amount") ?? "").trim();
   const kind = String(formData.get("kind") ?? "").trim();
@@ -368,7 +436,8 @@ export async function addSpend(formData: FormData) {
   const dayId = String(formData.get("dayId") ?? "").trim();
   const currency = parseSpendCurrency(String(formData.get("currency") ?? ""));
   const amount = Number(amountRaw);
-  if (!name || !Number.isFinite(amount)) return;
+  if (!name) return actionErr("Spend name is required");
+  if (!Number.isFinite(amount)) return actionErr("Amount is required");
   const notion = getNotion();
   await notion.pages.create({
     parent: { data_source_id: ds("SPEND") },
@@ -383,4 +452,56 @@ export async function addSpend(formData: FormData) {
     },
   });
   revalidateTrip();
+  return actionOk("Spend added");
+}
+
+export async function updateSpend(formData: FormData): Promise<ActionResult> {
+  const id = String(formData.get("id") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+  const amountRaw = String(formData.get("amount") ?? "").trim();
+  const kind = String(formData.get("kind") ?? "").trim();
+  const category = String(formData.get("category") ?? "").trim();
+  const notes = String(formData.get("notes") ?? "").trim();
+  const dayId = String(formData.get("dayId") ?? "").trim();
+  const currency = parseSpendCurrency(String(formData.get("currency") ?? ""));
+  const amount = Number(amountRaw);
+  if (!id || !name) return actionErr("Spend name is required");
+  if (!Number.isFinite(amount)) return actionErr("Amount is required");
+  const notion = getNotion();
+  await notion.pages.update({
+    page_id: id,
+    properties: {
+      Name: titleProp(name),
+      Amount: { number: amount },
+      Currency: { select: { name: currency } },
+      Kind: { select: kind ? { name: kind } : null },
+      Category: { select: category ? { name: category } : null },
+      Notes: textProp(notes),
+      Day: { relation: dayId ? [{ id: dayId }] : [] },
+    },
+  });
+  revalidateTrip();
+  return actionOk("Spend saved");
+}
+
+export async function deleteSpend(formData: FormData): Promise<ActionResult> {
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) return actionErr("Missing spend item");
+  await trashPage(id);
+  return actionOk("Spend deleted");
+}
+
+export async function movePendingToDay(formData: FormData): Promise<ActionResult> {
+  const id = String(formData.get("id") ?? "").trim();
+  const dayId = String(formData.get("dayId") ?? "").trim();
+  if (!id || !dayId) return actionErr("Missing place or day");
+  const notion = getNotion();
+  await notion.pages.update({
+    page_id: id,
+    properties: {
+      Day: { relation: [{ id: dayId }] },
+    },
+  });
+  revalidateTrip();
+  return actionOk("Moved to this day");
 }

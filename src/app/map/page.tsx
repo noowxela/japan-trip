@@ -3,13 +3,14 @@ import { Nav } from "@/components/nav";
 import { PageShell } from "@/components/page-shell";
 import { TripMapLoader } from "@/components/trip-map-loader";
 import { coordsOfPlace } from "@/lib/geocode";
-import { cityHops, getDays, getPlaces } from "@/lib/trip";
+import { cityHops, getDays, getPlaces, hopPathCoords } from "@/lib/trip";
 
 export const dynamic = "force-dynamic";
 
 export default async function MapPage() {
   const [days, places] = await Promise.all([getDays(), getPlaces()]);
   const hops = cityHops(days);
+  const hopPoints = hopPathCoords(hops, days, places);
   const dayNames = new Map(days.map((day) => [day.id, day.name]));
   const pins = places.flatMap((place) => {
     const coords = coordsOfPlace(place);
@@ -44,11 +45,11 @@ export default async function MapPage() {
             Add days with a city, and places so they can be geocoded onto the map.
           </EmptyState>
         ) : (
-          <TripMapLoader hops={hops} pins={pins} />
+          <TripMapLoader hops={hops} hopPoints={hopPoints} pins={pins} />
         )}
         <p className="text-xs text-stone-500">
-          City path uses Tokyo / Kyoto / Osaka centers. Pins appear after a place
-          is saved and geocoded.
+          City path uses known centers and geocoded places for other cities. Pins
+          appear after a place is saved and geocoded.
         </p>
       </PageShell>
     </>

@@ -1,8 +1,22 @@
+"use client";
+
+import { useTransition } from "react";
 import { updatePlaceNotes } from "@/app/actions";
+import { useActionToast } from "@/components/action-form";
 
 export function NotesForm({ id, notes }: { id: string; notes: string }) {
+  const [pending, startTransition] = useTransition();
+  const notify = useActionToast();
+
   return (
-    <form action={updatePlaceNotes} className="mt-3 space-y-2">
+    <form
+      className="mt-3 space-y-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
+        startTransition(async () => notify(await updatePlaceNotes(formData)));
+      }}
+    >
       <input type="hidden" name="id" value={id} />
       <label className="block text-xs font-medium uppercase tracking-wide text-stone-500">
         Notes
@@ -15,9 +29,10 @@ export function NotesForm({ id, notes }: { id: string; notes: string }) {
       </label>
       <button
         type="submit"
-        className="text-sm font-medium text-[#b42318] hover:underline"
+        disabled={pending}
+        className="text-sm font-medium text-[#b42318] hover:underline disabled:opacity-60"
       >
-        Save notes
+        {pending ? "Saving…" : "Save notes"}
       </button>
     </form>
   );

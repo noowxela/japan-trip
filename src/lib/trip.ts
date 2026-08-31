@@ -23,6 +23,7 @@ import type {
   Transit,
   TripDay,
 } from "@/lib/types";
+import { CITY_COORDS } from "@/lib/types";
 
 function parseDay(page: Awaited<ReturnType<typeof queryAll>>[number]): TripDay {
   return {
@@ -146,6 +147,30 @@ export function cityHops(days: TripDay[]) {
   return hops;
 }
 
+export function hopPathCoords(
+  hops: string[],
+  days: TripDay[],
+  places: Place[],
+) {
+  const points: [number, number][] = [];
+  for (const city of hops) {
+    if (CITY_COORDS[city]) {
+      points.push(CITY_COORDS[city]);
+      continue;
+    }
+    const dayIds = new Set(
+      days.filter((day) => day.city === city).map((day) => day.id),
+    );
+    const place = places.find(
+      (item) =>
+        item.dayIds.some((id) => dayIds.has(id)) && coordsOfPlace(item),
+    );
+    const coords = place ? coordsOfPlace(place) : null;
+    if (coords) points.push([coords.lat, coords.lng]);
+  }
+  return points;
+}
+
 export function tripFlow(days: TripDay[]) {
   const hops = cityHops(days);
   return hops.map((city, index) =>
@@ -180,6 +205,49 @@ function sortAgenda(a: AgendaItem, b: AgendaItem) {
   const orderB = b.order ?? 9999;
   if (orderA !== orderB) return orderA - orderB;
   return a.name.localeCompare(b.name);
+}
+
+export function listCounts(
+  places: Place[],
+  stays: Stay[],
+  transit: Transit[],
+) {
+  return {
+    places: places.length,
+    pending: places.filter((place) => place.pending).length,
+    stays: stays.length,
+    transit: transit.length,
+  };
+}
+
+export function unvisitedFromPastDays(
+  days: TripDay[],
+  places: Place[],
+  today: string,
+) {
+  const pastDayIds = new Set(
+    days
+      .filter((day) => day.date && dateKey(day.date)! < today)
+      .map((day) => day.id),
+  );
+  return places.filter(
+    (place) =>
+      !place.visited &&
+      !place.pending &&
+      place.dayIds.some((id) => pastDayIds.has(id)),
+  );
+}
+
+export function pendingForDay(places: Place[], dayId: string) {
+  return places.filter(
+    (place) => place.pending && place.dayIds.includes(dayId),
+  );
+}
+
+export function pendingFromOtherDays(places: Place[], dayId: string) {
+  return places.filter(
+    (place) => place.pending && !place.dayIds.includes(dayId),
+  );
 }
 
 export function buildAgenda(places: Place[], transit: Transit[]): AgendaItem[] {
