@@ -89,7 +89,7 @@ export default async function DayPage({
 
   return (
     <>
-      <Nav current="/" />
+      <Nav current="/schedule" />
       <PageShell>
         <div className="space-y-3">
           <DayCard day={day} href={null} />

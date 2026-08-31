@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Newsreader } from "next/font/google";
+import { BottomNav } from "@/components/bottom-nav";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full overflow-x-hidden bg-[#f6f1e8] font-sans text-stone-900">
         {children}
+        <BottomNav />
       </body>
     </html>
   );
