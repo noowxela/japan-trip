@@ -1,4 +1,7 @@
+"use client";
+
 import { addTransit } from "@/app/actions";
+import { ActionForm } from "@/components/action-form";
 import { formShellClass } from "@/components/page-shell";
 import { TRANSIT_MODES, type TripDay } from "@/lib/types";
 
@@ -10,7 +13,7 @@ export function AddTransitForm({
   defaultDayId?: string;
 }) {
   return (
-    <form
+    <ActionForm
       action={addTransit}
       className={`${formShellClass} grid gap-3 rounded-2xl border border-stone-200 bg-white p-4`}
     >
@@ -88,6 +91,6 @@ export function AddTransitForm({
       >
         Add transit
       </button>
-    </form>
+    </ActionForm>
   );
 }

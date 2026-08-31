@@ -3,6 +3,7 @@
 import nextDynamic from "next/dynamic";
 import { useMemo, useState, useTransition } from "react";
 import { addPlace, searchPlaces } from "@/app/actions";
+import { ActionForm } from "@/components/action-form";
 import { formShellClass } from "@/components/page-shell";
 import { PLACE_TYPES, type TripDay } from "@/lib/types";
 import type { PlaceSearchHit } from "@/lib/geocode";
@@ -22,9 +23,11 @@ const PlacePreviewMap = nextDynamic(
 export function AddPlaceForm({
   days,
   defaultDayId,
+  compact = false,
 }: {
   days: TripDay[];
   defaultDayId?: string;
+  compact?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [dayId, setDayId] = useState(defaultDayId ?? "");
@@ -57,7 +60,9 @@ export function AddPlaceForm({
   }
 
   return (
-    <div className={`${formShellClass} grid gap-3 rounded-2xl border border-stone-200 bg-white p-4`}>
+    <div
+      className={`${compact ? "w-full" : formShellClass} grid gap-3 rounded-2xl border border-stone-200 bg-white p-4`}
+    >
       <p className="font-medium text-stone-900">Add a place</p>
       <div className="flex gap-2">
         <input
@@ -105,7 +110,7 @@ export function AddPlaceForm({
         </div>
       ) : null}
 
-      <form action={addPlace} className="grid gap-3">
+      <ActionForm action={addPlace} className="grid gap-3">
         <input type="hidden" name="lat" value={picked?.lat ?? ""} />
         <input type="hidden" name="lng" value={picked?.lng ?? ""} />
         <input
@@ -161,6 +166,10 @@ export function AddPlaceForm({
             className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]"
           />
         </div>
+        <label className="flex items-center gap-2 text-sm text-stone-700">
+          <input type="checkbox" name="pending" value="true" className="rounded" />
+          Save as maybe (pending)
+        </label>
         <textarea
           name="notes"
           rows={2}
@@ -173,7 +182,7 @@ export function AddPlaceForm({
         >
           Add place
         </button>
-      </form>
+      </ActionForm>
     </div>
   );
 }

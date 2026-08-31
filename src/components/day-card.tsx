@@ -1,27 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { useFormStatus } from "react-dom";
+import { useState, useTransition } from "react";
 import { deleteDay, updateDay } from "@/app/actions";
+import { useActionToast } from "@/components/action-form";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { StatusBadge } from "@/components/status-badge";
 import { dateKey, formatDay } from "@/lib/format";
 import { CITIES, type TripDay } from "@/lib/types";
 
 const fieldClass =
   "rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]";
-
-function SaveButton() {
-  const { pending } = useFormStatus();
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="rounded-full bg-[#b42318] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-    >
-      {pending ? "Saving…" : "Save"}
-    </button>
-  );
-}
 
 export function DayCard({
   day,
@@ -31,14 +20,21 @@ export function DayCard({
   href?: string | null;
 }) {
   const [editing, setEditing] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [busy, startTransition] = useTransition();
+  const notify = useActionToast();
 
   if (editing) {
     return (
       <form
-        action={async (formData) => {
-          await updateDay(formData);
-          setEditing(false);
+        onSubmit={(event) => {
+          event.preventDefault();
+          const formData = new FormData(event.currentTarget);
+          startTransition(async () => {
+            const result = await updateDay(formData);
+            await notify(result);
+            if (result.ok) setEditing(false);
+          });
         }}
         className="grid gap-3 rounded-2xl border border-[#b42318]/40 bg-white p-4"
       >
@@ -70,7 +66,13 @@ export function DayCard({
           </select>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <SaveButton />
+          <button
+            type="submit"
+            disabled={busy}
+            className="rounded-full bg-[#b42318] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+          >
+            {busy ? "Saving…" : "Save"}
+          </button>
           <button
             type="button"
             onClick={() => setEditing(false)}
@@ -80,33 +82,39 @@ export function DayCard({
           </button>
           <button
             type="button"
-            disabled={deleting}
-            onClick={async () => {
-              if (!confirm(`Delete “${day.name}”?`)) return;
-              setDeleting(true);
-              const formData = new FormData();
-              formData.set("id", day.id);
-              try {
-                await deleteDay(formData);
-              } catch (error) {
-                setDeleting(false);
-                throw error;
-              }
-            }}
-            className="ml-auto rounded-full px-4 py-2 text-sm font-medium text-red-700 disabled:opacity-60"
+            onClick={() => setConfirmOpen(true)}
+            className="ml-auto rounded-full px-4 py-2 text-sm font-medium text-red-700"
           >
-            {deleting ? "Deleting…" : "Delete"}
+            Delete
           </button>
         </div>
+        <ConfirmDialog
+          open={confirmOpen}
+          title="Delete day?"
+          message={`Remove “${day.name}” from the trip?`}
+          confirmLabel="Delete day"
+          busy={busy}
+          onCancel={() => setConfirmOpen(false)}
+          onConfirm={() => {
+            const formData = new FormData();
+            formData.set("id", day.id);
+            startTransition(async () => {
+              await deleteDay(formData);
+            });
+          }}
+        />
       </form>
     );
   }
 
   const meta = (
-    <p className="text-xs uppercase tracking-wide text-stone-500">
-      {formatDay(day.date)}
-      {day.city ? ` · ${day.city}` : ""}
-    </p>
+    <div className="flex flex-wrap items-center gap-2">
+      <p className="text-xs uppercase tracking-wide text-stone-500">
+        {formatDay(day.date)}
+        {day.city ? ` · ${day.city}` : ""}
+      </p>
+      <StatusBadge status={day.status} />
+    </div>
   );
   const title = href ? (
     <p className="mt-1 text-lg font-medium break-words">{day.name}</p>

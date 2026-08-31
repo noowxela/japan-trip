@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   MAP_STYLE_IDS,
   MAP_STYLES,
@@ -10,11 +10,7 @@ import {
 } from "@/lib/map-styles";
 
 export function useMapStyle() {
-  const [id, setId] = useState<MapStyleId>("streets");
-
-  useEffect(() => {
-    setId(readMapStyle());
-  }, []);
+  const [id, setId] = useState<MapStyleId>(() => readMapStyle());
 
   function pick(next: MapStyleId) {
     setId(next);
