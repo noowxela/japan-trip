@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AddPlaceForm } from "@/components/add-place-form";
+import { AddPlaceModal } from "@/components/add-place-modal";
 import { EmptyState } from "@/components/empty-state";
 import { ListsSubNav } from "@/components/lists-sub-nav";
 import { MapsPinLink } from "@/components/maps-pin-link";
@@ -21,16 +21,20 @@ export default async function PlacesPage() {
     <>
       <Nav current="/lists" />
       <PageShell>
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-[#b42318]">
-            Guide
-          </p>
-          <h1 className="font-serif text-3xl tracking-tight">Places</h1>
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-[#b42318]">
+              Guide
+            </p>
+            <h1 className="font-serif text-3xl tracking-tight">Places</h1>
+          </div>
+          <AddPlaceModal days={days} />
         </div>
         <ListsSubNav current="/places" />
         {places.length === 0 ? (
           <EmptyState title="No places yet">
-            Add a place below, or in the Places database in Notion.
+            Tap Add place above, or add entries in the Places database in
+            Notion.
           </EmptyState>
         ) : (
           <PlaceFilters places={places}>
@@ -106,7 +110,6 @@ export default async function PlacesPage() {
             }
           </PlaceFilters>
         )}
-        <AddPlaceForm days={days} />
       </PageShell>
     </>
   );

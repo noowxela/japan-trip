@@ -24,10 +24,14 @@ export function AddPlaceForm({
   days,
   defaultDayId,
   compact = false,
+  embedded = false,
+  onSuccess,
 }: {
   days: TripDay[];
   defaultDayId?: string;
   compact?: boolean;
+  embedded?: boolean;
+  onSuccess?: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [dayId, setDayId] = useState(defaultDayId ?? "");
@@ -59,11 +63,15 @@ export function AddPlaceForm({
     setResults([]);
   }
 
+  const shellClass = embedded
+    ? "grid gap-3"
+    : compact
+      ? "grid w-full gap-3 rounded-2xl border border-stone-200 bg-white p-4"
+      : `${formShellClass} grid gap-3 rounded-2xl border border-stone-200 bg-white p-4`;
+
   return (
-    <div
-      className={`${compact ? "w-full" : formShellClass} grid gap-3 rounded-2xl border border-stone-200 bg-white p-4`}
-    >
-      <p className="font-medium text-stone-900">Add a place</p>
+    <div className={shellClass}>
+      {!embedded ? <p className="font-medium text-stone-900">Add a place</p> : null}
       <div className="flex gap-2">
         <input
           value={query}
@@ -110,7 +118,7 @@ export function AddPlaceForm({
         </div>
       ) : null}
 
-      <ActionForm action={addPlace} className="grid gap-3">
+      <ActionForm action={addPlace} onSuccess={onSuccess} className="grid gap-3">
         <input type="hidden" name="lat" value={picked?.lat ?? ""} />
         <input type="hidden" name="lng" value={picked?.lng ?? ""} />
         <input

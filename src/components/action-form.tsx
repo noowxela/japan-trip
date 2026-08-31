@@ -21,11 +21,13 @@ export function ActionForm({
   children,
   className = "",
   successMessage,
+  onSuccess,
 }: {
   action: (formData: FormData) => Promise<ActionResult>;
   children: ReactNode;
   className?: string;
   successMessage?: string;
+  onSuccess?: () => void;
 }) {
   const [pending, startTransition] = useTransition();
   const notify = useActionToast();
@@ -43,6 +45,7 @@ export function ActionForm({
           } else {
             await notify(result);
           }
+          if (result.ok) onSuccess?.();
         });
       }}
     >

@@ -66,7 +66,12 @@ export function DayQuickFab({
             >
               Back
             </button>
-            <AddPlaceForm days={days} defaultDayId={dayId} compact />
+            <AddPlaceForm
+              days={days}
+              defaultDayId={dayId}
+              compact
+              onSuccess={() => setOpen(null)}
+            />
           </div>
         </div>
       ) : null}

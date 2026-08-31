@@ -16,7 +16,7 @@ const newsreader = Newsreader({
 export const metadata: Metadata = {
   title: "Japan Trip",
   description: "Itinerary companion synced with Notion",
-  manifest: "/manifest.webmanifest",
+  applicationName: "Japan Trip",
   appleWebApp: {
     capable: true,
     title: "Japan Trip",
