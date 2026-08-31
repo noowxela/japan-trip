@@ -1,11 +1,20 @@
+"use client";
+
 import { addSpend } from "@/app/actions";
+import { ActionForm } from "@/components/action-form";
 import { formShellClass } from "@/components/page-shell";
 import { SpendAmountField } from "@/components/spend-amount-field";
 import { SPEND_CATEGORIES, SPEND_KINDS, type TripDay } from "@/lib/types";
 
-export function AddSpendForm({ days }: { days: TripDay[] }) {
+export function AddSpendForm({
+  days,
+  defaultDayId = "",
+}: {
+  days: TripDay[];
+  defaultDayId?: string;
+}) {
   return (
-    <form
+    <ActionForm
       action={addSpend}
       className={`${formShellClass} grid gap-3 rounded-2xl border border-stone-200 bg-white p-4`}
     >
@@ -20,7 +29,7 @@ export function AddSpendForm({ days }: { days: TripDay[] }) {
       <div className="grid grid-cols-2 gap-3">
         <select
           name="kind"
-          defaultValue="Estimate"
+          defaultValue="Actual"
           className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]"
         >
           {SPEND_KINDS.map((kind) => (
@@ -43,7 +52,7 @@ export function AddSpendForm({ days }: { days: TripDay[] }) {
       </div>
       <select
         name="dayId"
-        defaultValue=""
+        defaultValue={defaultDayId}
         className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]"
       >
         <option value="">No day</option>
@@ -64,6 +73,6 @@ export function AddSpendForm({ days }: { days: TripDay[] }) {
       >
         Add spend
       </button>
-    </form>
+    </ActionForm>
   );
 }

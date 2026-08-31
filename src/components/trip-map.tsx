@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import L from "leaflet";
 import { MapContainer, Marker, Popup, Polyline, TileLayer } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -19,10 +19,22 @@ type Pin = {
 
 type Props = {
   hops: string[];
+  hopPoints?: [number, number][];
   pins: Pin[];
 };
 
-export default function TripMap({ hops, pins }: Props) {
+export default function TripMap({ hops, hopPoints, pins }: Props) {
+  const [scrollWheelZoom, setScrollWheelZoom] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return !window.matchMedia("(max-width: 768px)").matches;
+  });
+
+  useEffect(() => {
+    const mobile = window.matchMedia("(max-width: 768px)");
+    const onChange = () => setScrollWheelZoom(!mobile.matches);
+    mobile.addEventListener("change", onChange);
+    return () => mobile.removeEventListener("change", onChange);
+  }, []);
   useEffect(() => {
     L.Icon.Default.mergeOptions({
       iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
@@ -31,9 +43,11 @@ export default function TripMap({ hops, pins }: Props) {
     });
   }, []);
 
-  const hopCoords = hops
-    .map((city) => CITY_COORDS[city])
-    .filter((coords): coords is [number, number] => Boolean(coords));
+  const hopCoords =
+    hopPoints ??
+    hops
+      .map((city) => CITY_COORDS[city])
+      .filter((coords): coords is [number, number] => Boolean(coords));
   const firstPin = pins[0];
   const mapCenter: [number, number] =
     hopCoords[0] ??
@@ -47,7 +61,7 @@ export default function TripMap({ hops, pins }: Props) {
         zoom={6}
         className="h-full w-full"
         style={{ height: "100%", width: "100%" }}
-        scrollWheelZoom
+        scrollWheelZoom={scrollWheelZoom}
       >
       <TileLayer
         key={styleId}

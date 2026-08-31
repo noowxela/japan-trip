@@ -7,8 +7,14 @@ import {
   type SpendCurrency,
 } from "@/lib/types";
 
-export function SpendAmountField() {
-  const [currency, setCurrency] = useState<SpendCurrency>(DEFAULT_SPEND_CURRENCY);
+export function SpendAmountField({
+  defaultCurrency = DEFAULT_SPEND_CURRENCY,
+  defaultAmount,
+}: {
+  defaultCurrency?: SpendCurrency;
+  defaultAmount?: number;
+} = {}) {
+  const [currency, setCurrency] = useState<SpendCurrency>(defaultCurrency);
 
   return (
     <div className="flex overflow-hidden rounded-xl border border-stone-200 focus-within:border-[#b42318]">
@@ -19,6 +25,7 @@ export function SpendAmountField() {
         min="0"
         step={currency === "Yen" ? "1" : "0.01"}
         inputMode="decimal"
+        defaultValue={defaultAmount ?? undefined}
         placeholder={currency === "Yen" ? "Amount (Yen)" : "Amount (RM)"}
         className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-none"
       />
