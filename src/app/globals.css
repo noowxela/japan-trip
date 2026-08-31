@@ -10,6 +10,8 @@
 body {
   background: var(--color-background);
   color: var(--color-foreground);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 input,
@@ -66,4 +68,15 @@ input[type="date"]::-webkit-datetime-edit {
   border-radius: 9999px;
   background: #d6d3d1;
   animation: flight-dash 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

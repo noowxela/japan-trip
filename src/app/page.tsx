@@ -5,7 +5,9 @@ import { DayCard } from "@/components/day-card";
 import { EmptyState } from "@/components/empty-state";
 import { Nav } from "@/components/nav";
 import { PageShell } from "@/components/page-shell";
-import { formatDay, formatRm, formatTripSpan, tokyoToday } from "@/lib/format";
+import { ProgressRing } from "@/components/progress-ring";
+import { StatusBadge } from "@/components/status-badge";
+import { formatDay, formatDualRmYen, formatRm, formatTripSpan, tokyoToday } from "@/lib/format";
 import { hasToken, isConfigured } from "@/lib/notion";
 import { moneySummary } from "@/lib/spend";
 import {
@@ -45,7 +47,7 @@ export default async function HomePage() {
   const focus = pickFocusDay(days, today);
   const focusPlaces = focus ? await getPlacesForDay(focus.id) : [];
   const focusTransit = focus ? await getTransitForDay(focus.id) : [];
-  const nextPlace = focusPlaces.find((place) => !place.visited) ?? null;
+  const nextPlace = focusPlaces.find((place) => !place.visited && !place.pending) ?? null;
   const nextTransit = focusTransit[0] ?? null;
   const visited = places.filter((place) => place.visited).length;
   const money = moneySummary(spend);
@@ -74,28 +76,33 @@ export default async function HomePage() {
           ) : null}
         </div>
 
-        <div className="grid min-w-0 grid-cols-2 gap-3 md:max-w-xl">
-          <div className="min-w-0 rounded-2xl border border-stone-200 bg-white p-4">
-            <p className="text-xs uppercase tracking-wide text-stone-500">
-              Places
-            </p>
-            <p className="mt-1 text-2xl font-medium">
-              {visited}/{places.length}
-            </p>
-            <p className="text-sm text-stone-500">visited</p>
+        <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-4 md:max-w-xl">
+          <ProgressRing value={visited} total={places.length} />
+          <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="min-w-0 rounded-2xl border border-stone-200 bg-white p-4">
+              <p className="text-xs uppercase tracking-wide text-stone-500">
+                Places
+              </p>
+              <p className="mt-1 text-2xl font-medium">
+                {visited}/{places.length}
+              </p>
+              <p className="text-sm text-stone-500">visited</p>
+            </div>
+            <Link
+              href="/spend"
+              className="min-w-0 rounded-2xl border border-stone-200 bg-white p-4"
+            >
+              <p className="text-xs uppercase tracking-wide text-stone-500">
+                Spend
+              </p>
+              <p className="mt-1 text-lg font-medium break-words">
+                {formatDualRmYen(money.actual)}
+              </p>
+              <p className="text-sm text-stone-500">
+                of {formatRm(money.estimate)} est.
+              </p>
+            </Link>
           </div>
-          <Link
-            href="/spend"
-            className="min-w-0 rounded-2xl border border-stone-200 bg-white p-4"
-          >
-            <p className="text-xs uppercase tracking-wide text-stone-500">
-              Spend
-            </p>
-            <p className="mt-1 text-lg font-medium break-words">{formatRm(money.actual)}</p>
-            <p className="text-sm text-stone-500">
-              of {formatRm(money.estimate)} est.
-            </p>
-          </Link>
         </div>
 
         {focus ? (
@@ -103,9 +110,12 @@ export default async function HomePage() {
             href={`/days/${focus.id}`}
             className="block min-w-0 rounded-2xl border border-stone-200 bg-white p-4 md:max-w-xl"
           >
-            <p className="text-xs uppercase tracking-wide text-[#b42318]">
-              {dateKey(focus.date) === today ? "Today" : "Next"}
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs uppercase tracking-wide text-[#b42318]">
+                {dateKey(focus.date) === today ? "Today" : "Next"}
+              </p>
+              <StatusBadge status={focus.status} />
+            </div>
             <p className="mt-1 font-serif text-2xl">{focus.name}</p>
             <p className="text-sm text-stone-500">
               {formatDay(focus.date)}
@@ -124,6 +134,9 @@ export default async function HomePage() {
             ) : (
               <p className="text-sm text-stone-500">No unvisited places yet</p>
             )}
+            <p className="mt-3 text-sm font-medium text-[#b42318]">
+              Open today view →
+            </p>
           </Link>
         ) : (
           <EmptyState title="No days yet">Add a day to start the flow.</EmptyState>

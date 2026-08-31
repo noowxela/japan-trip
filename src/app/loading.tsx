@@ -1,14 +1,10 @@
 import { FlightLoading } from "@/components/flight-loading";
-import { Nav } from "@/components/nav";
 import { PageShell } from "@/components/page-shell";
 
-export default function Loading() {
+export default function LoadingHome() {
   return (
-    <>
-      <Nav current="/" />
-      <PageShell>
-        <FlightLoading />
-      </PageShell>
-    </>
+    <PageShell>
+      <FlightLoading />
+    </PageShell>
   );
 }

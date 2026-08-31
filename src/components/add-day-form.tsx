@@ -1,10 +1,13 @@
+"use client";
+
 import { addDay } from "@/app/actions";
+import { ActionForm } from "@/components/action-form";
 import { formShellClass } from "@/components/page-shell";
 import { CITIES } from "@/lib/types";
 
 export function AddDayForm() {
   return (
-    <form
+    <ActionForm
       action={addDay}
       className={`${formShellClass} grid gap-3 rounded-2xl border border-stone-200 bg-white p-4`}
     >
@@ -39,6 +42,6 @@ export function AddDayForm() {
       >
         Add day
       </button>
-    </form>
+    </ActionForm>
   );
 }

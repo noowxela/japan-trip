@@ -1,9 +1,12 @@
+"use client";
+
 import { addStay } from "@/app/actions";
+import { ActionForm } from "@/components/action-form";
 import { formShellClass } from "@/components/page-shell";
 
 export function AddStayForm() {
   return (
-    <form
+    <ActionForm
       action={addStay}
       className={`${formShellClass} grid gap-3 rounded-2xl border border-stone-200 bg-white p-4`}
     >
@@ -48,6 +51,6 @@ export function AddStayForm() {
       >
         Add stay
       </button>
-    </form>
+    </ActionForm>
   );
 }

@@ -1,4 +1,4 @@
-import type { SpendCurrency } from "@/lib/types";
+import { JPY_PER_RM, type SpendCurrency } from "@/lib/types";
 
 export function formatDay(date: string | null) {
   if (!date) return "No date";
@@ -152,4 +152,35 @@ export function startBefore(
   const hh = String(Math.floor(total / 60)).padStart(2, "0");
   const mm = String(total % 60).padStart(2, "0");
   return `${date}T${hh}:${mm}:00`;
+}
+
+export function timeToMinutes(time: string | null) {
+  if (!time) return null;
+  const [hour, minute] = time.split(":").map(Number);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+  return hour * 60 + minute;
+}
+
+export function formatGapMinutes(minutes: number) {
+  if (minutes <= 0) return null;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours > 0 && mins > 0) return `${hours}h ${mins}m free`;
+  if (hours > 0) return `${hours}h free`;
+  return `${mins}m free`;
+}
+
+export function gapBetweenStarts(
+  previous: string | null,
+  next: string | null,
+) {
+  const a = timeToMinutes(formatTime(previous));
+  const b = timeToMinutes(formatTime(next));
+  if (a == null || b == null || b <= a) return null;
+  return formatGapMinutes(b - a);
+}
+
+export function formatDualRmYen(rmAmount: number) {
+  const yen = Math.round(rmAmount * JPY_PER_RM);
+  return `${formatRm(rmAmount)} · ${formatYen(yen)}`;
 }

@@ -3,6 +3,7 @@
 import nextDynamic from "next/dynamic";
 import { useMemo, useState, useTransition } from "react";
 import { addPlace, searchPlaces } from "@/app/actions";
+import { ActionForm } from "@/components/action-form";
 import { formShellClass } from "@/components/page-shell";
 import { PLACE_TYPES, type TripDay } from "@/lib/types";
 import type { PlaceSearchHit } from "@/lib/geocode";
@@ -22,11 +23,13 @@ const PlacePreviewMap = nextDynamic(
 export function AddPlaceForm({
   days,
   defaultDayId,
+  compact = false,
   embedded = false,
   onSuccess,
 }: {
   days: TripDay[];
   defaultDayId?: string;
+  compact?: boolean;
   embedded?: boolean;
   onSuccess?: () => void;
 }) {
@@ -62,7 +65,9 @@ export function AddPlaceForm({
 
   const shellClass = embedded
     ? "grid gap-3"
-    : `${formShellClass} grid gap-3 rounded-2xl border border-stone-200 bg-white p-4`;
+    : compact
+      ? "grid w-full gap-3 rounded-2xl border border-stone-200 bg-white p-4"
+      : `${formShellClass} grid gap-3 rounded-2xl border border-stone-200 bg-white p-4`;
 
   return (
     <div className={shellClass}>
@@ -113,13 +118,7 @@ export function AddPlaceForm({
         </div>
       ) : null}
 
-      <form
-        action={async (formData) => {
-          await addPlace(formData);
-          onSuccess?.();
-        }}
-        className="grid gap-3"
-      >
+      <ActionForm action={addPlace} onSuccess={onSuccess} className="grid gap-3">
         <input type="hidden" name="lat" value={picked?.lat ?? ""} />
         <input type="hidden" name="lng" value={picked?.lng ?? ""} />
         <input
@@ -175,6 +174,10 @@ export function AddPlaceForm({
             className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]"
           />
         </div>
+        <label className="flex items-center gap-2 text-sm text-stone-700">
+          <input type="checkbox" name="pending" value="true" className="rounded" />
+          Save as maybe (pending)
+        </label>
         <textarea
           name="notes"
           rows={2}
@@ -187,7 +190,7 @@ export function AddPlaceForm({
         >
           Add place
         </button>
-      </form>
+      </ActionForm>
     </div>
   );
 }

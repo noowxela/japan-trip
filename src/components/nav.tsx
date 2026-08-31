@@ -3,6 +3,7 @@ import { navInnerClass } from "@/components/page-shell";
 
 const links = [
   { href: "/", label: "Home" },
+  { href: "/today", label: "Today" },
   { href: "/map", label: "Map" },
   { href: "/spend", label: "Spend" },
   { href: "/lists", label: "Lists" },
@@ -10,10 +11,10 @@ const links = [
 
 export function Nav({ current }: { current: string }) {
   return (
-    <header className="sticky top-0 z-10 border-b border-stone-200/80 bg-[#f6f1e8]/90 backdrop-blur">
+    <header className="sticky top-0 z-10 border-b border-stone-200/80 bg-[#f6f1e8]/90 pt-[env(safe-area-inset-top,0px)] backdrop-blur">
       <div className={`${navInnerClass}`}>
         <Link
-          href="/"
+          href="/today"
           className="shrink-0 font-serif text-lg tracking-tight text-stone-900"
         >
           Japan Trip
