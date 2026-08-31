@@ -6,6 +6,7 @@ import { hasToken, isConfigured } from "@/lib/notion";
 export const dynamic = "force-dynamic";
 
 const secondaryLinks = [
+  { href: "/today", label: "Today", detail: "Focused view of the current day" },
   { href: "/map", label: "Map", detail: "City path and place pins" },
   { href: "/lists", label: "Lists", detail: "Places, stays, and transit" },
   { href: "/places", label: "Places", detail: "All sights and stops" },

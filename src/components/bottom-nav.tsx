@@ -20,7 +20,9 @@ const tabs = [
     href: "/schedule",
     label: "Schedule",
     match: (path: string) =>
-      path === "/schedule" || path.startsWith("/days/"),
+      path === "/schedule" ||
+      path === "/today" ||
+      path.startsWith("/days/"),
     icon: ScheduleIcon,
   },
   {

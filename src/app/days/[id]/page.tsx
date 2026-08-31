@@ -2,23 +2,32 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddAgendaForm } from "@/components/add-agenda-form";
 import { AgendaEditTable } from "@/components/agenda-edit-table";
-import { DayAgendaBoard, PendingPanel } from "@/components/day-agenda-board";
+import {
+  CarryOverBanner,
+  DayAgendaBoard,
+  PendingPanel,
+} from "@/components/day-agenda-board";
+import { Breadcrumb } from "@/components/breadcrumb";
 import { DayCard } from "@/components/day-card";
 import { DayMapLoader } from "@/components/day-map-loader";
+import { DayQuickFab } from "@/components/day-quick-fab";
 import { Nav } from "@/components/nav";
 import { PageShell } from "@/components/page-shell";
-import { formatRm } from "@/lib/format";
+import { formatRm, tokyoToday } from "@/lib/format";
 import { coordsOfPlace } from "@/lib/geocode";
 import { byDay, moneySummary } from "@/lib/spend";
 import {
   buildAgenda,
   getDay,
   getDays,
+  getPlaces,
   getPlacesForDay,
   getSpend,
   getStays,
   getTransitForDay,
+  pendingFromOtherDays,
   staysForDate,
+  unvisitedFromPastDays,
 } from "@/lib/trip";
 
 export const dynamic = "force-dynamic";
@@ -36,17 +45,21 @@ export default async function DayPage({
   const day = await getDay(id);
   if (!day) notFound();
 
-  const [places, transit, days, stays, spend] = await Promise.all([
+  const [places, transit, days, stays, spend, allPlaces] = await Promise.all([
     getPlacesForDay(id),
     getTransitForDay(id),
     getDays(),
     getStays(),
     getSpend(),
+    getPlaces(),
   ]);
   const agenda = buildAgenda(places, transit);
   const pending = places.filter((place) => place.pending);
   const lodging = staysForDate(stays, day.date);
   const dayMoney = moneySummary(byDay(spend, id));
+  const today = tokyoToday();
+  const carryOver = unvisitedFromPastDays(days, allPlaces, today);
+  const otherPending = pendingFromOtherDays(allPlaces, id);
   const mapPins = [
     ...agenda.flatMap((item) => {
       if (item.kind !== "place" || item.lat == null || item.lng == null) {
@@ -90,7 +103,14 @@ export default async function DayPage({
   return (
     <>
       <Nav current="/schedule" />
-      <PageShell>
+      <PageShell className={editing ? "" : "pb-28"}>
+        <Breadcrumb
+          items={[
+            { href: "/", label: "Overview" },
+            { href: "/schedule", label: "Schedule" },
+            { label: day.name },
+          ]}
+        />
         <div className="space-y-3">
           <DayCard day={day} href={null} />
           <p className="px-1 text-sm text-stone-500">
@@ -104,6 +124,17 @@ export default async function DayPage({
             Sleeping in {lodging.map((stay) => stay.name).join(", ")}
           </p>
         ) : null}
+
+        <CarryOverBanner
+          places={carryOver}
+          dayId={day.id}
+          title="Unvisited from earlier days"
+        />
+        <CarryOverBanner
+          places={otherPending}
+          dayId={day.id}
+          title="Pending from other days"
+        />
 
         <section>
           {mapPins.length > 0 || day.city ? (
@@ -142,7 +173,11 @@ export default async function DayPage({
                   dayDate={day.date}
                 />
               </div>
-              <PendingPanel pending={pending} dayId={day.id} />
+              <PendingPanel
+                pending={pending}
+                dayId={day.id}
+                dayDate={day.date}
+              />
             </div>
           ) : (
             <DayAgendaBoard
@@ -154,6 +189,9 @@ export default async function DayPage({
           )}
         </section>
       </PageShell>
+      {!editing ? (
+        <DayQuickFab dayId={day.id} dayDate={day.date} days={days} />
+      ) : null}
     </>
   );
 }

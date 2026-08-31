@@ -10,6 +10,8 @@
 body {
   background: var(--color-background);
   color: var(--color-foreground);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 input,
@@ -32,4 +34,49 @@ input[type="date"]::-webkit-datetime-edit {
 .day-map-pin {
   background: none;
   border: none;
+}
+
+@keyframes flight-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-8deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(-4deg);
+  }
+}
+
+@keyframes flight-dash {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scaleX(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+.flight-loading-plane {
+  animation: flight-bob 2.4s ease-in-out infinite;
+}
+
+.flight-loading-dash {
+  width: 2rem;
+  height: 2px;
+  border-radius: 9999px;
+  background: #d6d3d1;
+  animation: flight-dash 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

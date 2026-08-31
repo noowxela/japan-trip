@@ -1,4 +1,4 @@
-import type { SpendCurrency } from "@/lib/types";
+import { JPY_PER_RM, type SpendCurrency } from "@/lib/types";
 
 export function formatDay(date: string | null) {
   if (!date) return "No date";
@@ -82,6 +82,59 @@ export function tokyoToday() {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
 }
 
+function dayDiff(from: string, to: string) {
+  const start = new Date(`${from}T12:00:00`);
+  const end = new Date(`${to}T12:00:00`);
+  return Math.round((end.getTime() - start.getTime()) / 86_400_000);
+}
+
+export function tripCountdown(
+  start: string | null,
+  end: string | null,
+  today: string,
+) {
+  const startKey = dateKey(start);
+  if (!startKey) return null;
+
+  const endKey = dateKey(end) ?? startKey;
+  const daysUntilStart = dayDiff(today, startKey);
+  const tripLength = dayDiff(startKey, endKey) + 1;
+
+  if (daysUntilStart > 0) {
+    const dayWord = daysUntilStart === 1 ? "day" : "days";
+    return {
+      label: "Countdown",
+      primary: `${daysUntilStart} ${dayWord}`,
+      secondary: "until departure",
+    };
+  }
+
+  if (daysUntilStart === 0) {
+    return {
+      label: "Countdown",
+      primary: "Today",
+      secondary: "departure day",
+    };
+  }
+
+  const daysSinceStart = -daysUntilStart;
+  if (today <= endKey) {
+    const dayNumber = daysSinceStart + 1;
+    return {
+      label: "On trip",
+      primary: `Day ${dayNumber}`,
+      secondary:
+        tripLength > 1 ? `of ${tripLength} · ${endKey.slice(5)} last day` : undefined,
+    };
+  }
+
+  return {
+    label: "Trip",
+    primary: "Complete",
+    secondary: "hope you had a great time",
+  };
+}
+
 export function dateKey(value: string | null) {
   return value ? value.slice(0, 10) : null;
 }
@@ -99,4 +152,35 @@ export function startBefore(
   const hh = String(Math.floor(total / 60)).padStart(2, "0");
   const mm = String(total % 60).padStart(2, "0");
   return `${date}T${hh}:${mm}:00`;
+}
+
+export function timeToMinutes(time: string | null) {
+  if (!time) return null;
+  const [hour, minute] = time.split(":").map(Number);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+  return hour * 60 + minute;
+}
+
+export function formatGapMinutes(minutes: number) {
+  if (minutes <= 0) return null;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours > 0 && mins > 0) return `${hours}h ${mins}m free`;
+  if (hours > 0) return `${hours}h free`;
+  return `${mins}m free`;
+}
+
+export function gapBetweenStarts(
+  previous: string | null,
+  next: string | null,
+) {
+  const a = timeToMinutes(formatTime(previous));
+  const b = timeToMinutes(formatTime(next));
+  if (a == null || b == null || b <= a) return null;
+  return formatGapMinutes(b - a);
+}
+
+export function formatDualRmYen(rmAmount: number) {
+  const yen = Math.round(rmAmount * JPY_PER_RM);
+  return `${formatRm(rmAmount)} · ${formatYen(yen)}`;
 }

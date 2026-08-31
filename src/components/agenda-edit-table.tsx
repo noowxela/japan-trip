@@ -1,13 +1,15 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useFormStatus } from "react-dom";
+import { useState, useTransition } from "react";
 import {
   deletePlace,
   deleteTransit,
   updatePlace,
   updateTransit,
 } from "@/app/actions";
+import { useActionToast } from "@/components/action-form";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { dateKey, formatTime } from "@/lib/format";
 import {
   PLACE_TYPES,
@@ -62,8 +64,7 @@ function TimeField({ defaultValue }: { defaultValue?: string }) {
   );
 }
 
-function SaveButton() {
-  const { pending } = useFormStatus();
+function SaveButton({ pending }: { pending: boolean }) {
   return (
     <button
       type="submit"
@@ -75,28 +76,40 @@ function SaveButton() {
   );
 }
 
-function RowActions({
+function DeleteButton({
   name,
-  deleteAction,
+  onDelete,
 }: {
   name: string;
-  deleteAction: (formData: FormData) => void | Promise<void>;
+  onDelete: () => void;
 }) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [busy, startTransition] = useTransition();
+
   return (
-    <div className="col-span-2 flex w-full min-w-0 justify-end gap-2 lg:col-span-1">
-      <SaveButton />
+    <>
       <button
-        type="submit"
-        formAction={deleteAction}
-        formNoValidate
-        onClick={(event) => {
-          if (!confirm(`Delete “${name}”?`)) event.preventDefault();
-        }}
+        type="button"
+        onClick={() => setConfirmOpen(true)}
         className="shrink-0 rounded-full px-3 py-1.5 text-xs font-medium text-red-700"
       >
         Delete
       </button>
-    </div>
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Delete stop?"
+        message={`Remove “${name}”?`}
+        confirmLabel="Delete"
+        busy={busy}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          startTransition(async () => {
+            await onDelete();
+            setConfirmOpen(false);
+          });
+        }}
+      />
+    </>
   );
 }
 
@@ -176,8 +189,20 @@ function PlaceEditRow({
   dayId: string;
   dayDate: string | null;
 }) {
+  const [pending, startTransition] = useTransition();
+  const notify = useActionToast();
+
   return (
-    <form action={updatePlace} className={rowClass}>
+    <form
+      className={rowClass}
+      onSubmit={(event) => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
+        startTransition(async () => {
+          await notify(await updatePlace(formData));
+        });
+      }}
+    >
       <input type="hidden" name="id" value={place.id} />
       <input type="hidden" name="dayId" value={dayId} />
       <input type="hidden" name="dayDate" value={dateKey(dayDate) ?? ""} />
@@ -211,7 +236,17 @@ function PlaceEditRow({
           className={cell}
         />
       </Field>
-      <RowActions name={place.name} deleteAction={deletePlace} />
+      <div className="col-span-2 flex w-full min-w-0 justify-end gap-2 lg:col-span-1">
+        <SaveButton pending={pending} />
+        <DeleteButton
+          name={place.name}
+          onDelete={async () => {
+            const formData = new FormData();
+            formData.set("id", place.id);
+            await notify(await deletePlace(formData));
+          }}
+        />
+      </div>
     </form>
   );
 }
@@ -225,8 +260,20 @@ function TransitEditRow({
   dayId: string;
   dayDate: string | null;
 }) {
+  const [pending, startTransition] = useTransition();
+  const notify = useActionToast();
+
   return (
-    <form action={updateTransit} className={rowClass}>
+    <form
+      className={rowClass}
+      onSubmit={(event) => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
+        startTransition(async () => {
+          await notify(await updateTransit(formData));
+        });
+      }}
+    >
       <input type="hidden" name="id" value={item.id} />
       <input type="hidden" name="dayId" value={dayId} />
       <input
@@ -279,7 +326,17 @@ function TransitEditRow({
           />
         </div>
       </Field>
-      <RowActions name={item.name} deleteAction={deleteTransit} />
+      <div className="col-span-2 flex w-full min-w-0 justify-end gap-2 lg:col-span-1">
+        <SaveButton pending={pending} />
+        <DeleteButton
+          name={item.name}
+          onDelete={async () => {
+            const formData = new FormData();
+            formData.set("id", item.id);
+            await notify(await deleteTransit(formData));
+          }}
+        />
+      </div>
     </form>
   );
 }

@@ -12,7 +12,11 @@ const links = [
 function isActive(current: string, href: string) {
   if (href === "/") return current === "/";
   if (href === "/schedule") {
-    return current === "/schedule" || current.startsWith("/days/");
+    return (
+      current === "/schedule" ||
+      current === "/today" ||
+      current.startsWith("/days/")
+    );
   }
   if (href === "/budget") {
     return current === "/budget" || current === "/spend";
@@ -22,7 +26,7 @@ function isActive(current: string, href: string) {
 
 export function Nav({ current }: { current: string }) {
   return (
-    <header className="sticky top-0 z-10 border-b border-stone-200/80 bg-[#f6f1e8]/90 backdrop-blur">
+    <header className="sticky top-0 z-10 border-b border-stone-200/80 bg-[#f6f1e8]/90 pt-[env(safe-area-inset-top,0px)] backdrop-blur">
       <div className={`${navInnerClass}`}>
         <Link
           href="/"

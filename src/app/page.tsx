@@ -3,7 +3,7 @@ import { EmptyState } from "@/components/empty-state";
 import { FlightInfoList } from "@/components/flight-info-list";
 import { Nav } from "@/components/nav";
 import { PageShell } from "@/components/page-shell";
-import { tokyoToday } from "@/lib/format";
+import { formatTripSpan, tokyoToday } from "@/lib/format";
 import { hasToken, isConfigured } from "@/lib/notion";
 import { getDays, getTransit, tripFlow } from "@/lib/trip";
 
@@ -26,11 +26,15 @@ export default async function OverviewPage() {
 
   const [days, transit] = await Promise.all([getDays(), getTransit()]);
   const dated = days.filter((day) => day.date);
-  const startDate = dated[0]?.date ?? null;
-  const endDate = dated[dated.length - 1]?.date ?? null;
+  const tripStart = dated[0]?.date ?? null;
+  const tripEnd = dated[dated.length - 1]?.date ?? null;
   const today = tokyoToday();
   const hops = tripFlow(days);
   const cityFlow = hops.length > 0 ? hops.join(" → ") : "";
+  const span =
+    dated.length > 0
+      ? formatTripSpan(tripStart, tripEnd)
+      : "Dates TBD";
   const flights = transit.filter((item) => item.mode === "Flight");
   const dayNames = new Map(days.map((day) => [day.id, day.name]));
 
@@ -38,19 +42,18 @@ export default async function OverviewPage() {
     <>
       <Nav current="/" />
       <PageShell>
+        <CountdownWidget start={tripStart} end={tripEnd} today={today} />
+
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-[#b42318]">
             Trip overview
           </p>
           <h1 className="font-serif text-3xl tracking-tight">Overview</h1>
+          <p className="mt-1 text-sm text-stone-500">{span}</p>
+          {cityFlow ? (
+            <p className="mt-2 text-base font-medium">{cityFlow}</p>
+          ) : null}
         </div>
-
-        <CountdownWidget
-          startDate={startDate}
-          endDate={endDate}
-          today={today}
-          cityFlow={cityFlow}
-        />
 
         <FlightInfoList flights={flights} dayNames={dayNames} />
       </PageShell>

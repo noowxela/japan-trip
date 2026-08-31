@@ -4,6 +4,7 @@ import { DayCard } from "@/components/day-card";
 import { EmptyState } from "@/components/empty-state";
 import { Nav } from "@/components/nav";
 import { PageShell } from "@/components/page-shell";
+import { StatusBadge } from "@/components/status-badge";
 import { formatDay, formatTripSpan, tokyoToday } from "@/lib/format";
 import { hasToken, isConfigured } from "@/lib/notion";
 import {
@@ -36,7 +37,7 @@ export default async function SchedulePage() {
   const focus = pickFocusDay(days, today);
   const focusPlaces = focus ? await getPlacesForDay(focus.id) : [];
   const focusTransit = focus ? await getTransitForDay(focus.id) : [];
-  const nextPlace = focusPlaces.find((place) => !place.visited) ?? null;
+  const nextPlace = focusPlaces.find((place) => !place.visited && !place.pending) ?? null;
   const nextTransit = focusTransit[0] ?? null;
   const dated = days.filter((day) => day.date);
   const span =
@@ -65,9 +66,12 @@ export default async function SchedulePage() {
             href={`/days/${focus.id}`}
             className="block min-w-0 rounded-2xl border border-stone-200 bg-white p-4 md:max-w-xl"
           >
-            <p className="text-xs uppercase tracking-wide text-[#b42318]">
-              {dateKey(focus.date) === today ? "Today" : "Next up"}
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs uppercase tracking-wide text-[#b42318]">
+                {dateKey(focus.date) === today ? "Today" : "Next up"}
+              </p>
+              <StatusBadge status={focus.status} />
+            </div>
             <p className="mt-1 font-serif text-2xl">{focus.name}</p>
             <p className="text-sm text-stone-500">
               {formatDay(focus.date)}

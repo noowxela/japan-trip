@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { addPlace, addTransit, searchPlaces } from "@/app/actions";
+import { ActionForm } from "@/components/action-form";
 import { dateKey } from "@/lib/format";
 import type { PlaceSearchHit } from "@/lib/geocode";
 import {
@@ -55,7 +56,7 @@ export function AddAgendaForm({
   }
 
   return (
-    <form
+    <ActionForm
       action={kind === "place" ? addPlace : addTransit}
       className="grid min-w-0 gap-3 rounded-2xl border border-stone-200 bg-white p-4"
     >
@@ -173,15 +174,6 @@ export function AddAgendaForm({
           type="time"
           step="60"
           className={`${field} cursor-pointer`}
-          onClick={(event) => {
-            const input = event.currentTarget;
-            if (typeof input.showPicker !== "function") return;
-            try {
-              input.showPicker();
-            } catch {
-              // Browser may already have the picker open.
-            }
-          }}
         />
         <input name="order" type="number" placeholder="Order" className={field} />
       </div>
@@ -192,6 +184,6 @@ export function AddAgendaForm({
       >
         {kind === "place" ? "Add place" : "Add transit"}
       </button>
-    </form>
+    </ActionForm>
   );
 }
