@@ -15,11 +15,18 @@ const newsreader = Newsreader({
 export const metadata: Metadata = {
   title: "Japan Trip",
   description: "Itinerary companion synced with Notion",
+  applicationName: "Japan Trip",
+  appleWebApp: {
+    capable: true,
+    title: "Japan Trip",
+    statusBarStyle: "default",
+  },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  themeColor: "#b42318",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
