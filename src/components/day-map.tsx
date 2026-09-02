@@ -55,15 +55,29 @@ function FitPins({
 }) {
   const map = useMap();
   useEffect(() => {
-    if (positions.length > 1) {
-      map.fitBounds(positions, { padding: [36, 36], maxZoom: 15 });
-    } else if (positions.length === 1) {
-      map.setView(positions[0], 14);
-    } else {
-      map.setView(fallback, 12);
+    function fit() {
+      if (positions.length > 1) {
+        map.fitBounds(positions, { padding: [36, 36], maxZoom: 15 });
+      } else if (positions.length === 1) {
+        map.setView(positions[0], 14);
+      } else {
+        map.setView(fallback, 12);
+      }
+      map.invalidateSize();
     }
-    const timer = window.setTimeout(() => map.invalidateSize(), 80);
-    return () => window.clearTimeout(timer);
+
+    fit();
+    const timer = window.setTimeout(fit, 80);
+    const container = map.getContainer();
+    const observer =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => map.invalidateSize())
+        : null;
+    observer?.observe(container);
+    return () => {
+      window.clearTimeout(timer);
+      observer?.disconnect();
+    };
   }, [map, positions, fallback]);
   return null;
 }
@@ -87,7 +101,7 @@ export default function DayMap({
 
   return (
     <div
-      className={`relative h-52 w-full overflow-hidden border-stone-200 sm:h-64 md:h-72 ${className || "rounded-2xl border"}`.trim()}
+      className={`relative w-full overflow-hidden border-stone-200 ${className || "h-52 rounded-2xl border sm:h-64 md:h-72"}`.trim()}
     >
       <MapContainer
         center={fallback}

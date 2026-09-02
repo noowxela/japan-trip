@@ -138,7 +138,7 @@ export function PendingPanel({
   }
 
   const shellClass = mobileSheet
-    ? "rounded-t-3xl border border-stone-200 bg-white p-4 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] lg:hidden"
+    ? "rounded-2xl border border-stone-200 bg-white p-4 lg:hidden"
     : "hidden rounded-2xl border bg-white p-3 lg:sticky lg:top-20 lg:block";
 
   return (
