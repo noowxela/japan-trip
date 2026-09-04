@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Nav } from "@/components/nav";
 import { cardClass, eyebrowClass, linkCardClass, PageShell } from "@/components/page-shell";
 import { hasToken, isConfigured } from "@/lib/notion";
 import { getDays } from "@/lib/trip";
@@ -28,7 +27,6 @@ export default async function SettingsPage() {
 
   return (
     <>
-      <Nav current="/settings" />
       <PageShell>
         <div>
           <p className={eyebrowClass}>

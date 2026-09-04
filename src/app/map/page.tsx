@@ -1,5 +1,4 @@
 import { EmptyState } from "@/components/empty-state";
-import { Nav } from "@/components/nav";
 import { PageShell } from "@/components/page-shell";
 import { TripMapLoader } from "@/components/trip-map-loader";
 import { coordsOfPlace } from "@/lib/geocode";
@@ -29,7 +28,6 @@ export default async function MapPage() {
 
   return (
     <>
-      <Nav current="/map" />
       <PageShell>
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-moss">

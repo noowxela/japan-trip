@@ -11,7 +11,6 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { DayCard } from "@/components/day-card";
 import { DayMapLoader } from "@/components/day-map-loader";
 import { DayQuickFab } from "@/components/day-quick-fab";
-import { Nav } from "@/components/nav";
 import { PageShell } from "@/components/page-shell";
 import { formatRm, tokyoToday } from "@/lib/format";
 import { coordsOfPlace } from "@/lib/geocode";
@@ -102,7 +101,6 @@ export default async function DayPage({
 
   return (
     <>
-      <Nav current="/schedule" />
       <PageShell className={editing ? "" : "pb-28"}>
         <Breadcrumb
           items={[

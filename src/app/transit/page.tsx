@@ -1,7 +1,6 @@
 import { AddTransitForm } from "@/components/add-transit-form";
 import { EmptyState } from "@/components/empty-state";
 import { ListsSubNav } from "@/components/lists-sub-nav";
-import { Nav } from "@/components/nav";
 import { PageShell } from "@/components/page-shell";
 import { TransitCard } from "@/components/transit-card";
 import { getDays, getTransit } from "@/lib/trip";
@@ -14,7 +13,6 @@ export default async function TransitPage() {
 
   return (
     <>
-      <Nav current="/lists" />
       <PageShell>
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-moss">

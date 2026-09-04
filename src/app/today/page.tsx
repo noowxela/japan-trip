@@ -7,7 +7,6 @@ import { DayMapLoader } from "@/components/day-map-loader";
 import { DayQuickFab } from "@/components/day-quick-fab";
 import { EmptyState } from "@/components/empty-state";
 import { MapsPinLink } from "@/components/maps-pin-link";
-import { Nav } from "@/components/nav";
 import { PageShell } from "@/components/page-shell";
 import { StatusBadge } from "@/components/status-badge";
 import { formatDay, formatRm, formatTime, tokyoToday } from "@/lib/format";
@@ -34,7 +33,6 @@ export default async function TodayPage() {
   if (!hasToken() || !isConfigured()) {
     return (
       <>
-        <Nav current="/today" />
         <PageShell>
           <EmptyState title="Notion is not ready">
             Connect Notion to use today view.
@@ -55,7 +53,6 @@ export default async function TodayPage() {
   if (!focus) {
     return (
       <>
-        <Nav current="/today" />
         <PageShell>
           <EmptyState title="No trip days yet">Add a day to get started.</EmptyState>
         </PageShell>
@@ -95,7 +92,6 @@ export default async function TodayPage() {
 
   return (
     <>
-      <Nav current="/today" />
       <PageShell className="pb-28">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-moss">

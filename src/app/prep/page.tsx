@@ -1,5 +1,4 @@
 import { PrepChecklist } from "@/components/prep-checklist";
-import { Nav } from "@/components/nav";
 import { PageShell } from "@/components/page-shell";
 
 export const dynamic = "force-dynamic";
@@ -7,7 +6,6 @@ export const dynamic = "force-dynamic";
 export default function PrepPage() {
   return (
     <>
-      <Nav current="/prep" />
       <PageShell>
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-moss">

@@ -1,7 +1,6 @@
 import { AddExpenseFab } from "@/components/add-spend-form";
 import { EmptyState } from "@/components/empty-state";
 import { ExpensesHero } from "@/components/expenses-hero";
-import { Nav } from "@/components/nav";
 import { PageShell } from "@/components/page-shell";
 import { SpendItemCard } from "@/components/spend-item-card";
 import { getMyrToJpy, yenForMyr } from "@/lib/exchange";
@@ -19,7 +18,6 @@ export default async function BudgetPage({
   if (!hasToken() || !isConfigured()) {
     return (
       <>
-        <Nav current="/budget" />
         <PageShell>
           <EmptyState title="Notion is not ready">
             Add NOTION_TOKEN and run <code>npm run setup:notion</code> then{" "}
@@ -44,7 +42,6 @@ export default async function BudgetPage({
 
   return (
     <>
-      <Nav current="/budget" />
       <PageShell>
         <ExpensesHero
           spentRm={money.actual}

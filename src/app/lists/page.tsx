@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Nav } from "@/components/nav";
 import { cardClass, eyebrowClass, PageShell } from "@/components/page-shell";
 import { ListsSubNav } from "@/components/lists-sub-nav";
 import { listCounts, getPlaces, getStays, getTransit } from "@/lib/trip";
@@ -22,7 +21,6 @@ export default async function ListsPage() {
 
   return (
     <>
-      <Nav current="/lists" />
       <PageShell>
         <div>
           <p className={eyebrowClass}>

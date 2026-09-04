@@ -42,12 +42,14 @@ const tabs = [
 export function BottomNav() {
   const pathname = usePathname();
 
+  if (pathname === "/schedule") return null;
+
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-20 border-t border-sage/80 bg-paper/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+      className="fixed inset-x-0 bottom-0 z-20 border-t border-sage/80 bg-paper/95 pb-[env(safe-area-inset-bottom)] backdrop-blur"
     >
-      <div className="mx-auto flex max-w-xl items-stretch justify-around px-1 pt-1">
+      <div className="mx-auto flex w-full max-w-xl items-stretch justify-around px-1 pt-1 md:max-w-5xl">
         {tabs.map((tab) => {
           const active = tab.match(pathname);
           const Icon = tab.icon;

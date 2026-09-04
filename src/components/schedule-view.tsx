@@ -143,7 +143,7 @@ export function ScheduleView({
   return (
     <div
       ref={rootRef}
-      className="flex h-[calc(100dvh-3.25rem)] flex-col overflow-hidden pb-[calc(4rem+env(safe-area-inset-bottom))] md:h-[calc(100dvh-3.5rem)] md:pb-0"
+      className="flex h-dvh flex-col overflow-hidden"
     >
       <div className="relative z-0 min-h-0 flex-1 isolate overflow-hidden">
         <DayMapLoader
@@ -151,6 +151,22 @@ export function ScheduleView({
           pins={mapPins}
           className="h-full border-0"
         />
+        <Link
+          href="/"
+          aria-label="Back to Overview"
+          className="absolute left-2 top-[max(0.5rem,env(safe-area-inset-top,0px))] z-1100 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-stone-700 shadow-sm backdrop-blur"
+        >
+          <svg
+            aria-hidden
+            viewBox="0 0 24 24"
+            className="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path d="M15 18 9 12l6-6" />
+          </svg>
+        </Link>
       </div>
 
       <section
@@ -203,7 +219,7 @@ export function ScheduleView({
               </Link>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 pb-6">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]">
               <DayAgendaBoard
                 agenda={agenda}
                 pending={pending}

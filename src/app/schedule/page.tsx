@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { EmptyState } from "@/components/empty-state";
-import { Nav } from "@/components/nav";
 import { ScheduleView } from "@/components/schedule-view";
 import { coordsOfPlace } from "@/lib/geocode";
 import { tokyoToday } from "@/lib/format";
@@ -23,12 +22,16 @@ export default async function SchedulePage({
   if (!hasToken() || !isConfigured()) {
     return (
       <>
-        <Nav current="/schedule" />
-        <div className="mx-auto max-w-xl px-4 py-6 pb-24 md:max-w-5xl md:px-8">
+        <div className="mx-auto max-w-xl px-4 py-6 md:max-w-5xl md:px-8">
           <EmptyState title="Notion is not ready">
             Add NOTION_TOKEN and run <code>npm run setup:notion</code> then{" "}
             <code>npm run migrate:v2</code>.
           </EmptyState>
+          <p className="mt-4 text-center text-sm">
+            <Link href="/" className="font-medium text-hanko">
+              Back to Overview
+            </Link>
+          </p>
         </div>
       </>
     );
@@ -40,8 +43,7 @@ export default async function SchedulePage({
   if (days.length === 0) {
     return (
       <>
-        <Nav current="/schedule" />
-        <div className="mx-auto max-w-xl px-4 py-6 pb-24 md:max-w-5xl md:px-8">
+        <div className="mx-auto max-w-xl px-4 py-6 md:max-w-5xl md:px-8">
           <EmptyState title="No days yet">
             Add trip days in{" "}
             <Link href="/settings" className="font-medium text-hanko">
@@ -107,7 +109,6 @@ export default async function SchedulePage({
 
   return (
     <>
-      <Nav current="/schedule" />
       <ScheduleView
         days={days}
         selectedDay={selectedDay}

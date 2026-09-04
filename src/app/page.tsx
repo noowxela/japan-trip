@@ -1,7 +1,6 @@
 import { CountdownWidget } from "@/components/countdown-widget";
 import { EmptyState } from "@/components/empty-state";
 import { FlightInfoList } from "@/components/flight-info-list";
-import { Nav } from "@/components/nav";
 import { eyebrowClass, PageShell } from "@/components/page-shell";
 import { formatTripSpan, tokyoToday } from "@/lib/format";
 import { hasToken, isConfigured } from "@/lib/notion";
@@ -13,7 +12,6 @@ export default async function OverviewPage() {
   if (!hasToken() || !isConfigured()) {
     return (
       <>
-        <Nav current="/" />
         <PageShell>
           <EmptyState title="Notion is not ready">
             Add NOTION_TOKEN and run <code>npm run setup:notion</code> then{" "}
@@ -40,7 +38,6 @@ export default async function OverviewPage() {
 
   return (
     <>
-      <Nav current="/" />
       <PageShell>
         <CountdownWidget start={tripStart} end={tripEnd} today={today} />
 

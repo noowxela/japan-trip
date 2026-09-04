@@ -2,7 +2,6 @@ import { AddDayForm } from "@/components/add-day-form";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { DayCard } from "@/components/day-card";
 import { EmptyState } from "@/components/empty-state";
-import { Nav } from "@/components/nav";
 import { eyebrowClass, PageShell } from "@/components/page-shell";
 import { hasToken, isConfigured } from "@/lib/notion";
 import { getDays } from "@/lib/trip";
@@ -13,7 +12,6 @@ export default async function DaysPage() {
   if (!hasToken() || !isConfigured()) {
     return (
       <>
-        <Nav current="/settings" />
         <PageShell>
           <EmptyState title="Notion is not ready">
             Add NOTION_TOKEN and run <code>npm run setup:notion</code> then{" "}
@@ -28,7 +26,6 @@ export default async function DaysPage() {
 
   return (
     <>
-      <Nav current="/settings" />
       <PageShell>
         <Breadcrumb
           items={[

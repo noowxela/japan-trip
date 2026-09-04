@@ -1,7 +1,6 @@
 import { AddStayForm } from "@/components/add-stay-form";
 import { EmptyState } from "@/components/empty-state";
 import { ListsSubNav } from "@/components/lists-sub-nav";
-import { Nav } from "@/components/nav";
 import { PageShell } from "@/components/page-shell";
 import { StayCard } from "@/components/stay-card";
 import { getStays } from "@/lib/trip";
@@ -13,7 +12,6 @@ export default async function StaysPage() {
 
   return (
     <>
-      <Nav current="/lists" />
       <PageShell>
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-moss">
