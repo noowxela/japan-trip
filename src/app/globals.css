@@ -3,12 +3,15 @@
 @theme inline {
   --color-background: #f6f1e8;
   --color-foreground: #1c1917;
-  --font-sans: var(--font-geist-sans);
-  --font-serif: var(--font-newsreader);
+  --color-paper: #f6f1e8;
+  --color-sage: #e7e5e4;
+  --color-moss: #b42318;
+  --color-hanko: #b42318;
+  --font-sans: var(--font-nunito);
 }
 
 body {
-  background: var(--color-background);
+  background-color: var(--color-background);
   color: var(--color-foreground);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
@@ -24,6 +27,29 @@ textarea {
 input[type="time"]::-webkit-datetime-edit,
 input[type="date"]::-webkit-datetime-edit {
   min-width: 0;
+}
+
+.notebook-card {
+  border-radius: 1rem;
+  border: 1px solid var(--color-sage);
+  background: #fff;
+}
+
+.notebook-btn {
+  border-radius: 9999px;
+  transition: transform 150ms ease;
+}
+
+.notebook-btn:active {
+  transform: scale(0.95);
+}
+
+.notebook-press {
+  transition: transform 150ms ease;
+}
+
+.notebook-press:active {
+  transform: scale(0.95);
 }
 
 .leaflet-container {
@@ -78,5 +104,12 @@ input[type="date"]::-webkit-datetime-edit {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .notebook-btn,
+  .notebook-press,
+  .notebook-btn:active,
+  .notebook-press:active {
+    transform: none !important;
   }
 }

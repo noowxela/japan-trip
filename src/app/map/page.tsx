@@ -32,10 +32,10 @@ export default async function MapPage() {
       <Nav current="/map" />
       <PageShell>
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-[#b42318]">
+          <p className="text-xs uppercase tracking-[0.2em] text-moss">
             Flow
           </p>
-          <h1 className="font-serif text-3xl tracking-tight">Map</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Map</h1>
           {hops.length > 0 ? (
             <p className="mt-1 text-sm text-stone-600">{hops.join(" → ")}</p>
           ) : null}

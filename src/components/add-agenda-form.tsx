@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { addPlace, addTransit, searchPlaces } from "@/app/actions";
 import { ActionForm } from "@/components/action-form";
+import { btnPrimaryClass, fieldClass, formShellClass } from "@/components/page-shell";
 import { dateKey } from "@/lib/format";
 import type { PlaceSearchHit } from "@/lib/geocode";
 import {
@@ -10,9 +11,6 @@ import {
   TRANSIT_MODES,
   type TripDay,
 } from "@/lib/types";
-
-const field =
-  "rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]";
 
 type Kind = "place" | "transit";
 
@@ -58,7 +56,7 @@ export function AddAgendaForm({
   return (
     <ActionForm
       action={kind === "place" ? addPlace : addTransit}
-      className="grid min-w-0 gap-3 rounded-2xl border border-stone-200 bg-white p-4"
+      className="grid min-w-0 gap-3 notebook-card p-4"
     >
       <div className="flex items-center justify-between gap-3">
         <p className="font-medium text-stone-900">Add to agenda</p>
@@ -71,10 +69,10 @@ export function AddAgendaForm({
                 type="button"
                 aria-pressed={selected}
                 onClick={() => setKind(option)}
-                className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${
+                className={`notebook-btn px-3 py-1 text-xs font-medium capitalize ${
                   selected
-                    ? "bg-[#b42318] text-white"
-                    : "bg-stone-100 text-stone-600"
+                    ? "bg-moss text-white"
+                    : "bg-sage/70 text-stone-600"
                 }`}
               >
                 {option}
@@ -104,20 +102,20 @@ export function AddAgendaForm({
                 }
               }}
               placeholder="Search map"
-              className={`min-w-0 flex-1 ${field}`}
+              className={`min-w-0 flex-1 ${fieldClass}`}
             />
             <button
               type="button"
               onClick={onSearch}
               disabled={pending || query.trim().length < 2}
-              className="shrink-0 rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              className="notebook-btn shrink-0 bg-moss px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
               {pending ? "…" : "Search"}
             </button>
           </div>
           {error ? <p className="text-xs text-stone-500">{error}</p> : null}
           {results.length > 0 ? (
-            <ul className="divide-y divide-stone-100 overflow-hidden rounded-xl border border-stone-200">
+            <ul className="divide-y divide-sage overflow-hidden rounded-xl border border-sage">
               {results.map((hit) => (
                 <li key={`${hit.lat}-${hit.lng}-${hit.displayName}`}>
                   <button
@@ -141,11 +139,11 @@ export function AddAgendaForm({
         value={name}
         onChange={(event) => setName(event.target.value)}
         placeholder={kind === "place" ? "Place name" : "Train / flight name"}
-        className={field}
+        className={fieldClass}
       />
 
       {kind === "place" ? (
-        <select name="type" defaultValue="Sight" className={field}>
+        <select name="type" defaultValue="Sight" className={fieldClass}>
           {PLACE_TYPES.map((type) => (
             <option key={type} value={type}>
               {type}
@@ -154,7 +152,7 @@ export function AddAgendaForm({
         </select>
       ) : (
         <>
-          <select name="mode" defaultValue="Metro" className={field}>
+          <select name="mode" defaultValue="Metro" className={fieldClass}>
             {TRANSIT_MODES.map((mode) => (
               <option key={mode} value={mode}>
                 {mode}
@@ -162,8 +160,8 @@ export function AddAgendaForm({
             ))}
           </select>
           <div className="grid grid-cols-2 gap-3">
-            <input name="from" placeholder="From" className={field} />
-            <input name="to" placeholder="To" className={field} />
+            <input name="from" placeholder="From" className={fieldClass} />
+            <input name="to" placeholder="To" className={fieldClass} />
           </div>
         </>
       )}
@@ -173,16 +171,16 @@ export function AddAgendaForm({
           name="time"
           type="time"
           step="60"
-          className={`${field} cursor-pointer`}
+          className={`${fieldClass} cursor-pointer`}
         />
         {kind === "transit" ? (
-          <input name="order" type="number" placeholder="Order" className={field} />
+          <input name="order" type="number" placeholder="Order" className={fieldClass} />
         ) : null}
       </div>
 
       <button
         type="submit"
-        className="rounded-full bg-[#b42318] px-4 py-2 text-sm font-medium text-white"
+        className={btnPrimaryClass}
       >
         {kind === "place" ? "Add place" : "Add transit"}
       </button>

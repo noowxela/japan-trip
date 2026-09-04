@@ -13,11 +13,11 @@ export function CountdownWidget({
   if (!countdown) return null;
 
   return (
-    <div className="min-w-0 rounded-2xl border border-[#14b8a6]/30 bg-gradient-to-br from-white to-teal-50/80 p-5 md:max-w-xl">
-      <p className="text-xs uppercase tracking-[0.2em] text-teal-700">
+    <div className="notebook-card min-w-0 p-5 md:max-w-xl">
+      <p className="text-xs uppercase tracking-[0.2em] text-moss">
         {countdown.label}
       </p>
-      <p className="mt-1 font-serif text-4xl tracking-tight text-stone-900">
+      <p className="mt-1 text-4xl font-semibold tracking-tight text-stone-900">
         {countdown.primary}
       </p>
       {countdown.secondary ? (

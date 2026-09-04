@@ -17,10 +17,10 @@ export default async function TransitPage() {
       <Nav current="/lists" />
       <PageShell>
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-[#b42318]">
+          <p className="text-xs uppercase tracking-[0.2em] text-moss">
             Moves
           </p>
-          <h1 className="font-serif text-3xl tracking-tight">Transit</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Transit</h1>
         </div>
         <ListsSubNav current="/transit" />
         {transit.length === 0 ? (

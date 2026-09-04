@@ -101,7 +101,7 @@ export default function DayMap({
 
   return (
     <div
-      className={`relative w-full overflow-hidden border-stone-200 ${className || "h-52 rounded-2xl border sm:h-64 md:h-72"}`.trim()}
+      className={`relative w-full overflow-hidden border-sage ${className || "h-52 rounded-2xl border sm:h-64 md:h-72"}`.trim()}
     >
       <MapContainer
         center={fallback}
@@ -146,7 +146,7 @@ export default function DayMap({
                     })}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-[#b42318] underline"
+                    className="text-hanko underline"
                   >
                     Google Maps
                   </a>

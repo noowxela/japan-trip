@@ -45,7 +45,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-20 border-t border-stone-200/80 bg-[#f6f1e8]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+      className="fixed inset-x-0 bottom-0 z-20 border-t border-sage/80 bg-paper/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
     >
       <div className="mx-auto flex max-w-xl items-stretch justify-around px-1 pt-1">
         {tabs.map((tab) => {
@@ -55,9 +55,9 @@ export function BottomNav() {
             <Link
               key={tab.href}
               href={tab.href}
-              className={`flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-xl px-1 py-2 text-[10px] font-medium leading-tight transition-colors ${
+              className={`notebook-press flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-xl px-1 py-2 text-[10px] font-medium leading-tight transition-colors ${
                 active
-                  ? "text-[#b42318]"
+                  ? "text-moss"
                   : "text-stone-500 hover:text-stone-700"
               }`}
             >

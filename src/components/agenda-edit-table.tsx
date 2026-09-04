@@ -19,7 +19,7 @@ import {
 } from "@/lib/types";
 
 const cell =
-  "w-full min-w-0 rounded-lg border border-stone-200 px-2 py-1.5 text-sm outline-none focus:border-[#b42318]";
+  "w-full min-w-0 rounded-lg border border-sage px-2 py-1.5 text-sm outline-none focus:border-moss";
 
 const rowClass =
   "grid w-full min-w-0 grid-cols-2 gap-2 border-b border-stone-100 p-3 last:border-b-0 lg:grid-cols-[minmax(0,8rem)_3.5rem_7rem_minmax(0,1.3fr)_minmax(0,1fr)_auto] lg:items-end lg:gap-2 lg:px-3 lg:py-2";
@@ -69,7 +69,7 @@ function SaveButton({ pending }: { pending: boolean }) {
     <button
       type="submit"
       disabled={pending}
-      className="shrink-0 rounded-full bg-[#b42318] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+      className="shrink-0 notebook-btn bg-hanko px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
     >
       {pending ? "Saving…" : "Save"}
     </button>
@@ -91,7 +91,7 @@ function DeleteButton({
       <button
         type="button"
         onClick={() => setConfirmOpen(true)}
-        className="shrink-0 rounded-full px-3 py-1.5 text-xs font-medium text-red-700"
+        className="notebook-btn shrink-0 px-3 py-1.5 text-xs font-medium text-red-700"
       >
         Delete
       </button>
@@ -143,15 +143,15 @@ export function AgendaEditTable({
 
   if (rows.length === 0) {
     return (
-      <p className="rounded-2xl border border-dashed border-stone-200 bg-white px-4 py-6 text-sm text-stone-500">
+      <p className="notebook-card border-dashed px-4 py-6 text-sm text-stone-500 shadow-none">
         No stops yet. Add a place or transit below.
       </p>
     );
   }
 
   return (
-    <div className="min-w-0 overflow-hidden rounded-2xl border border-stone-200 bg-white">
-      <div className="hidden grid-cols-[8rem_3.5rem_7rem_minmax(0,1.3fr)_minmax(0,1fr)_auto] gap-2 border-b border-stone-200 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-stone-500 lg:grid">
+    <div className="min-w-0 overflow-hidden notebook-card">
+      <div className="hidden grid-cols-[8rem_3.5rem_7rem_minmax(0,1.3fr)_minmax(0,1fr)_auto] gap-2 border-b border-sage px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-stone-500 lg:grid">
         <span>Time</span>
         <span>#</span>
         <span>Kind</span>

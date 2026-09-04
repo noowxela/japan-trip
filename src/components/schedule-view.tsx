@@ -185,7 +185,7 @@ export function ScheduleView({
             <div className="flex shrink-0 items-start justify-between gap-3 border-b border-stone-100 px-4 py-3">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="font-serif text-lg tracking-tight">
+                  <h2 className="text-lg font-semibold tracking-tight">
                     {selectedDay.name}
                   </h2>
                   <StatusBadge status={selectedDay.status} />

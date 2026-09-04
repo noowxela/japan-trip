@@ -16,10 +16,10 @@ export default async function StaysPage() {
       <Nav current="/lists" />
       <PageShell>
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-[#b42318]">
+          <p className="text-xs uppercase tracking-[0.2em] text-moss">
             Lodging
           </p>
-          <h1 className="font-serif text-3xl tracking-tight">Stays</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Stays</h1>
         </div>
         <ListsSubNav current="/stays" />
         {stays.length === 0 ? (

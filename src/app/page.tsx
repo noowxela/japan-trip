@@ -2,7 +2,7 @@ import { CountdownWidget } from "@/components/countdown-widget";
 import { EmptyState } from "@/components/empty-state";
 import { FlightInfoList } from "@/components/flight-info-list";
 import { Nav } from "@/components/nav";
-import { PageShell } from "@/components/page-shell";
+import { eyebrowClass, PageShell } from "@/components/page-shell";
 import { formatTripSpan, tokyoToday } from "@/lib/format";
 import { hasToken, isConfigured } from "@/lib/notion";
 import { getDays, getTransit, tripFlow } from "@/lib/trip";
@@ -45,10 +45,10 @@ export default async function OverviewPage() {
         <CountdownWidget start={tripStart} end={tripEnd} today={today} />
 
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-[#b42318]">
+          <p className={eyebrowClass}>
             Trip overview
           </p>
-          <h1 className="font-serif text-3xl tracking-tight">Overview</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Overview</h1>
           <p className="mt-1 text-sm text-stone-500">{span}</p>
           {cityFlow ? (
             <p className="mt-2 text-base font-medium">{cityFlow}</p>

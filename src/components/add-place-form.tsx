@@ -4,7 +4,7 @@ import nextDynamic from "next/dynamic";
 import { useMemo, useState, useTransition } from "react";
 import { addPlace, searchPlaces } from "@/app/actions";
 import { ActionForm } from "@/components/action-form";
-import { formShellClass } from "@/components/page-shell";
+import { btnPrimaryClass, fieldClass, formShellClass } from "@/components/page-shell";
 import { PLACE_TYPES, type TripDay } from "@/lib/types";
 import type { PlaceSearchHit } from "@/lib/geocode";
 
@@ -13,7 +13,7 @@ const PlacePreviewMap = nextDynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-72 items-center justify-center rounded-xl border border-stone-200 text-xs text-stone-500">
+      <div className="flex h-72 items-center justify-center rounded-xl border border-sage text-xs text-stone-500">
         Map…
       </div>
     ),
@@ -66,8 +66,8 @@ export function AddPlaceForm({
   const shellClass = embedded
     ? "grid gap-3"
     : compact
-      ? "grid w-full gap-3 rounded-2xl border border-stone-200 bg-white p-4"
-      : `${formShellClass} grid gap-3 rounded-2xl border border-stone-200 bg-white p-4`;
+      ? "grid w-full gap-3 notebook-card p-4"
+      : `${formShellClass} grid gap-3 notebook-card p-4`;
 
   return (
     <div className={shellClass}>
@@ -83,20 +83,20 @@ export function AddPlaceForm({
             }
           }}
           placeholder="Search map: Senso-ji, Ichiran…"
-          className="min-w-0 flex-1 rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]"
+          className={`min-w-0 flex-1 ${fieldClass}`}
         />
         <button
           type="button"
           onClick={onSearch}
           disabled={pending || query.trim().length < 2}
-          className="shrink-0 rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="notebook-btn shrink-0 bg-moss px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           {pending ? "…" : "Search"}
         </button>
       </div>
       {error ? <p className="text-xs text-stone-500">{error}</p> : null}
       {results.length > 0 ? (
-        <ul className="divide-y divide-stone-100 overflow-hidden rounded-xl border border-stone-200">
+        <ul className="divide-y divide-sage overflow-hidden rounded-xl border border-sage">
           {results.map((hit) => (
             <li key={`${hit.lat}-${hit.lng}-${hit.displayName}`}>
               <button
@@ -127,12 +127,12 @@ export function AddPlaceForm({
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder="Senso-ji"
-          className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]"
+          className={fieldClass}
         />
         <select
           name="type"
           defaultValue="Sight"
-          className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]"
+          className={fieldClass}
         >
           {PLACE_TYPES.map((type) => (
             <option key={type} value={type}>
@@ -146,13 +146,13 @@ export function AddPlaceForm({
           value={mapsUrl}
           onChange={(event) => setMapsUrl(event.target.value)}
           placeholder="Maps URL"
-          className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]"
+          className={fieldClass}
         />
         <select
           name="dayId"
           value={dayId}
           onChange={(event) => setDayId(event.target.value)}
-          className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]"
+          className={fieldClass}
         >
           <option value="">No day yet</option>
           {days.map((day) => (
@@ -164,7 +164,7 @@ export function AddPlaceForm({
         <input
           name="start"
           type="datetime-local"
-          className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]"
+          className={fieldClass}
         />
         <label className="flex items-center gap-2 text-sm text-stone-700">
           <input type="checkbox" name="pending" value="true" className="rounded" />
@@ -174,11 +174,11 @@ export function AddPlaceForm({
           name="notes"
           rows={2}
           placeholder="Notes"
-          className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]"
+          className={fieldClass}
         />
         <button
           type="submit"
-          className="rounded-full bg-[#b42318] px-4 py-2 text-sm font-medium text-white"
+          className={btnPrimaryClass}
         >
           Add place
         </button>

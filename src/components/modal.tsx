@@ -97,14 +97,14 @@ export function Modal({
             finishClose();
           }
         }}
-        className={`relative z-10 flex max-h-[90dvh] w-full max-w-xl flex-col overflow-hidden rounded-t-2xl border border-b-0 border-stone-200 bg-[#f6f1e8] shadow-xl transition-transform duration-300 ease-out motion-reduce:transition-none ${
+        className={`relative z-10 flex max-h-[90dvh] w-full max-w-xl flex-col overflow-hidden rounded-t-2xl border border-b-0 border-sage bg-paper transition-transform duration-300 ease-out motion-reduce:transition-none ${
           shown ? "translate-y-0" : "translate-y-full"
         }`}
       >
-        <div className="flex shrink-0 flex-col border-b border-stone-200/80 px-4 pb-3 pt-2">
+        <div className="flex shrink-0 flex-col border-b border-sage/80 px-4 pb-3 pt-2">
           <div
             aria-hidden
-            className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-stone-300"
+            className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-sage"
           />
           <div className="flex items-center justify-between gap-3">
             <h2 id="modal-title" className="font-medium text-stone-900">
@@ -114,7 +114,7 @@ export function Modal({
               type="button"
               onClick={onClose}
               aria-label="Close"
-              className="rounded-full px-2 py-1 text-sm text-stone-500 hover:bg-stone-200/60 hover:text-stone-800"
+              className="notebook-btn px-2 py-1 text-sm text-stone-500 hover:bg-sage/70 hover:text-stone-800"
             >
               ✕
             </button>

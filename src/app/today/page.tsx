@@ -98,11 +98,11 @@ export default async function TodayPage() {
       <Nav current="/today" />
       <PageShell className="pb-28">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-[#b42318]">
+          <p className="text-xs uppercase tracking-[0.2em] text-moss">
             {dateKey(focus.date) === today ? "Today" : "Next up"}
           </p>
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            <h1 className="font-serif text-3xl tracking-tight">{focus.name}</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">{focus.name}</h1>
             <StatusBadge status={focus.status} />
           </div>
           <p className="mt-1 text-sm text-stone-500">
@@ -112,8 +112,8 @@ export default async function TodayPage() {
         </div>
 
         {(nextPlace || nextTransit) && (
-          <section className="rounded-2xl border border-[#b42318]/30 bg-white p-4">
-            <p className="text-xs uppercase tracking-wide text-[#b42318]">
+          <section className="notebook-card border-hanko/30 p-4">
+            <p className="text-xs uppercase tracking-wide text-hanko">
               Up next
             </p>
             {nextTransit ? (
@@ -135,7 +135,7 @@ export default async function TodayPage() {
             ) : null}
             <Link
               href={`/days/${focus.id}`}
-              className="mt-3 inline-block text-sm font-medium text-[#b42318]"
+              className="mt-3 inline-block text-sm font-medium text-hanko"
             >
               Full day agenda →
             </Link>
@@ -143,7 +143,7 @@ export default async function TodayPage() {
         )}
 
         {lodging.length > 0 ? (
-          <p className="rounded-2xl bg-white px-4 py-3 text-sm text-stone-600">
+          <p className="notebook-card px-4 py-3 text-sm text-stone-600">
             Sleeping in {lodging.map((stay) => stay.name).join(", ")}
           </p>
         ) : null}

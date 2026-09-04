@@ -25,7 +25,7 @@ export function ScheduleDayTabs({
               href={`/schedule?day=${day.id}`}
               scroll={false}
               className={`relative flex min-w-[4.5rem] shrink-0 flex-col items-center px-3 py-3 text-center transition-colors ${
-                active ? "text-[#b42318]" : "text-stone-500 hover:text-stone-700"
+                active ? "text-hanko" : "text-stone-500 hover:text-stone-700"
               }`}
             >
               <span className="text-sm font-medium leading-tight">
@@ -38,7 +38,7 @@ export function ScheduleDayTabs({
               {active ? (
                 <span
                   aria-hidden
-                  className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-[#b42318]"
+                  className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-hanko"
                 />
               ) : null}
             </Link>

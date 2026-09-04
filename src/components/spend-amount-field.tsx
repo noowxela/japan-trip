@@ -17,7 +17,7 @@ export function SpendAmountField({
   const [currency, setCurrency] = useState<SpendCurrency>(defaultCurrency);
 
   return (
-    <div className="flex overflow-hidden rounded-xl border border-stone-200 focus-within:border-[#b42318]">
+    <div className="flex overflow-hidden rounded-xl border border-sage focus-within:border-moss">
       <input
         name="amount"
         type="number"
@@ -39,10 +39,10 @@ export function SpendAmountField({
               type="button"
               aria-pressed={selected}
               onClick={() => setCurrency(option)}
-              className={`rounded-full px-3 py-1 text-xs font-medium ${
+              className={`notebook-btn px-3 py-1 text-xs font-medium ${
                 selected
-                  ? "bg-[#b42318] text-white"
-                  : "bg-stone-100 text-stone-600"
+                  ? "bg-moss text-white"
+                  : "bg-sage/70 text-stone-600"
               }`}
             >
               {option}

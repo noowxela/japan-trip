@@ -44,7 +44,7 @@ export default async function SchedulePage({
         <div className="mx-auto max-w-xl px-4 py-6 pb-24 md:max-w-5xl md:px-8">
           <EmptyState title="No days yet">
             Add trip days in{" "}
-            <Link href="/settings" className="font-medium text-[#b42318]">
+            <Link href="/settings" className="font-medium text-hanko">
               Settings
             </Link>
             .

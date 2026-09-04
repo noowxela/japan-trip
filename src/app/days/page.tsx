@@ -3,7 +3,7 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { DayCard } from "@/components/day-card";
 import { EmptyState } from "@/components/empty-state";
 import { Nav } from "@/components/nav";
-import { PageShell } from "@/components/page-shell";
+import { eyebrowClass, PageShell } from "@/components/page-shell";
 import { hasToken, isConfigured } from "@/lib/notion";
 import { getDays } from "@/lib/trip";
 
@@ -37,10 +37,10 @@ export default async function DaysPage() {
           ]}
         />
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-[#b42318]">
+          <p className={eyebrowClass}>
             Itinerary
           </p>
-          <h1 className="font-serif text-3xl tracking-tight">Trip days</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Trip days</h1>
         </div>
         {days.length === 0 ? (
           <EmptyState title="No days yet">

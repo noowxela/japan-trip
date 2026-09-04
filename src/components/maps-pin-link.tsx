@@ -16,7 +16,7 @@ export function MapsPinLink({
   const color =
     tone === "food"
       ? "text-[#ea580c] hover:bg-[#ea580c]/10"
-      : "text-[#b42318] hover:bg-[#b42318]/10";
+      : "text-hanko hover:bg-hanko/10";
   return (
     <a
       href={googleMapsHref({ name, lat, lng, mapsUrl })}

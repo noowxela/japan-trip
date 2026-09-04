@@ -38,7 +38,7 @@ export function MapStyleSwitch({
             onClick={() => onChange(style)}
             className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
               active
-                ? "bg-[#b42318] text-white"
+                ? "bg-hanko text-white"
                 : "text-stone-600 hover:bg-stone-100"
             }`}
           >

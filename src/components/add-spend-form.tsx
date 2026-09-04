@@ -2,7 +2,7 @@
 
 import { addSpend } from "@/app/actions";
 import { ActionForm } from "@/components/action-form";
-import { formShellClass } from "@/components/page-shell";
+import { btnPrimaryClass, fieldClass, formShellClass } from "@/components/page-shell";
 import { SpendAmountField } from "@/components/spend-amount-field";
 import { SPEND_CATEGORIES, SPEND_KINDS, type TripDay } from "@/lib/types";
 
@@ -16,21 +16,21 @@ export function AddSpendForm({
   return (
     <ActionForm
       action={addSpend}
-      className={`${formShellClass} grid gap-3 rounded-2xl border border-stone-200 bg-white p-4`}
+      className={`${formShellClass} grid gap-3 notebook-card p-4`}
     >
       <p className="font-medium text-stone-900">Add spend</p>
       <input
         name="name"
         required
         placeholder="Lunch / hotel / JR pass"
-        className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]"
+        className={fieldClass}
       />
       <SpendAmountField />
       <div className="grid grid-cols-2 gap-3">
         <select
           name="kind"
           defaultValue="Actual"
-          className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]"
+          className={fieldClass}
         >
           {SPEND_KINDS.map((kind) => (
             <option key={kind} value={kind}>
@@ -41,7 +41,7 @@ export function AddSpendForm({
         <select
           name="category"
           defaultValue="Food"
-          className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]"
+          className={fieldClass}
         >
           {SPEND_CATEGORIES.map((category) => (
             <option key={category} value={category}>
@@ -53,7 +53,7 @@ export function AddSpendForm({
       <select
         name="dayId"
         defaultValue={defaultDayId}
-        className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]"
+        className={fieldClass}
       >
         <option value="">No day</option>
         {days.map((day) => (
@@ -65,11 +65,11 @@ export function AddSpendForm({
       <input
         name="notes"
         placeholder="Notes"
-        className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]"
+        className={fieldClass}
       />
       <button
         type="submit"
-        className="rounded-full bg-[#b42318] px-4 py-2 text-sm font-medium text-white"
+        className={btnPrimaryClass}
       >
         Add spend
       </button>

@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { EmptyState } from "@/components/empty-state";
 import { MapsPinLink } from "@/components/maps-pin-link";
 import { NotesForm } from "@/components/notes-form";
+import { fieldClass } from "@/components/page-shell";
 import { VisitedToggle } from "@/components/visited-toggle";
 import { coordsOfPlace } from "@/lib/geocode";
 import type { Place, TripDay } from "@/lib/types";
@@ -53,14 +54,14 @@ export function PlacesList({
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search places…"
-          className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#b42318]"
+          className={fieldClass}
         />
         <select
           value={status}
           onChange={(event) =>
             setStatus(event.target.value as (typeof filters)[number])
           }
-          className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#b42318]"
+          className={fieldClass}
         >
           {filters.map((option) => (
             <option key={option} value={option}>
@@ -73,7 +74,7 @@ export function PlacesList({
           onChange={(event) =>
             setType(event.target.value as (typeof types)[number])
           }
-          className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#b42318]"
+          className={fieldClass}
         >
           {types.map((option) => (
             <option key={option} value={option}>
@@ -90,10 +91,8 @@ export function PlacesList({
           {filtered.map((place) => (
             <li
               key={place.id}
-              className={`min-w-0 rounded-2xl border bg-white p-4 ${
-                place.pending
-                  ? "border-[#ea580c]/40 bg-[#ea580c]/5"
-                  : "border-stone-200"
+              className={`notebook-card min-w-0 p-4 ${
+                place.pending ? "border-[#ea580c]/40 bg-[#ea580c]/5" : ""
               }`}
             >
               <div className="flex items-start justify-between gap-3">
@@ -132,7 +131,7 @@ export function PlacesList({
                             {index > 0 ? ", " : null}
                             <Link
                               href={`/days/${id}`}
-                              className="text-[#b42318] underline"
+                              className="text-hanko underline"
                             >
                               {day.name}
                             </Link>

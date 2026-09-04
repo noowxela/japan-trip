@@ -2,7 +2,7 @@ import { AddPlaceModal } from "@/components/add-place-modal";
 import { EmptyState } from "@/components/empty-state";
 import { ListsSubNav } from "@/components/lists-sub-nav";
 import { Nav } from "@/components/nav";
-import { PageShell } from "@/components/page-shell";
+import { eyebrowClass, PageShell } from "@/components/page-shell";
 import { PlacesList } from "@/components/places-list";
 import { hasToken, isConfigured } from "@/lib/notion";
 import { getDays, getPlaces } from "@/lib/trip";
@@ -32,10 +32,10 @@ export default async function PlacesPage() {
       <PageShell>
         <div className="flex items-end justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-[#b42318]">
+            <p className={eyebrowClass}>
               Guide
             </p>
-            <h1 className="font-serif text-3xl tracking-tight">Places</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">Places</h1>
           </div>
           <AddPlaceModal days={days} />
         </div>

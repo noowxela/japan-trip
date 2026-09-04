@@ -77,7 +77,7 @@ export default function TripMap({ hops, hopPoints, pins }: Props) {
             <div className="text-sm">
               <p className="font-medium">{pin.name}</p>
               {pin.dayId ? (
-                <Link href={`/days/${pin.dayId}`} className="text-[#b42318] underline">
+                <Link href={`/days/${pin.dayId}`} className="text-hanko underline">
                   {pin.dayName ?? "Open day"}
                 </Link>
               ) : null}

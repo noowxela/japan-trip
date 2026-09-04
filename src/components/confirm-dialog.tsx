@@ -39,11 +39,11 @@ export function ConfirmDialog({
         event.preventDefault();
         onCancel();
       }}
-      className="w-[min(100%,24rem)] rounded-2xl border border-stone-200 bg-white p-0 text-stone-900 shadow-xl backdrop:bg-stone-900/40"
+      className="notebook-card w-[min(100%,24rem)] p-0 text-stone-900 backdrop:bg-stone-900/40"
     >
       <div className="grid gap-4 p-5">
         <div>
-          <p className="font-serif text-xl">{title}</p>
+          <p className="text-xl font-semibold">{title}</p>
           <div className="mt-2 text-sm text-stone-600">{message}</div>
         </div>
         <div className="flex flex-wrap justify-end gap-2">
@@ -51,7 +51,7 @@ export function ConfirmDialog({
             type="button"
             onClick={onCancel}
             disabled={busy}
-            className="rounded-full px-4 py-2 text-sm font-medium text-stone-700 disabled:opacity-60"
+            className="notebook-btn px-4 py-2 text-sm font-medium text-stone-700 disabled:opacity-60"
           >
             {cancelLabel}
           </button>
@@ -59,7 +59,7 @@ export function ConfirmDialog({
             type="button"
             disabled={busy}
             onClick={onConfirm}
-            className={`rounded-full px-4 py-2 text-sm font-medium text-white disabled:opacity-60 ${
+            className={`notebook-btn px-4 py-2 text-sm font-medium text-white disabled:opacity-60 ${
               tone === "danger" ? "bg-red-700" : "bg-stone-900"
             }`}
           >

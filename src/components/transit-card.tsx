@@ -6,10 +6,8 @@ import { deleteTransit, updateTransit } from "@/app/actions";
 import { ActionForm, useActionToast } from "@/components/action-form";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { formatDay } from "@/lib/format";
+import { btnGhostClass, btnPrimaryClass, fieldClass } from "@/components/page-shell";
 import { TRANSIT_MODES, type Transit, type TripDay } from "@/lib/types";
-
-const field =
-  "rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]";
 
 export function TransitCard({
   item,
@@ -29,11 +27,11 @@ export function TransitCard({
     return (
       <ActionForm
         action={updateTransit}
-        className="grid gap-3 rounded-2xl border border-[#b42318]/30 bg-white p-4"
+        className="grid gap-3 notebook-card border-hanko/40 p-4"
       >
         <input type="hidden" name="id" value={item.id} />
-        <input name="name" required defaultValue={item.name} className={field} />
-        <select name="mode" defaultValue={item.mode ?? "Metro"} className={field}>
+        <input name="name" required defaultValue={item.name} className={fieldClass} />
+        <select name="mode" defaultValue={item.mode ?? "Metro"} className={fieldClass}>
           {TRANSIT_MODES.map((mode) => (
             <option key={mode} value={mode}>
               {mode}
@@ -41,16 +39,16 @@ export function TransitCard({
           ))}
         </select>
         <div className="grid grid-cols-2 gap-3">
-          <input name="from" defaultValue={item.from} className={field} />
-          <input name="to" defaultValue={item.to} className={field} />
+          <input name="from" defaultValue={item.from} className={fieldClass} />
+          <input name="to" defaultValue={item.to} className={fieldClass} />
         </div>
         <input
           name="date"
           type="date"
           defaultValue={item.date?.slice(0, 10) ?? ""}
-          className={field}
+          className={fieldClass}
         />
-        <select name="dayId" defaultValue={item.dayIds[0] ?? ""} className={field}>
+        <select name="dayId" defaultValue={item.dayIds[0] ?? ""} className={fieldClass}>
           <option value="">No day</option>
           {days.map((day) => (
             <option key={day.id} value={day.id}>
@@ -62,19 +60,19 @@ export function TransitCard({
           name="bookingUrl"
           type="url"
           defaultValue={item.bookingUrl ?? ""}
-          className={field}
+          className={fieldClass}
         />
         <div className="flex flex-wrap gap-2">
           <button
             type="submit"
-            className="rounded-full bg-[#b42318] px-4 py-2 text-sm font-medium text-white"
+            className={btnPrimaryClass}
           >
             Save
           </button>
           <button
             type="button"
             onClick={() => setEditing(false)}
-            className="rounded-full px-4 py-2 text-sm font-medium text-stone-600"
+            className={btnGhostClass}
           >
             Cancel
           </button>
@@ -89,7 +87,7 @@ export function TransitCard({
 
   return (
     <>
-      <div className="min-w-0 rounded-2xl border border-stone-200 bg-white p-4">
+      <div className="min-w-0 notebook-card p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs text-stone-500">
@@ -106,7 +104,7 @@ export function TransitCard({
                 dayLinks.map((day, index) => (
                   <span key={day.id}>
                     {index > 0 ? ", " : null}
-                    <Link href={`/days/${day.id}`} className="text-[#b42318] underline">
+                    <Link href={`/days/${day.id}`} className="text-hanko underline">
                       {day.name}
                     </Link>
                   </span>
@@ -118,7 +116,7 @@ export function TransitCard({
             {item.bookingUrl ? (
               <a
                 href={item.bookingUrl}
-                className="mt-2 inline-block text-sm text-[#b42318] underline"
+                className="mt-2 inline-block text-sm text-hanko underline"
                 target="_blank"
                 rel="noreferrer"
               >

@@ -10,14 +10,14 @@ type FlightInfoListProps = {
 export function FlightInfoList({ flights, dayNames }: FlightInfoListProps) {
   if (flights.length === 0) {
     return (
-      <section className="rounded-2xl border border-dashed border-stone-300 bg-white/60 p-4">
+      <section className="notebook-card border-dashed bg-white/70 p-4 shadow-none">
         <p className="text-sm font-medium text-stone-700">No flights yet</p>
         <p className="mt-1 text-sm text-stone-500">
           Add flights in Transit, or link them to a day on the schedule.
         </p>
         <Link
           href="/transit"
-          className="mt-3 inline-block text-sm font-medium text-[#b42318]"
+          className="mt-3 inline-block text-sm font-medium text-hanko"
         >
           Add transit →
         </Link>
@@ -34,11 +34,11 @@ export function FlightInfoList({ flights, dayNames }: FlightInfoListProps) {
         {flights.map((flight) => (
           <li
             key={flight.id}
-            className="min-w-0 rounded-2xl border border-stone-200 bg-white p-4"
+            className="notebook-card min-w-0 p-4"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-xs uppercase tracking-wide text-[#b42318]">
+                <p className="text-xs uppercase tracking-wide text-moss">
                   {flight.date ? formatDay(flight.date) : "Date TBD"}
                   {formatTime(flight.start)
                     ? ` · ${formatTime(flight.start)}`
@@ -67,7 +67,7 @@ export function FlightInfoList({ flights, dayNames }: FlightInfoListProps) {
             {flight.bookingUrl ? (
               <a
                 href={flight.bookingUrl}
-                className="mt-3 inline-block text-sm text-[#b42318] underline"
+                className="mt-3 inline-block text-sm text-hanko underline"
                 target="_blank"
                 rel="noreferrer"
               >

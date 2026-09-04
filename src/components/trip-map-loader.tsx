@@ -5,7 +5,7 @@ import nextDynamic from "next/dynamic";
 const TripMap = nextDynamic(() => import("@/components/trip-map"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-[22rem] items-center justify-center rounded-2xl border border-stone-200 bg-white text-sm text-stone-500 sm:h-[28rem] md:h-[36rem]">
+    <div className="flex h-[22rem] items-center justify-center notebook-card text-sm text-stone-500 sm:h-[28rem] md:h-[36rem]">
       Loading map…
     </div>
   ),

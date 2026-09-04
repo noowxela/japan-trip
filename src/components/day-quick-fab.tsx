@@ -23,26 +23,26 @@ export function DayQuickFab({
         <button
           type="button"
           onClick={() => setOpen(open === "menu" ? null : "menu")}
-          className="rounded-full bg-[#b42318] px-5 py-3 text-sm font-medium text-white shadow-lg"
+          className="notebook-btn bg-hanko px-5 py-3 text-sm font-medium text-white"
         >
           {open === "menu" ? "Close" : "Quick add"}
         </button>
       </div>
 
       {open === "menu" ? (
-        <div className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom,0px)+4.5rem)] z-20 rounded-2xl border border-stone-200 bg-white p-3 shadow-xl lg:hidden">
+        <div className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom,0px)+4.5rem)] z-20 notebook-card p-3 lg:hidden">
           <div className="grid gap-2">
             <button
               type="button"
               onClick={() => setOpen("place")}
-              className="rounded-xl bg-stone-100 px-4 py-3 text-left text-sm font-medium"
+              className="notebook-press rounded-xl bg-sage/50 px-4 py-3 text-left text-sm font-medium"
             >
               Add place
             </button>
             <button
               type="button"
               onClick={() => setOpen("agenda")}
-              className="rounded-xl bg-stone-100 px-4 py-3 text-left text-sm font-medium"
+              className="notebook-press rounded-xl bg-sage/50 px-4 py-3 text-left text-sm font-medium"
             >
               Add agenda item
             </button>
@@ -57,7 +57,7 @@ export function DayQuickFab({
       ) : null}
 
       {open === "place" ? (
-        <div className="fixed inset-0 z-30 overflow-y-auto bg-[#f6f1e8]/95 p-4 pb-[calc(env(safe-area-inset-bottom,0px)+5rem)] lg:hidden">
+        <div className="fixed inset-0 z-30 overflow-y-auto bg-paper/95 p-4 pb-[calc(env(safe-area-inset-bottom,0px)+5rem)] lg:hidden">
           <div className="mx-auto max-w-xl">
             <button
               type="button"
@@ -77,7 +77,7 @@ export function DayQuickFab({
       ) : null}
 
       {open === "agenda" ? (
-        <div className="fixed inset-0 z-30 overflow-y-auto bg-[#f6f1e8]/95 p-4 pb-[calc(env(safe-area-inset-bottom,0px)+5rem)] lg:hidden">
+        <div className="fixed inset-0 z-30 overflow-y-auto bg-paper/95 p-4 pb-[calc(env(safe-area-inset-bottom,0px)+5rem)] lg:hidden">
           <div className="mx-auto max-w-xl">
             <button
               type="button"

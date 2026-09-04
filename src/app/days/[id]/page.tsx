@@ -120,7 +120,7 @@ export default async function DayPage({
         </div>
 
         {lodging.length > 0 ? (
-          <p className="rounded-2xl bg-white px-4 py-2 text-sm text-stone-600">
+          <p className="notebook-card px-4 py-2 text-sm text-stone-600">
             Sleeping in {lodging.map((stay) => stay.name).join(", ")}
           </p>
         ) : null}
@@ -148,10 +148,10 @@ export default async function DayPage({
             </h2>
             <Link
               href={editing ? `/days/${id}` : `/days/${id}?mode=edit`}
-              className={`rounded-full px-4 py-1.5 text-sm font-medium ${
+              className={`notebook-btn px-4 py-1.5 text-sm font-medium ${
                 editing
-                  ? "bg-stone-200 text-stone-800"
-                  : "bg-[#b42318] text-white"
+                  ? "bg-sage text-stone-800"
+                  : "bg-hanko text-white"
               }`}
             >
               {editing ? "Done" : "Edit"}

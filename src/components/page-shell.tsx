@@ -10,6 +10,23 @@ export const cardGridClass = "grid gap-3 sm:grid-cols-2";
 
 export const formShellClass = "w-full max-w-xl";
 
+export const cardClass = "notebook-card p-4";
+
+export const linkCardClass =
+  "notebook-card notebook-press flex min-w-0 items-center justify-between gap-3 px-4 py-3";
+
+export const btnPrimaryClass =
+  "notebook-btn bg-hanko px-4 py-2 text-sm font-medium text-white disabled:opacity-60";
+
+export const btnGhostClass =
+  "notebook-btn px-4 py-2 text-sm font-medium text-stone-600";
+
+export const fieldClass =
+  "rounded-xl border border-sage bg-white px-3 py-2 text-sm outline-none focus:border-moss";
+
+export const eyebrowClass =
+  "text-xs uppercase tracking-[0.2em] text-moss";
+
 export function PageShell({
   children,
   className = "",

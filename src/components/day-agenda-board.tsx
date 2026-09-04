@@ -78,7 +78,7 @@ function PendingCard({
         <button
           type="button"
           onClick={onAddEnd}
-          className="rounded-full bg-[#b42318] px-3 py-1 text-[11px] font-medium text-white"
+          className="rounded-full bg-hanko px-3 py-1 text-[11px] font-medium text-white"
         >
           Add to agenda
         </button>
@@ -139,7 +139,7 @@ export function PendingPanel({
 
   const shellClass = mobileSheet
     ? "rounded-2xl border border-stone-200 bg-white p-4 lg:hidden"
-    : "hidden rounded-2xl border bg-white p-3 lg:sticky lg:top-20 lg:block";
+    : "hidden rounded-2xl border border-stone-200 bg-white p-3 lg:sticky lg:top-20 lg:block";
 
   return (
     <aside
@@ -231,7 +231,7 @@ export function CarryOverBanner({
                 <button
                   type="button"
                   onClick={() => addToAgenda(place.id)}
-                  className="rounded-full bg-[#b42318] px-3 py-1 text-xs font-medium text-white"
+                  className="rounded-full bg-hanko px-3 py-1 text-xs font-medium text-white"
                 >
                   Add today
                 </button>
@@ -313,7 +313,7 @@ export function DayAgendaBoard({
             onDrop={dropOnAgenda(null)}
             className={`rounded-2xl border border-dashed px-4 py-8 text-sm ${
               over === "agenda-empty"
-                ? "border-[#b42318] bg-[#b42318]/5 text-[#b42318]"
+                ? "border-hanko bg-hanko/5 text-hanko"
                 : "border-stone-200 text-stone-500"
             }`}
           >
@@ -347,7 +347,7 @@ export function DayAgendaBoard({
                     </p>
                   ) : null}
                   {over === dropId ? (
-                    <p className="mb-2 rounded-full bg-[#b42318] px-3 py-1 text-center text-[11px] font-medium text-white">
+                    <p className="mb-2 rounded-full bg-hanko px-3 py-1 text-center text-[11px] font-medium text-white">
                       Drop to add before this
                     </p>
                   ) : null}
@@ -357,7 +357,7 @@ export function DayAgendaBoard({
                         ? "bg-emerald-500"
                         : food
                           ? "bg-[#ea580c]"
-                          : "bg-[#b42318]"
+                          : "bg-hanko"
                     }`}
                   />
                   <div
@@ -370,10 +370,10 @@ export function DayAgendaBoard({
                       );
                       event.dataTransfer.effectAllowed = "move";
                     }}
-                    className={`rounded-2xl border bg-white p-4 ${
+                    className={`rounded-2xl border border-stone-200 bg-white p-4 ${
                       visited
                         ? "border-emerald-100 bg-emerald-50/40 opacity-70"
-                        : "border-stone-200"
+                        : ""
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -436,7 +436,7 @@ export function DayAgendaBoard({
               onDrop={dropOnAgenda(null)}
               className={`h-8 rounded-full border border-dashed ${
                 over === "agenda-end"
-                  ? "border-[#b42318] bg-[#b42318]/10"
+                  ? "border-hanko bg-hanko/10"
                   : "border-transparent"
               }`}
             />

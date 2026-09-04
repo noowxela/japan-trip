@@ -1,7 +1,7 @@
 import { AddSpendForm } from "@/components/add-spend-form";
 import { EmptyState } from "@/components/empty-state";
 import { Nav } from "@/components/nav";
-import { PageShell } from "@/components/page-shell";
+import { eyebrowClass, PageShell } from "@/components/page-shell";
 import { SpendItemCard } from "@/components/spend-item-card";
 import { formatDualRmYen, formatRm } from "@/lib/format";
 import { hasToken, isConfigured } from "@/lib/notion";
@@ -42,13 +42,13 @@ export default async function BudgetPage({
       <Nav current="/budget" />
       <PageShell>
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-[#b42318]">
+          <p className={eyebrowClass}>
             Trip money
           </p>
-          <h1 className="font-serif text-3xl tracking-tight">Budget</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Budget</h1>
         </div>
 
-        <div className="rounded-2xl border border-stone-200 bg-white p-4 md:max-w-xl">
+        <div className="notebook-card p-4 md:max-w-xl">
           <p className="text-xs uppercase tracking-wide text-stone-500">
             Remaining
           </p>

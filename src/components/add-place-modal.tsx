@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AddPlaceForm } from "@/components/add-place-form";
 import { Modal } from "@/components/modal";
+import { btnPrimaryClass } from "@/components/page-shell";
 import type { TripDay } from "@/lib/types";
 
 export function AddPlaceModal({
@@ -19,7 +20,7 @@ export function AddPlaceModal({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="shrink-0 rounded-full bg-[#b42318] px-4 py-2 text-sm font-medium text-white"
+        className={`shrink-0 ${btnPrimaryClass}`}
       >
         Add place
       </button>

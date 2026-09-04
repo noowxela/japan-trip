@@ -7,9 +7,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { CopyButton } from "@/components/copy-button";
 import { formatRange } from "@/lib/format";
 import type { Stay } from "@/lib/types";
-
-const field =
-  "rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]";
+import { btnGhostClass, btnPrimaryClass, fieldClass } from "@/components/page-shell";
 
 export function StayCard({ stay }: { stay: Stay }) {
   const [editing, setEditing] = useState(false);
@@ -21,47 +19,47 @@ export function StayCard({ stay }: { stay: Stay }) {
     return (
       <ActionForm
         action={updateStay}
-        className="grid gap-3 rounded-2xl border border-[#b42318]/30 bg-white p-4"
+        className="grid gap-3 notebook-card border-hanko/40 p-4"
       >
         <input type="hidden" name="id" value={stay.id} />
-        <input name="name" required defaultValue={stay.name} className={field} />
+        <input name="name" required defaultValue={stay.name} className={fieldClass} />
         <div className="grid grid-cols-2 gap-3">
           <input
             name="checkIn"
             type="date"
             defaultValue={stay.checkIn?.slice(0, 10) ?? ""}
-            className={field}
+            className={fieldClass}
           />
           <input
             name="checkOut"
             type="date"
             defaultValue={stay.checkOut?.slice(0, 10) ?? ""}
-            className={field}
+            className={fieldClass}
           />
         </div>
-        <input name="address" defaultValue={stay.address} className={field} />
+        <input name="address" defaultValue={stay.address} className={fieldClass} />
         <input
           name="bookingUrl"
           type="url"
           defaultValue={stay.bookingUrl ?? ""}
-          className={field}
+          className={fieldClass}
         />
         <input
           name="confirmation"
           defaultValue={stay.confirmation}
-          className={field}
+          className={fieldClass}
         />
         <div className="flex flex-wrap gap-2">
           <button
             type="submit"
-            className="rounded-full bg-[#b42318] px-4 py-2 text-sm font-medium text-white"
+            className={btnPrimaryClass}
           >
             Save
           </button>
           <button
             type="button"
             onClick={() => setEditing(false)}
-            className="rounded-full px-4 py-2 text-sm font-medium text-stone-600"
+            className={btnGhostClass}
           >
             Cancel
           </button>
@@ -72,7 +70,7 @@ export function StayCard({ stay }: { stay: Stay }) {
 
   return (
     <>
-      <div className="min-w-0 rounded-2xl border border-stone-200 bg-white p-4">
+      <div className="min-w-0 notebook-card p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs text-stone-500">
@@ -91,7 +89,7 @@ export function StayCard({ stay }: { stay: Stay }) {
             {stay.bookingUrl ? (
               <a
                 href={stay.bookingUrl}
-                className="mt-2 inline-block text-sm text-[#b42318] underline"
+                className="mt-2 inline-block text-sm text-hanko underline"
                 target="_blank"
                 rel="noreferrer"
               >

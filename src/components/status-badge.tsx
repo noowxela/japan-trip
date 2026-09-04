@@ -1,7 +1,7 @@
 const tones: Record<string, string> = {
   Planned: "bg-stone-100 text-stone-700",
   Confirmed: "bg-emerald-100 text-emerald-800",
-  Done: "bg-[#b42318]/10 text-[#b42318]",
+  Done: "bg-hanko/10 text-hanko",
 };
 
 export function StatusBadge({ status }: { status: string | null }) {

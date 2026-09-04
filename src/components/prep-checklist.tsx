@@ -88,7 +88,7 @@ export function PrepChecklist() {
 
   if (!ready) {
     return (
-      <div className="rounded-2xl border border-stone-200 bg-white p-4 text-sm text-stone-500">
+      <div className="notebook-card p-4 text-sm text-stone-500">
         Loading checklist…
       </div>
     );
@@ -96,7 +96,7 @@ export function PrepChecklist() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-stone-200 bg-white p-4">
+      <div className="notebook-card p-4">
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm font-medium text-stone-700">Progress</p>
           <p className="text-sm text-stone-500">
@@ -105,7 +105,7 @@ export function PrepChecklist() {
         </div>
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-stone-100">
           <div
-            className="h-full rounded-full bg-[#b42318] transition-all"
+            className="h-full rounded-full bg-hanko transition-all"
             style={{
               width:
                 items.length === 0
@@ -120,7 +120,7 @@ export function PrepChecklist() {
         {items.map((item) => (
           <li
             key={item.id}
-            className="flex min-w-0 items-center gap-3 rounded-2xl border border-stone-200 bg-white p-3"
+            className="flex min-w-0 items-center gap-3 notebook-card p-3"
           >
             <button
               type="button"
@@ -128,7 +128,7 @@ export function PrepChecklist() {
               aria-label={item.done ? "Mark incomplete" : "Mark complete"}
               className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
                 item.done
-                  ? "border-[#b42318] bg-[#b42318] text-white"
+                  ? "border-hanko bg-hanko text-white"
                   : "border-stone-300 bg-white"
               }`}
             >
@@ -168,7 +168,7 @@ export function PrepChecklist() {
 
       <form
         onSubmit={addItem}
-        className="flex min-w-0 gap-2 rounded-2xl border border-stone-200 bg-white p-3"
+        className="flex min-w-0 gap-2 notebook-card p-3"
       >
         <input
           value={draft}
@@ -178,7 +178,7 @@ export function PrepChecklist() {
         />
         <button
           type="submit"
-          className="shrink-0 rounded-full bg-[#b42318] px-3 py-1.5 text-xs font-medium text-white"
+          className="shrink-0 notebook-btn bg-hanko px-3 py-1.5 text-xs font-medium text-white"
         >
           Add
         </button>

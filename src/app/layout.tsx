@@ -1,16 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Newsreader } from "next/font/google";
+import { Nunito } from "next/font/google";
 import { BottomNav } from "@/components/bottom-nav";
 import { ToastProvider } from "@/components/toast-provider";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const newsreader = Newsreader({
-  variable: "--font-newsreader",
+const nunito = Nunito({
+  variable: "--font-nunito",
   subsets: ["latin"],
 });
 
@@ -29,16 +24,13 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#b42318",
+  themeColor: "#f6f1e8",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${newsreader.variable} h-full antialiased`}
-    >
-      <body className="min-h-full overflow-x-hidden bg-[#f6f1e8] font-sans text-stone-900">
+    <html lang="en" className={`${nunito.variable} h-full antialiased`}>
+      <body className="min-h-full overflow-x-hidden bg-paper font-sans text-stone-900">
         <ToastProvider>
           {children}
           <BottomNav />

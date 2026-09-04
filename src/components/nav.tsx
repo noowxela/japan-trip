@@ -29,11 +29,11 @@ function isActive(current: string, href: string) {
 
 export function Nav({ current }: { current: string }) {
   return (
-    <header className="sticky top-0 z-10 border-b border-stone-200/80 bg-[#f6f1e8]/90 pt-[env(safe-area-inset-top,0px)] backdrop-blur">
+    <header className="sticky top-0 z-10 border-b border-sage/80 bg-paper/90 pt-[env(safe-area-inset-top,0px)] backdrop-blur">
       <div className={`${navInnerClass}`}>
         <Link
           href="/"
-          className="shrink-0 font-serif text-lg tracking-tight text-stone-900"
+          className="shrink-0 text-lg font-semibold tracking-tight text-stone-900"
         >
           Japan Trip
         </Link>
@@ -44,10 +44,10 @@ export function Nav({ current }: { current: string }) {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`rounded-full px-2.5 py-1 sm:px-3 ${
+                className={`notebook-btn px-2.5 py-1 sm:px-3 ${
                   active
-                    ? "bg-[#b42318] text-white"
-                    : "text-stone-600 hover:bg-stone-200/70"
+                    ? "bg-moss text-white"
+                    : "text-stone-600 hover:bg-sage/70"
                 }`}
               >
                 {link.label}

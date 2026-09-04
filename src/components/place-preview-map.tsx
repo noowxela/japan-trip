@@ -26,7 +26,7 @@ export function PlacePreviewMap({ lat, lng }: { lat: number; lng: number }) {
   }, []);
 
   return (
-    <div className="relative h-72 w-full overflow-hidden rounded-xl border border-stone-200">
+    <div className="relative h-72 w-full overflow-hidden rounded-xl border border-sage">
       <MapContainer
         key={`${lat}-${lng}`}
         center={[lat, lng]}

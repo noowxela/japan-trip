@@ -6,15 +6,13 @@ import { ActionForm, useActionToast } from "@/components/action-form";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { SpendAmountField } from "@/components/spend-amount-field";
 import { formatSpend } from "@/lib/format";
+import { btnGhostClass, btnPrimaryClass, fieldClass } from "@/components/page-shell";
 import {
   SPEND_CATEGORIES,
   SPEND_KINDS,
   type SpendItem,
   type TripDay,
 } from "@/lib/types";
-
-const field =
-  "rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]";
 
 export function SpendItemCard({
   item,
@@ -34,13 +32,13 @@ export function SpendItemCard({
     return (
       <ActionForm
         action={updateSpend}
-        className="grid min-w-0 gap-3 rounded-2xl border border-[#b42318]/30 bg-white p-4"
+        className="grid min-w-0 gap-3 notebook-card border-hanko/40 p-4"
       >
         <input type="hidden" name="id" value={item.id} />
-        <input name="name" required defaultValue={item.name} className={field} />
+        <input name="name" required defaultValue={item.name} className={fieldClass} />
         <SpendAmountField defaultCurrency={item.currency} defaultAmount={item.amount} />
         <div className="grid grid-cols-2 gap-3">
-          <select name="kind" defaultValue={item.kind ?? "Actual"} className={field}>
+          <select name="kind" defaultValue={item.kind ?? "Actual"} className={fieldClass}>
             {SPEND_KINDS.map((kind) => (
               <option key={kind} value={kind}>
                 {kind}
@@ -50,7 +48,7 @@ export function SpendItemCard({
           <select
             name="category"
             defaultValue={item.category ?? "Other"}
-            className={field}
+            className={fieldClass}
           >
             {SPEND_CATEGORIES.map((category) => (
               <option key={category} value={category}>
@@ -59,7 +57,7 @@ export function SpendItemCard({
             ))}
           </select>
         </div>
-        <select name="dayId" defaultValue={item.dayIds[0] ?? ""} className={field}>
+        <select name="dayId" defaultValue={item.dayIds[0] ?? ""} className={fieldClass}>
           <option value="">No day</option>
           {days.map((day) => (
             <option key={day.id} value={day.id}>
@@ -67,18 +65,18 @@ export function SpendItemCard({
             </option>
           ))}
         </select>
-        <input name="notes" defaultValue={item.notes} className={field} />
+        <input name="notes" defaultValue={item.notes} className={fieldClass} />
         <div className="flex flex-wrap gap-2">
           <button
             type="submit"
-            className="rounded-full bg-[#b42318] px-4 py-2 text-sm font-medium text-white"
+            className={btnPrimaryClass}
           >
             Save
           </button>
           <button
             type="button"
             onClick={() => setEditing(false)}
-            className="rounded-full px-4 py-2 text-sm font-medium text-stone-600"
+            className={btnGhostClass}
           >
             Cancel
           </button>
@@ -89,7 +87,7 @@ export function SpendItemCard({
 
   return (
     <>
-      <div className="flex min-w-0 items-start justify-between gap-3 rounded-2xl border border-stone-200 bg-white p-4">
+      <div className="flex min-w-0 items-start justify-between gap-3 notebook-card p-4">
         <div>
           <p className="font-medium break-words">{item.name}</p>
           <p className="text-xs text-stone-500">
