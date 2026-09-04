@@ -161,19 +161,11 @@ export function AddPlaceForm({
             </option>
           ))}
         </select>
-        <div className="grid grid-cols-2 gap-3">
-          <input
-            name="start"
-            type="datetime-local"
-            className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]"
-          />
-          <input
-            name="order"
-            type="number"
-            placeholder="Order"
-            className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]"
-          />
-        </div>
+        <input
+          name="start"
+          type="datetime-local"
+          className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-[#b42318]"
+        />
         <label className="flex items-center gap-2 text-sm text-stone-700">
           <input type="checkbox" name="pending" value="true" className="rounded" />
           Save as maybe (pending)

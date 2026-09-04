@@ -6,7 +6,7 @@ import { actionErr, actionOk, type ActionResult } from "@/lib/action-result";
 import { geocodeJapan, lookupLandmark, searchPlacesJapan } from "@/lib/geocode";
 import { ds, getNotion, textProp, titleProp } from "@/lib/notion";
 import { parseSpendCurrency } from "@/lib/spend";
-import { getDay, getPlacesForDay } from "@/lib/trip";
+import { getDay } from "@/lib/trip";
 
 function revalidateTrip() {
   revalidatePath("/");
@@ -50,15 +50,6 @@ function orderValue(formData: FormData) {
 
 function pendingValue(formData: FormData) {
   return String(formData.get("pending") ?? "") === "true";
-}
-
-async function nextOrderForDay(dayId: string) {
-  const places = await getPlacesForDay(dayId);
-  const max = places.reduce(
-    (value, place) => Math.max(value, place.order ?? 0),
-    0,
-  );
-  return max + 1;
 }
 
 export async function addDay(formData: FormData): Promise<ActionResult> {
@@ -117,7 +108,6 @@ export async function addPlace(formData: FormData): Promise<ActionResult> {
   const notes = String(formData.get("notes") ?? "").trim();
   const dayId = String(formData.get("dayId") ?? "").trim();
   const start = startValue(formData);
-  const order = orderValue(formData);
   const pending = pendingValue(formData);
   const latRaw = String(formData.get("lat") ?? "").trim();
   const lngRaw = String(formData.get("lng") ?? "").trim();
@@ -138,7 +128,6 @@ export async function addPlace(formData: FormData): Promise<ActionResult> {
       ...(notes ? { Notes: textProp(notes) } : {}),
       ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
       ...(start && !pending ? { Start: startProp(start) } : {}),
-      ...(order !== null && !pending ? { Order: { number: order } } : {}),
       Pending: { checkbox: pending },
       ...(picked
         ? { Lat: { number: picked.lat }, Lng: { number: picked.lng } }
@@ -212,7 +201,6 @@ export async function updatePlace(formData: FormData): Promise<ActionResult> {
   const notes = String(formData.get("notes") ?? "").trim();
   const dayId = String(formData.get("dayId") ?? "").trim();
   const start = startValue(formData);
-  const order = orderValue(formData);
   if (!id || !name) return actionErr("Place name is required");
   const notion = getNotion();
   const known = lookupLandmark(name);
@@ -225,7 +213,6 @@ export async function updatePlace(formData: FormData): Promise<ActionResult> {
       Notes: textProp(notes),
       Day: { relation: dayId ? [{ id: dayId }] : [] },
       Start: startProp(start || null),
-      Order: { number: order },
       Pending: { checkbox: false },
       ...(known
         ? { Lat: { number: known.lat }, Lng: { number: known.lng } }
@@ -264,20 +251,14 @@ export async function confirmPendingPlace(formData: FormData): Promise<ActionRes
   const id = String(formData.get("id") ?? "").trim();
   const dayId = String(formData.get("dayId") ?? "").trim();
   const start = String(formData.get("start") ?? "").trim();
-  const slot = String(formData.get("slot") ?? "").trim();
   if (!id) return actionErr("Missing place");
   const notion = getNotion();
-  let order: number | null = null;
-  if (dayId && slot === "end") {
-    order = await nextOrderForDay(dayId);
-  }
   await notion.pages.update({
     page_id: id,
     properties: {
       Pending: { checkbox: false },
       ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
       ...(start ? { Start: startProp(start) } : {}),
-      ...(order !== null ? { Order: { number: order } } : {}),
     },
   });
   revalidateTrip();
@@ -295,7 +276,6 @@ export async function parkPlaceAsPending(formData: FormData): Promise<ActionResu
       Pending: { checkbox: true },
       ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
       Start: startProp(null),
-      Order: { number: null },
     },
   });
   revalidateTrip();

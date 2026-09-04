@@ -168,14 +168,16 @@ export function AddAgendaForm({
         </>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className={kind === "transit" ? "grid grid-cols-2 gap-3" : ""}>
         <input
           name="time"
           type="time"
           step="60"
           className={`${field} cursor-pointer`}
         />
-        <input name="order" type="number" placeholder="Order" className={field} />
+        {kind === "transit" ? (
+          <input name="order" type="number" placeholder="Order" className={field} />
+        ) : null}
       </div>
 
       <button

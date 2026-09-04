@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "setup:notion": "npm run setup:api --prefix notion",
-    "migrate:v2": "npm run migrate:v2 --prefix notion"
+    "migrate:v2": "npm run migrate:v2 --prefix notion",
+    "sync:place-maps": "node notion/scripts/sync-place-maps.mjs"
   },
   "dependencies": {
     "@notionhq/client": "^5.25.2",

@@ -14,13 +14,13 @@ type NominatimHit = {
 };
 
 function mapsUrl(lat: number, lng: number) {
-  return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=17/${lat}/${lng}`;
+  return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
 }
 
 const LANDMARKS: { match: RegExp; lat: number; lng: number }[] = [
-  { match: /土井活鰻|doi\s*katsu|doikatsuman/i, lat: 34.96955, lng: 135.76814 },
-  { match: /oagari|おあがり|肉の隠れ家|volcano-?\s*steak/i, lat: 35.00497, lng: 135.7768 },
-  { match: /fushimi\s*inari\s*taisha|伏見稲荷大社/i, lat: 34.96714, lng: 135.77268 },
+  { match: /土井活鰻|doi\s*katsu|doikatsuman/i, lat: 34.9679, lng: 135.7709 },
+  { match: /oagari|おあがり|肉の隠れ家|volcano-?\s*steak/i, lat: 35.0037, lng: 135.7751 },
+  { match: /fushimi\s*inari|伏見稲荷/i, lat: 34.96714, lng: 135.77268 },
   { match: /kiyomizu|清水寺/i, lat: 34.99486, lng: 135.78504 },
   { match: /ninen|sannen|二年坂|三年坂/i, lat: 34.99755, lng: 135.78072 },
   { match: /kodai-?ji|高台寺/i, lat: 35.00062, lng: 135.78141 },
@@ -34,6 +34,23 @@ const LANDMARKS: { match: RegExp; lat: number; lng: number }[] = [
     lat: 35.00288,
     lng: 135.76155,
   },
+  { match: /todaiji|東大寺|东大寺/i, lat: 34.689, lng: 135.8398 },
+  { match: /二月堂|nigatsu/i, lat: 34.6892, lng: 135.8436 },
+  { match: /若草|wakakusa/i, lat: 34.6913, lng: 135.8556 },
+  { match: /春日大社|kasugataisha|kasuga\s*taisha/i, lat: 34.6814, lng: 135.8485 },
+  { match: /奈良公園|nara park/i, lat: 34.6851, lng: 135.843 },
+  { match: /中谷堂|nakatanidou/i, lat: 34.6847, lng: 135.8275 },
+  { match: /東向|东向|higashimuki/i, lat: 34.6845, lng: 135.8286 },
+  { match: /kintetsu\s*nara|奈良站|奈良駅/i, lat: 34.6845, lng: 135.8278 },
+  { match: /namba|難波|南波/i, lat: 34.6628, lng: 135.5013 },
+  { match: /水谷茶屋|mizuya/i, lat: 34.6817, lng: 135.8479 },
+  { match: /平宗|hiraso/i, lat: 34.6779, lng: 135.8289 },
+  { match: /麺闘庵|mentouan/i, lat: 34.6774, lng: 135.8305 },
+  { match: /柿の専門|kaki no senmon/i, lat: 34.6776, lng: 135.8294 },
+  { match: /kakinoha|柿の葉/i, lat: 34.6772, lng: 135.829 },
+  { match: /tori\s*tamura|鶏田村/i, lat: 34.6849, lng: 135.8282 },
+  { match: /yakiniku.*moku|焼肉工房|shinomiya/i, lat: 34.6947, lng: 135.8042 },
+  { match: /edogawa|江戸川|shinsaibashi\s*parco/i, lat: 34.6751, lng: 135.5015 },
 ];
 
 export function lookupLandmark(name: string) {

@@ -15,7 +15,6 @@ export type Place = {
   visited: boolean;
   dayIds: string[];
   start: string | null;
-  order: number | null;
   lat: number | null;
   lng: number | null;
   pending: boolean;

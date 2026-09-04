@@ -136,8 +136,8 @@ export function AgendaEditTable({
     const startA = (a.kind === "place" ? a.place.start : a.transit.start) ?? "9999";
     const startB = (b.kind === "place" ? b.place.start : b.transit.start) ?? "9999";
     if (startA !== startB) return startA.localeCompare(startB);
-    const orderA = (a.kind === "place" ? a.place.order : a.transit.order) ?? 9999;
-    const orderB = (b.kind === "place" ? b.place.order : b.transit.order) ?? 9999;
+    const orderA = a.kind === "transit" ? (a.transit.order ?? 9999) : 9999;
+    const orderB = b.kind === "transit" ? (b.transit.order ?? 9999) : 9999;
     return orderA - orderB;
   });
 
@@ -211,14 +211,7 @@ function PlaceEditRow({
       <Field label="Time">
         <TimeField defaultValue={formatTime(place.start) ?? ""} />
       </Field>
-      <Field label="#">
-        <input
-          name="order"
-          type="number"
-          defaultValue={place.order ?? ""}
-          className={cell}
-        />
-      </Field>
+      <div className="hidden lg:block" />
       <Field label="Kind" className="col-span-2 lg:col-span-1">
         <select name="type" defaultValue={place.type ?? "Sight"} className={cell}>
           {PLACE_TYPES.map((type) => (
