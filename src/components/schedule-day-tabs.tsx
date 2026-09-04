@@ -1,15 +1,21 @@
 "use client";
 
-import Link from "next/link";
 import { formatTabDate, tokyoToday } from "@/lib/format";
 import type { TripDay } from "@/lib/types";
+
+const tabClass = (active: boolean) =>
+  `relative flex min-w-[4.5rem] shrink-0 flex-col items-center px-3 py-3 text-center transition-colors ${
+    active ? "text-hanko" : "text-stone-500 hover:text-stone-700"
+  }`;
 
 export function ScheduleDayTabs({
   days,
   selectedId,
+  onSelect,
 }: {
   days: TripDay[];
   selectedId: string;
+  onSelect: (id: string) => void;
 }) {
   const today = tokyoToday();
   const allActive = selectedId === "all";
@@ -17,12 +23,10 @@ export function ScheduleDayTabs({
   return (
     <div className="shrink-0 border-b border-stone-100 bg-white">
       <div className="mx-auto flex max-w-xl overflow-x-auto md:max-w-5xl">
-        <Link
-          href="/schedule?day=all"
-          scroll={false}
-          className={`relative flex min-w-[4.5rem] shrink-0 flex-col items-center px-3 py-3 text-center transition-colors ${
-            allActive ? "text-hanko" : "text-stone-500 hover:text-stone-700"
-          }`}
+        <button
+          type="button"
+          onClick={() => onSelect("all")}
+          className={tabClass(allActive)}
         >
           <span className="text-sm font-medium leading-tight">All</span>
           <span className="mt-0.5 text-xs leading-tight">Days</span>
@@ -32,18 +36,16 @@ export function ScheduleDayTabs({
               className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-hanko"
             />
           ) : null}
-        </Link>
+        </button>
         {days.map((day, index) => {
           const active = day.id === selectedId;
           const isToday = day.date?.slice(0, 10) === today;
           return (
-            <Link
+            <button
               key={day.id}
-              href={`/schedule?day=${day.id}`}
-              scroll={false}
-              className={`relative flex min-w-[4.5rem] shrink-0 flex-col items-center px-3 py-3 text-center transition-colors ${
-                active ? "text-hanko" : "text-stone-500 hover:text-stone-700"
-              }`}
+              type="button"
+              onClick={() => onSelect(day.id)}
+              className={tabClass(active)}
             >
               <span className="text-sm font-medium leading-tight">
                 {formatTabDate(day.date)}
@@ -58,7 +60,7 @@ export function ScheduleDayTabs({
                   className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-hanko"
                 />
               ) : null}
-            </Link>
+            </button>
           );
         })}
       </div>

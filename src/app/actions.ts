@@ -17,6 +17,8 @@ function revalidateTrip() {
   revalidatePath("/map");
   revalidatePath("/spend");
   revalidatePath("/lists");
+  revalidatePath("/schedule");
+  revalidatePath("/budget");
   revalidatePath("/days", "layout");
 }
 

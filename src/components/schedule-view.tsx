@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { DayAgendaBoard } from "@/components/day-agenda-board";
 import { DayMapLoader } from "@/components/day-map-loader";
-import type { DayMapPin } from "@/components/day-map";
 import { ScheduleDayTabs } from "@/components/schedule-day-tabs";
 import { StatusBadge } from "@/components/status-badge";
 import { formatDay, formatTripSpan } from "@/lib/format";
-import type { AgendaItem, Place, TripDay } from "@/lib/types";
+import type { DayScheduleSlice, SchedulePin } from "@/lib/schedule-pins";
+import type { Place, TripDay } from "@/lib/types";
 
 const SNAPS = [0.4, 0.68, 0.92] as const;
 const DEFAULT_SNAP = 1;
@@ -29,21 +29,46 @@ function nearestSnap(fraction: number) {
 
 export function ScheduleView({
   days,
-  selectedDay,
-  agenda,
-  pending,
-  mapPins,
-  places = [],
+  places,
+  byDay,
+  allPins,
+  initialDayId,
 }: {
   days: TripDay[];
-  selectedDay: TripDay | null;
-  agenda: AgendaItem[];
-  pending: Place[];
-  mapPins: DayMapPin[];
-  places?: Place[];
+  places: Place[];
+  byDay: Record<string, DayScheduleSlice>;
+  allPins: SchedulePin[];
+  initialDayId: string;
 }) {
+  const [selectedId, setSelectedId] = useState(initialDayId);
+  const selectedDay =
+    selectedId === "all"
+      ? null
+      : days.find((day) => day.id === selectedId) ?? days[0] ?? null;
+  const slice = selectedDay ? byDay[selectedDay.id] : null;
+  const agenda = slice?.agenda ?? [];
+  const pending = slice?.pending ?? [];
+  const mapPins = selectedDay ? (slice?.mapPins ?? []) : allPins;
   const mapCity =
     selectedDay?.city ?? days.find((day) => day.city)?.city ?? null;
+
+  const selectDay = useCallback((id: string) => {
+    setSelectedId(id);
+    const url = `/schedule?day=${encodeURIComponent(id)}`;
+    window.history.replaceState(window.history.state, "", url);
+  }, []);
+
+  useEffect(() => {
+    function onPopState() {
+      const day = new URLSearchParams(window.location.search).get("day");
+      if (!day) return;
+      if (day === "all" || days.some((item) => item.id === day)) {
+        setSelectedId(day);
+      }
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [days]);
   const rootRef = useRef<HTMLDivElement>(null);
   const skipClickRef = useRef(false);
   const dragRef = useRef<{
@@ -202,6 +227,7 @@ export function ScheduleView({
           <ScheduleDayTabs
             days={days}
             selectedId={selectedDay?.id ?? "all"}
+            onSelect={selectDay}
           />
 
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -238,7 +264,7 @@ export function ScheduleView({
                 </div>
               </>
             ) : (
-              <AllDaysPanel days={days} places={places} />
+              <AllDaysPanel days={days} places={places} onSelectDay={selectDay} />
             )}
           </div>
         </section>
@@ -249,9 +275,11 @@ export function ScheduleView({
 function AllDaysPanel({
   days,
   places,
+  onSelectDay,
 }: {
   days: TripDay[];
   places: Place[];
+  onSelectDay: (id: string) => void;
 }) {
   const dated = days.filter((day) => day.date);
   const span = formatTripSpan(
@@ -276,10 +304,10 @@ function AllDaysPanel({
             );
             return (
               <li key={day.id}>
-                <Link
-                  href={`/schedule?day=${day.id}`}
-                  scroll={false}
-                  className="flex items-baseline justify-between gap-3"
+                <button
+                  type="button"
+                  onClick={() => onSelectDay(day.id)}
+                  className="flex w-full items-baseline justify-between gap-3 text-left"
                 >
                   <span className="min-w-0 font-semibold">
                     <span className="text-hanko">D{index + 1}</span>{" "}
@@ -288,7 +316,7 @@ function AllDaysPanel({
                   <span className="shrink-0 text-xs text-stone-500">
                     {formatDay(day.date)}
                   </span>
-                </Link>
+                </button>
                 {items.length === 0 ? (
                   <p className="mt-1 text-sm text-stone-400">No places yet</p>
                 ) : (

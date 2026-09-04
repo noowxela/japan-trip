@@ -1,18 +1,13 @@
 import Link from "next/link";
 import { EmptyState } from "@/components/empty-state";
 import { ScheduleView } from "@/components/schedule-view";
-import { coordsOfPlace } from "@/lib/geocode";
 import { tokyoToday } from "@/lib/format";
 import { hasToken, isConfigured } from "@/lib/notion";
 import {
-  buildAgenda,
-  getDays,
-  getPlaces,
-  getPlacesForDay,
-  getTransitForDay,
-  pickFocusDay,
-} from "@/lib/trip";
-import type { Place, TripDay } from "@/lib/types";
+  buildScheduleSlices,
+  pinsForAllDays,
+} from "@/lib/schedule-pins";
+import { getDays, getPlaces, getTransit, pickFocusDay } from "@/lib/trip";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +35,11 @@ export default async function SchedulePage({
   }
 
   const { day: dayParam } = await searchParams;
-  const days = await getDays();
+  const [days, places, transit] = await Promise.all([
+    getDays(),
+    getPlaces(),
+    getTransit(),
+  ]);
 
   if (days.length === 0) {
     return (
@@ -59,118 +58,21 @@ export default async function SchedulePage({
   }
 
   const today = tokyoToday();
-
-  if (dayParam === "all") {
-    const places = await getPlaces();
-    return (
-      <>
-        <ScheduleView
-          days={days}
-          selectedDay={null}
-          agenda={[]}
-          pending={[]}
-          mapPins={pinsForAllDays(days, places)}
-          places={places}
-        />
-      </>
-    );
-  }
-
-  const selectedDay =
-    days.find((day) => day.id === dayParam) ??
-    pickFocusDay(days, today) ??
-    days[0];
-  if (!selectedDay) return null;
-
-  const [places, transit] = await Promise.all([
-    getPlacesForDay(selectedDay.id),
-    getTransitForDay(selectedDay.id),
-  ]);
-  const agenda = buildAgenda(places, transit);
-  const pending = places.filter((place) => place.pending);
-  const mapPins = [
-    ...agenda.flatMap((item) => {
-      if (item.kind !== "place" || item.lat == null || item.lng == null) {
-        return [];
-      }
-      return [
-        {
-          id: item.id,
-          name: item.name,
-          lat: item.lat,
-          lng: item.lng,
-          kind:
-            item.chip === "Food" || item.chip === "Cafe"
-              ? ("food" as const)
-              : item.chip === "Sight"
-                ? ("sight" as const)
-                : ("other" as const),
-        },
-      ];
-    }),
-    ...pending.flatMap((place) => {
-      const coords = coordsOfPlace(place);
-      if (!coords) return [];
-      return [
-        {
-          id: place.id,
-          name: place.name,
-          lat: coords.lat,
-          lng: coords.lng,
-          kind:
-            place.type === "Food" || place.type === "Cafe"
-              ? ("food" as const)
-              : place.type === "Sight"
-                ? ("sight" as const)
-                : ("other" as const),
-        },
-      ];
-    }),
-  ];
+  const focusDay = pickFocusDay(days, today) ?? days[0];
+  const initialDayId =
+    dayParam === "all" || days.some((day) => day.id === dayParam)
+      ? (dayParam as string)
+      : focusDay.id;
 
   return (
     <>
       <ScheduleView
         days={days}
-        selectedDay={selectedDay}
-        agenda={agenda}
-        pending={pending}
-        mapPins={mapPins}
+        places={places}
+        byDay={buildScheduleSlices(days, places, transit)}
+        allPins={pinsForAllDays(days, places)}
+        initialDayId={initialDayId}
       />
     </>
   );
-}
-
-function pinKind(type: string | null) {
-  if (type === "Food" || type === "Cafe") return "food" as const;
-  if (type === "Sight") return "sight" as const;
-  return "other" as const;
-}
-
-function earliestDayIndex(place: Place, days: TripDay[]) {
-  let best = Infinity;
-  for (const dayId of place.dayIds) {
-    const index = days.findIndex((day) => day.id === dayId);
-    if (index >= 0 && index < best) best = index;
-  }
-  return Number.isFinite(best) ? best : null;
-}
-
-function pinsForAllDays(days: TripDay[], places: Place[]) {
-  return places.flatMap((place) => {
-    const dayIndex = earliestDayIndex(place, days);
-    if (dayIndex == null) return [];
-    const coords = coordsOfPlace(place);
-    if (!coords) return [];
-    return [
-      {
-        id: place.id,
-        name: place.name,
-        lat: coords.lat,
-        lng: coords.lng,
-        kind: pinKind(place.type),
-        label: `D${dayIndex + 1}`,
-      },
-    ];
-  });
 }
