@@ -65,35 +65,47 @@ input[type="date"]::-webkit-datetime-edit {
 @keyframes flight-bob {
   0%,
   100% {
-    transform: translateY(0) rotate(-8deg);
+    transform: translateY(0) rotate(4deg);
   }
   50% {
-    transform: translateY(-10px) rotate(-4deg);
+    transform: translateY(-16px) rotate(-7deg);
   }
 }
 
-@keyframes flight-dash {
+@keyframes flight-shadow {
   0%,
   100% {
-    opacity: 0.35;
-    transform: scaleX(0.85);
-  }
-  50% {
-    opacity: 1;
+    opacity: 0.4;
     transform: scaleX(1);
   }
+  50% {
+    opacity: 0.14;
+    transform: scaleX(0.55);
+  }
+}
+
+.flight-loading-scene {
+  display: flex;
+  height: 4.25rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.2rem;
 }
 
 .flight-loading-plane {
-  animation: flight-bob 2.4s ease-in-out infinite;
+  animation: flight-bob 1.5s ease-in-out infinite;
+  transform-origin: 50% 80%;
+  will-change: transform;
 }
 
-.flight-loading-dash {
-  width: 2rem;
-  height: 2px;
+.flight-loading-shadow {
+  width: 2.75rem;
+  height: 0.35rem;
   border-radius: 9999px;
-  background: #d6d3d1;
-  animation: flight-dash 2.4s ease-in-out infinite;
+  background: #c4bfb8;
+  animation: flight-shadow 1.5s ease-in-out infinite;
+  will-change: transform, opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {

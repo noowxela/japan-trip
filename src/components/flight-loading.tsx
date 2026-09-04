@@ -9,15 +9,17 @@ export function FlightLoading({
 }: FlightLoadingProps) {
   return (
     <div
-      className={`flex min-h-[50vh] flex-col items-center justify-center gap-4 ${className}`.trim()}
+      className={`flex min-h-[50vh] flex-col items-center justify-center gap-5 ${className}`.trim()}
       role="status"
       aria-live="polite"
       aria-label={message}
     >
-      <div className="flight-loading-plane">
-        <FlightIcon />
+      <div className="flight-loading-scene">
+        <div className="flight-loading-plane">
+          <FlightIcon />
+        </div>
+        <div className="flight-loading-shadow" aria-hidden="true" />
       </div>
-      <div className="flight-loading-dash" aria-hidden="true" />
       <p className="rounded-full bg-white px-5 py-2 text-sm text-stone-600 shadow-sm">
         {message}
       </p>
@@ -27,23 +29,24 @@ export function FlightLoading({
 
 function FlightIcon() {
   return (
-    <svg
-      viewBox="0 0 64 64"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className="h-16 w-16"
-      aria-hidden="true"
-    >
-      <path
-        d="M32 6C32 6 34 18 34 24L36 28H48L40 32L42 44L32 38L22 44L24 32L16 28H28L30 24C30 18 32 6 32 6Z"
-        fill="#14b8a6"
-      />
-      <path
-        d="M32 10C32 10 33.5 20 33.5 24L35 27H44L38 30L39.5 40L32 35.5L24.5 40L26 30L20 27H29L30.5 24C30.5 20 32 10 32 10Z"
-        fill="#0f766e"
-        opacity="0.25"
-      />
-      <ellipse cx="32" cy="30" rx="2.5" ry="5" fill="#0d9488" />
+    <svg xmlns="http://www.w3.org/2000/svg"
+      width="24" height="24" viewBox="0 0 24 24"
+      fill="none">
+      <g transform="translate(-5.640449 -2.617978) scale(0.224719)">
+        <path d="M61 25
+          L60 29 L67 55 L51 56
+          L42 46 L34 46 L38 62 L34 84
+          L43 84 L51 74 L65 74 L67 78
+          L60 104 L72 105 L78 97 L90 75
+          L117 73 Q123 69 123 63 Q121 59 112 56
+          L91 56 L88 53 L74 27 Q72 25 61 25 Z"
+          fill="#3DA99E"
+          stroke="#3DA99E"
+          stroke-width="1.5"
+          stroke-linejoin="round"
+          stroke-linecap="round"/>
+      </g>
     </svg>
+
   );
 }
