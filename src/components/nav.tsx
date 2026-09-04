@@ -18,6 +18,9 @@ function isActive(current: string, href: string) {
       current.startsWith("/days/")
     );
   }
+  if (href === "/settings") {
+    return current === "/settings" || current === "/days";
+  }
   if (href === "/budget") {
     return current === "/budget" || current === "/spend";
   }

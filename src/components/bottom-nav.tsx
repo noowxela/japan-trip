@@ -34,7 +34,7 @@ const tabs = [
   {
     href: "/settings",
     label: "Settings",
-    match: (path: string) => path === "/settings",
+    match: (path: string) => path === "/settings" || path === "/days",
     icon: SettingsIcon,
   },
 ] as const;

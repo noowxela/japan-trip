@@ -98,7 +98,7 @@ export async function deleteDay(formData: FormData): Promise<ActionResult> {
     in_trash: true,
   });
   revalidateTrip();
-  redirect("/");
+  redirect("/days");
 }
 
 export async function addPlace(formData: FormData): Promise<ActionResult> {
