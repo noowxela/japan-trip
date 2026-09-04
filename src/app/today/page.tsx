@@ -5,6 +5,7 @@ import {
 } from "@/components/day-agenda-board";
 import { DayMapLoader } from "@/components/day-map-loader";
 import { DayQuickFab } from "@/components/day-quick-fab";
+import { EditOnly } from "@/components/edit-session";
 import { EmptyState } from "@/components/empty-state";
 import { MapsPinLink } from "@/components/maps-pin-link";
 import { PageShell } from "@/components/page-shell";
@@ -175,7 +176,9 @@ export default async function TodayPage() {
           />
         </section>
       </PageShell>
-      <DayQuickFab dayId={focus.id} dayDate={focus.date} days={days} />
+      <EditOnly>
+        <DayQuickFab dayId={focus.id} dayDate={focus.date} days={days} />
+      </EditOnly>
     </>
   );
 }

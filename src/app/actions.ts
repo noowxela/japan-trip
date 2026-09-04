@@ -3,6 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { actionErr, actionOk, type ActionResult } from "@/lib/action-result";
+import {
+  clearEditorCookie,
+  requireEditor,
+  setEditorCookie,
+  verifyEditorPin,
+} from "@/lib/edit-session";
 import { geocodeJapan, lookupLandmark, searchPlacesJapan } from "@/lib/geocode";
 import { ds, getNotion, textProp, titleProp } from "@/lib/notion";
 import { parseSpendCurrency } from "@/lib/spend";
@@ -54,7 +60,26 @@ function pendingValue(formData: FormData) {
   return String(formData.get("pending") ?? "") === "true";
 }
 
+export async function unlockEditor(formData: FormData): Promise<ActionResult> {
+  const name = String(formData.get("name") ?? "").trim();
+  const pin = String(formData.get("pin") ?? "").trim();
+  if (!name || !pin) return actionErr("Name and PIN are required");
+  const result = await verifyEditorPin(name, pin);
+  if (!result.ok) return actionErr(result.error);
+  await setEditorCookie(result.name);
+  revalidatePath("/", "layout");
+  return actionOk(`Editing as ${result.name}`);
+}
+
+export async function lockEditor(_formData: FormData): Promise<ActionResult> {
+  await clearEditorCookie();
+  revalidatePath("/", "layout");
+  return actionOk("Editing locked");
+}
+
 export async function addDay(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
   const name = String(formData.get("name") ?? "").trim();
   const date = String(formData.get("date") ?? "").trim();
   const city = String(formData.get("city") ?? "").trim();
@@ -73,6 +98,8 @@ export async function addDay(formData: FormData): Promise<ActionResult> {
 }
 
 export async function updateDay(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
   const id = String(formData.get("id") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const date = String(formData.get("date") ?? "").trim();
@@ -92,6 +119,8 @@ export async function updateDay(formData: FormData): Promise<ActionResult> {
 }
 
 export async function deleteDay(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
   const id = String(formData.get("id") ?? "").trim();
   if (!id) return actionErr("Missing day");
   const notion = getNotion();
@@ -104,6 +133,8 @@ export async function deleteDay(formData: FormData): Promise<ActionResult> {
 }
 
 export async function addPlace(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
   const name = String(formData.get("name") ?? "").trim();
   const type = String(formData.get("type") ?? "").trim();
   const mapsUrl = String(formData.get("mapsUrl") ?? "").trim();
@@ -157,10 +188,14 @@ export async function addPlace(formData: FormData): Promise<ActionResult> {
 }
 
 export async function searchPlaces(query: string, city?: string) {
+  const locked = await requireEditor();
+  if (locked) return [];
   return searchPlacesJapan(query, city);
 }
 
 export async function toggleVisited(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
   const id = String(formData.get("id") ?? "");
   const visited = String(formData.get("visited") ?? "") === "true";
   if (!id) return actionErr("Missing place");
@@ -174,6 +209,8 @@ export async function toggleVisited(formData: FormData): Promise<ActionResult> {
 }
 
 export async function updatePlaceNotes(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
   const id = String(formData.get("id") ?? "");
   const notes = String(formData.get("notes") ?? "");
   if (!id) return actionErr("Missing place");
@@ -196,6 +233,8 @@ async function trashPage(id: string) {
 }
 
 export async function updatePlace(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
   const id = String(formData.get("id") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const type = String(formData.get("type") ?? "").trim();
@@ -243,6 +282,8 @@ export async function updatePlace(formData: FormData): Promise<ActionResult> {
 }
 
 export async function deletePlace(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
   const id = String(formData.get("id") ?? "").trim();
   if (!id) return actionErr("Missing place");
   await trashPage(id);
@@ -250,6 +291,8 @@ export async function deletePlace(formData: FormData): Promise<ActionResult> {
 }
 
 export async function confirmPendingPlace(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
   const id = String(formData.get("id") ?? "").trim();
   const dayId = String(formData.get("dayId") ?? "").trim();
   const start = String(formData.get("start") ?? "").trim();
@@ -268,6 +311,8 @@ export async function confirmPendingPlace(formData: FormData): Promise<ActionRes
 }
 
 export async function parkPlaceAsPending(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
   const id = String(formData.get("id") ?? "").trim();
   const dayId = String(formData.get("dayId") ?? "").trim();
   if (!id) return actionErr("Missing place");
@@ -285,6 +330,8 @@ export async function parkPlaceAsPending(formData: FormData): Promise<ActionResu
 }
 
 export async function updateTransit(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
   const id = String(formData.get("id") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const mode = String(formData.get("mode") ?? "").trim();
@@ -317,6 +364,8 @@ export async function updateTransit(formData: FormData): Promise<ActionResult> {
 }
 
 export async function deleteTransit(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
   const id = String(formData.get("id") ?? "").trim();
   if (!id) return actionErr("Missing transit");
   await trashPage(id);
@@ -324,6 +373,8 @@ export async function deleteTransit(formData: FormData): Promise<ActionResult> {
 }
 
 export async function addStay(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
   const name = String(formData.get("name") ?? "").trim();
   const checkIn = String(formData.get("checkIn") ?? "").trim();
   const checkOut = String(formData.get("checkOut") ?? "").trim();
@@ -348,6 +399,8 @@ export async function addStay(formData: FormData): Promise<ActionResult> {
 }
 
 export async function updateStay(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
   const id = String(formData.get("id") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const checkIn = String(formData.get("checkIn") ?? "").trim();
@@ -373,6 +426,8 @@ export async function updateStay(formData: FormData): Promise<ActionResult> {
 }
 
 export async function deleteStay(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
   const id = String(formData.get("id") ?? "").trim();
   if (!id) return actionErr("Missing stay");
   await trashPage(id);
@@ -380,6 +435,8 @@ export async function deleteStay(formData: FormData): Promise<ActionResult> {
 }
 
 export async function addTransit(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
   const name = String(formData.get("name") ?? "").trim();
   const mode = String(formData.get("mode") ?? "").trim();
   const from = String(formData.get("from") ?? "").trim();
@@ -410,6 +467,8 @@ export async function addTransit(formData: FormData): Promise<ActionResult> {
 }
 
 export async function addSpend(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
   const name = String(formData.get("name") ?? "").trim();
   const amountRaw = String(formData.get("amount") ?? "").trim();
   const kind = String(formData.get("kind") ?? "").trim();
@@ -438,6 +497,8 @@ export async function addSpend(formData: FormData): Promise<ActionResult> {
 }
 
 export async function updateSpend(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
   const id = String(formData.get("id") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const amountRaw = String(formData.get("amount") ?? "").trim();
@@ -467,6 +528,8 @@ export async function updateSpend(formData: FormData): Promise<ActionResult> {
 }
 
 export async function deleteSpend(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
   const id = String(formData.get("id") ?? "").trim();
   if (!id) return actionErr("Missing spend item");
   await trashPage(id);
@@ -474,6 +537,8 @@ export async function deleteSpend(formData: FormData): Promise<ActionResult> {
 }
 
 export async function movePendingToDay(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
   const id = String(formData.get("id") ?? "").trim();
   const dayId = String(formData.get("dayId") ?? "").trim();
   if (!id || !dayId) return actionErr("Missing place or day");

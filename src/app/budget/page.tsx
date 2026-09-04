@@ -1,5 +1,6 @@
 import { AddExpenseFab } from "@/components/add-spend-form";
 import { EmptyState } from "@/components/empty-state";
+import { EditOnly } from "@/components/edit-session";
 import { ExpensesHero } from "@/components/expenses-hero";
 import { PageShell } from "@/components/page-shell";
 import { SpendItemCard } from "@/components/spend-item-card";
@@ -62,10 +63,12 @@ export default async function BudgetPage({
           </ul>
         ) : (
           <EmptyState title="No expenses yet">
-            Tap + to log what you spent.
+            Expenses appear here once someone logs a spend.
           </EmptyState>
         )}
-        <AddExpenseFab days={days} defaultDayId={defaultDayId} />
+        <EditOnly>
+          <AddExpenseFab days={days} defaultDayId={defaultDayId} />
+        </EditOnly>
       </PageShell>
     </>
   );

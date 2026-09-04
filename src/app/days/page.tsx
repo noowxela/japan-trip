@@ -2,6 +2,7 @@ import { AddDayForm } from "@/components/add-day-form";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { DayCard } from "@/components/day-card";
 import { EmptyState } from "@/components/empty-state";
+import { EditOnly } from "@/components/edit-session";
 import { eyebrowClass, PageShell } from "@/components/page-shell";
 import { hasToken, isConfigured } from "@/lib/notion";
 import { getDays } from "@/lib/trip";
@@ -52,7 +53,9 @@ export default async function DaysPage() {
             ))}
           </ul>
         )}
-        <AddDayForm />
+        <EditOnly>
+          <AddDayForm />
+        </EditOnly>
       </PageShell>
     </>
   );

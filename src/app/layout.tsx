@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Nunito } from "next/font/google";
 import { BottomNav } from "@/components/bottom-nav";
+import { EditSessionProvider } from "@/components/edit-session";
 import { ToastProvider } from "@/components/toast-provider";
+import { getEditorSession } from "@/lib/edit-session";
 import "./globals.css";
 
 const nunito = Nunito({
@@ -27,14 +29,21 @@ export const viewport: Viewport = {
   themeColor: "#f6f1e8",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const editor = await getEditorSession();
+
   return (
     <html lang="en" className={`${nunito.variable} h-full antialiased`}>
       <body className="min-h-full overflow-x-hidden bg-paper font-sans text-stone-900">
-        <ToastProvider>
-          {children}
-          <BottomNav />
-        </ToastProvider>
+        <EditSessionProvider
+          canEdit={editor.canEdit}
+          editorName={editor.editorName}
+        >
+          <ToastProvider>
+            {children}
+            <BottomNav />
+          </ToastProvider>
+        </EditSessionProvider>
       </body>
     </html>
   );

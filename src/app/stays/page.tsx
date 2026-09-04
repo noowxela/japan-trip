@@ -1,5 +1,6 @@
 import { AddStayForm } from "@/components/add-stay-form";
 import { EmptyState } from "@/components/empty-state";
+import { EditOnly } from "@/components/edit-session";
 import { ListsSubNav } from "@/components/lists-sub-nav";
 import { PageShell } from "@/components/page-shell";
 import { StayCard } from "@/components/stay-card";
@@ -33,7 +34,9 @@ export default async function StaysPage() {
             ))}
           </ul>
         )}
-        <AddStayForm />
+        <EditOnly>
+          <AddStayForm />
+        </EditOnly>
       </PageShell>
     </>
   );

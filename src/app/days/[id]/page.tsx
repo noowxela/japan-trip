@@ -11,7 +11,9 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { DayCard } from "@/components/day-card";
 import { DayMapLoader } from "@/components/day-map-loader";
 import { DayQuickFab } from "@/components/day-quick-fab";
+import { EditOnly } from "@/components/edit-session";
 import { PageShell } from "@/components/page-shell";
+import { getEditorSession } from "@/lib/edit-session";
 import { formatRm, tokyoToday } from "@/lib/format";
 import { coordsOfPlace } from "@/lib/geocode";
 import { byDay, moneySummary } from "@/lib/spend";
@@ -40,7 +42,8 @@ export default async function DayPage({
 }) {
   const { id } = await params;
   const { mode } = await searchParams;
-  const editing = mode === "edit";
+  const editor = await getEditorSession();
+  const editing = mode === "edit" && editor.canEdit;
   const day = await getDay(id);
   if (!day) notFound();
 
@@ -144,16 +147,18 @@ export default async function DayPage({
             <h2 className="text-sm font-medium uppercase tracking-wide text-stone-500">
               {editing ? "Edit agenda" : "Agenda"}
             </h2>
-            <Link
-              href={editing ? `/days/${id}` : `/days/${id}?mode=edit`}
-              className={`notebook-btn px-4 py-1.5 text-sm font-medium ${
-                editing
-                  ? "bg-sage text-stone-800"
-                  : "bg-hanko text-white"
-              }`}
-            >
-              {editing ? "Done" : "Edit"}
-            </Link>
+            <EditOnly>
+              <Link
+                href={editing ? `/days/${id}` : `/days/${id}?mode=edit`}
+                className={`notebook-btn px-4 py-1.5 text-sm font-medium ${
+                  editing
+                    ? "bg-sage text-stone-800"
+                    : "bg-hanko text-white"
+                }`}
+              >
+                {editing ? "Done" : "Edit"}
+              </Link>
+            </EditOnly>
           </div>
 
           {editing ? (
@@ -188,7 +193,9 @@ export default async function DayPage({
         </section>
       </PageShell>
       {!editing ? (
-        <DayQuickFab dayId={day.id} dayDate={day.date} days={days} />
+        <EditOnly>
+          <DayQuickFab dayId={day.id} dayDate={day.date} days={days} />
+        </EditOnly>
       ) : null}
     </>
   );

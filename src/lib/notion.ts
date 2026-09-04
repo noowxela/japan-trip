@@ -30,12 +30,18 @@ export function getNotion() {
   });
 }
 
-export function ds(name: "DAYS" | "PLACES" | "STAYS" | "TRANSIT" | "SPEND") {
+export function ds(
+  name: "DAYS" | "PLACES" | "STAYS" | "TRANSIT" | "SPEND" | "EDITORS",
+) {
   const id = process.env[`NOTION_${name}_DS`];
   if (!id) {
     throw new Error(`NOTION_${name}_DS is missing`);
   }
   return id;
+}
+
+export function hasEditorsDs() {
+  return Boolean(process.env.NOTION_EDITORS_DS);
 }
 
 export async function queryAll(

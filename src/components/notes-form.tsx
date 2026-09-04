@@ -3,10 +3,19 @@
 import { useTransition } from "react";
 import { updatePlaceNotes } from "@/app/actions";
 import { useActionToast } from "@/components/action-form";
+import { useCanEdit } from "@/components/edit-session";
 
 export function NotesForm({ id, notes }: { id: string; notes: string }) {
   const [pending, startTransition] = useTransition();
   const notify = useActionToast();
+  const canEdit = useCanEdit();
+
+  if (!canEdit) {
+    if (!notes.trim()) return null;
+    return (
+      <p className="mt-3 whitespace-pre-wrap text-sm text-stone-600">{notes}</p>
+    );
+  }
 
   return (
     <form

@@ -7,6 +7,7 @@ import {
   parkPlaceAsPending,
 } from "@/app/actions";
 import { useActionToast } from "@/components/action-form";
+import { useCanEdit } from "@/components/edit-session";
 import { MapsPinLink } from "@/components/maps-pin-link";
 import { VisitedToggle } from "@/components/visited-toggle";
 import { formatTime, gapBetweenStarts, startBefore } from "@/lib/format";
@@ -33,6 +34,7 @@ function PendingCard({
   onAddEnd,
   onMoveHere,
   showMoveHere,
+  canEdit,
 }: {
   place: Place;
   dayId: string;
@@ -40,6 +42,7 @@ function PendingCard({
   onAddEnd: () => void;
   onMoveHere?: () => void;
   showMoveHere?: boolean;
+  canEdit: boolean;
 }) {
   const [busy, startTransition] = useTransition();
   const notify = useActionToast();
@@ -58,8 +61,9 @@ function PendingCard({
 
   return (
     <li
-      draggable
+      draggable={canEdit}
       onDragStart={(event) => {
+        if (!canEdit) return;
         event.dataTransfer.setData(
           "text/plain",
           JSON.stringify({ id: place.id, from: "pending" }),
@@ -74,6 +78,7 @@ function PendingCard({
         {place.type ?? "Maybe"}
       </p>
       <p className="text-sm font-medium leading-snug break-words">{place.name}</p>
+      {canEdit ? (
       <div className="mt-2 flex flex-wrap gap-2">
         <button
           type="button"
@@ -99,6 +104,7 @@ function PendingCard({
           Schedule
         </button>
       </div>
+      ) : null}
     </li>
   );
 }
@@ -117,6 +123,7 @@ export function PendingPanel({
   const [busy, startTransition] = useTransition();
   const [over, setOver] = useState(false);
   const notify = useActionToast();
+  const canEdit = useCanEdit();
 
   function dropOnPending(event: React.DragEvent) {
     event.preventDefault();
@@ -144,11 +151,12 @@ export function PendingPanel({
   return (
     <aside
       onDragOver={(event) => {
+        if (!canEdit) return;
         event.preventDefault();
         setOver(true);
       }}
       onDragLeave={() => setOver(false)}
-      onDrop={dropOnPending}
+      onDrop={canEdit ? dropOnPending : undefined}
       className={`${shellClass} ${over ? "border-[#ea580c]" : "border-stone-200"} ${
         busy ? "opacity-70" : ""
       }`}
@@ -172,6 +180,7 @@ export function PendingPanel({
               dayId={dayId}
               dayDate={dayDate}
               onAddEnd={() => addToAgenda(place.id)}
+              canEdit={canEdit}
             />
           ))}
         </ul>
@@ -191,6 +200,7 @@ export function CarryOverBanner({
 }) {
   const [busy, startTransition] = useTransition();
   const notify = useActionToast();
+  const canEdit = useCanEdit();
 
   if (places.length === 0) return null;
 
@@ -226,6 +236,7 @@ export function CarryOverBanner({
               <p className="text-sm font-medium break-words">{place.name}</p>
               <p className="text-xs text-stone-500">{place.type ?? "Place"}</p>
             </div>
+            {canEdit ? (
             <div className="flex flex-wrap gap-2">
               {place.pending ? (
                 <button
@@ -245,6 +256,7 @@ export function CarryOverBanner({
                 </button>
               )}
             </div>
+            ) : null}
           </li>
         ))}
       </ul>
@@ -266,6 +278,7 @@ export function DayAgendaBoard({
   const [busy, startTransition] = useTransition();
   const [over, setOver] = useState<string | null>(null);
   const notify = useActionToast();
+  const canEdit = useCanEdit();
   const visitedCount = agenda.filter(
     (item) => item.kind === "place" && item.visited,
   ).length;
@@ -361,7 +374,7 @@ export function DayAgendaBoard({
                     }`}
                   />
                   <div
-                    draggable={item.kind === "place" && !visited}
+                    draggable={canEdit && item.kind === "place" && !visited}
                     onDragStart={(event) => {
                       if (item.kind !== "place" || visited) return;
                       event.dataTransfer.setData(
@@ -412,7 +425,7 @@ export function DayAgendaBoard({
                             visited={Boolean(item.visited)}
                           />
                         ) : null}
-                        {item.kind === "place" && !visited ? (
+                        {item.kind === "place" && !visited && canEdit ? (
                           <button
                             type="button"
                             onClick={() => parkPlace(item.id)}

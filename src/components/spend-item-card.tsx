@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { deleteSpend, updateSpend } from "@/app/actions";
 import { ActionForm, useActionToast } from "@/components/action-form";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useCanEdit } from "@/components/edit-session";
 import { SpendAmountField } from "@/components/spend-amount-field";
 import { formatSpend } from "@/lib/format";
 import { btnGhostClass, btnPrimaryClass, fieldClass } from "@/components/page-shell";
@@ -26,6 +27,7 @@ export function SpendItemCard({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [busy, startTransition] = useTransition();
   const notify = useActionToast();
+  const canEdit = useCanEdit();
 
   if (editing) {
     return (
@@ -97,22 +99,24 @@ export function SpendItemCard({
           <p className="text-right text-sm font-medium whitespace-nowrap">
             {formatSpend(item.amount, item.currency)}
           </p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="text-xs font-medium text-stone-600"
-            >
-              Edit
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfirmOpen(true)}
-              className="text-xs font-medium text-red-700"
-            >
-              Delete
-            </button>
-          </div>
+          {canEdit ? (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="text-xs font-medium text-stone-600"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmOpen(true)}
+                className="text-xs font-medium text-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
       <ConfirmDialog

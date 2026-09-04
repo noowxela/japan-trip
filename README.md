@@ -9,12 +9,14 @@ Hub page: [Japan Trip](https://app.notion.com/p/Japan-Trip-3bdb5fd4cdf78145a599c
 1. Create an internal integration at [notion.so/my-integrations](https://www.notion.so/my-integrations).
 2. Copy `.env.example` to `.env.local` and set `NOTION_TOKEN`.
 3. Share a parent page with the integration.
-4. Create databases, then add v2 columns (Start/map/Spend):
+4. Create databases, then add v2 columns (Start/map/Spend) and the Editors PIN list:
 
 ```bash
 npm run setup:notion
 npm run migrate:v2
 ```
+
+Add a row in the **Editors** Notion database (Name + PIN) for each person who should edit. Everyone else can view without unlocking.
 
 ## Run
 

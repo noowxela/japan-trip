@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { deleteStay, updateStay } from "@/app/actions";
 import { ActionForm, useActionToast } from "@/components/action-form";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useCanEdit } from "@/components/edit-session";
 import { CopyButton } from "@/components/copy-button";
 import { formatRange } from "@/lib/format";
 import type { Stay } from "@/lib/types";
@@ -14,6 +15,7 @@ export function StayCard({ stay }: { stay: Stay }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [busy, startTransition] = useTransition();
   const notify = useActionToast();
+  const canEdit = useCanEdit();
 
   if (editing) {
     return (
@@ -97,22 +99,24 @@ export function StayCard({ stay }: { stay: Stay }) {
               </a>
             ) : null}
           </div>
-          <div className="flex shrink-0 flex-col gap-2">
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="text-xs font-medium text-stone-600"
-            >
-              Edit
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfirmOpen(true)}
-              className="text-xs font-medium text-red-700"
-            >
-              Delete
-            </button>
-          </div>
+          {canEdit ? (
+            <div className="flex shrink-0 flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="text-xs font-medium text-stone-600"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmOpen(true)}
+                className="text-xs font-medium text-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
       <ConfirmDialog

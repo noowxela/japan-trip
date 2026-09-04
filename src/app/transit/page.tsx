@@ -1,5 +1,6 @@
 import { AddTransitForm } from "@/components/add-transit-form";
 import { EmptyState } from "@/components/empty-state";
+import { EditOnly } from "@/components/edit-session";
 import { ListsSubNav } from "@/components/lists-sub-nav";
 import { PageShell } from "@/components/page-shell";
 import { TransitCard } from "@/components/transit-card";
@@ -34,7 +35,9 @@ export default async function TransitPage() {
             ))}
           </ul>
         )}
-        <AddTransitForm days={days} />
+        <EditOnly>
+          <AddTransitForm days={days} />
+        </EditOnly>
       </PageShell>
     </>
   );

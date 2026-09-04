@@ -1,5 +1,6 @@
 import { AddPlaceModal } from "@/components/add-place-modal";
 import { EmptyState } from "@/components/empty-state";
+import { EditOnly } from "@/components/edit-session";
 import { ListsSubNav } from "@/components/lists-sub-nav";
 import { eyebrowClass, PageShell } from "@/components/page-shell";
 import { PlacesList } from "@/components/places-list";
@@ -34,7 +35,9 @@ export default async function PlacesPage() {
             </p>
             <h1 className="text-3xl font-semibold tracking-tight">Places</h1>
           </div>
-          <AddPlaceModal days={days} />
+          <EditOnly>
+            <AddPlaceModal days={days} />
+          </EditOnly>
         </div>
         <ListsSubNav current="/places" />
         <PlacesList places={places} days={days} />

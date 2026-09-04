@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { UnlockEditorCard } from "@/components/unlock-editor-card";
 import { cardClass, eyebrowClass, linkCardClass, PageShell } from "@/components/page-shell";
 import { hasToken, isConfigured } from "@/lib/notion";
 import { getDays } from "@/lib/trip";
@@ -47,6 +48,13 @@ export default async function SettingsPage() {
                 : "Not configured — add NOTION_TOKEN and database IDs in .env.local."}
             </p>
           </div>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-sm font-medium uppercase tracking-wide text-stone-500">
+            Editing
+          </h2>
+          <UnlockEditorCard />
         </section>
 
         <section className="space-y-3">

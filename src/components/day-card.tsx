@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { deleteDay, updateDay } from "@/app/actions";
 import { useActionToast } from "@/components/action-form";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useCanEdit } from "@/components/edit-session";
 import { StatusBadge } from "@/components/status-badge";
 import { dateKey, formatDay } from "@/lib/format";
 import { btnGhostClass, btnPrimaryClass, cardClass, fieldClass } from "@/components/page-shell";
@@ -21,6 +22,7 @@ export function DayCard({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [busy, startTransition] = useTransition();
   const notify = useActionToast();
+  const canEdit = useCanEdit();
 
   if (editing) {
     return (
@@ -138,13 +140,15 @@ export function DayCard({
         ) : (
           <div className="min-w-0 flex-1">{body}</div>
         )}
-        <button
-          type="button"
-          onClick={() => setEditing(true)}
-          className="notebook-btn bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700"
-        >
-          Edit
-        </button>
+        {canEdit ? (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="notebook-btn bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700"
+          >
+            Edit
+          </button>
+        ) : null}
       </div>
     </div>
   );
