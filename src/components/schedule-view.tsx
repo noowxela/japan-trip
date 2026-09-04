@@ -7,7 +7,7 @@ import { DayMapLoader } from "@/components/day-map-loader";
 import type { DayMapPin } from "@/components/day-map";
 import { ScheduleDayTabs } from "@/components/schedule-day-tabs";
 import { StatusBadge } from "@/components/status-badge";
-import { formatDay } from "@/lib/format";
+import { formatDay, formatTripSpan } from "@/lib/format";
 import type { AgendaItem, Place, TripDay } from "@/lib/types";
 
 const SNAPS = [0.4, 0.68, 0.92] as const;
@@ -33,13 +33,17 @@ export function ScheduleView({
   agenda,
   pending,
   mapPins,
+  places = [],
 }: {
   days: TripDay[];
-  selectedDay: TripDay;
+  selectedDay: TripDay | null;
   agenda: AgendaItem[];
   pending: Place[];
   mapPins: DayMapPin[];
+  places?: Place[];
 }) {
+  const mapCity =
+    selectedDay?.city ?? days.find((day) => day.city)?.city ?? null;
   const rootRef = useRef<HTMLDivElement>(null);
   const skipClickRef = useRef(false);
   const dragRef = useRef<{
@@ -147,7 +151,7 @@ export function ScheduleView({
     >
       <div className="relative z-0 min-h-0 flex-1 isolate overflow-hidden">
         <DayMapLoader
-          city={selectedDay.city}
+          city={mapCity}
           pins={mapPins}
           className="h-full border-0"
         />
@@ -195,40 +199,112 @@ export function ScheduleView({
             </span>
           </button>
 
-          <ScheduleDayTabs days={days} selectedId={selectedDay.id} />
+          <ScheduleDayTabs
+            days={days}
+            selectedId={selectedDay?.id ?? "all"}
+          />
 
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-stone-100 px-4 py-3">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-lg font-semibold tracking-tight">
-                    {selectedDay.name}
-                  </h2>
-                  <StatusBadge status={selectedDay.status} />
+            {selectedDay ? (
+              <>
+                <div className="flex shrink-0 items-start justify-between gap-3 border-b border-stone-100 px-4 py-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-lg font-semibold tracking-tight">
+                        {selectedDay.name}
+                      </h2>
+                      <StatusBadge status={selectedDay.status} />
+                    </div>
+                    <p className="mt-0.5 text-xs text-stone-500">
+                      {formatDay(selectedDay.date)}
+                      {selectedDay.city ? ` · ${selectedDay.city}` : ""}
+                    </p>
+                  </div>
+                  <Link
+                    href={`/days/${selectedDay.id}`}
+                    className="shrink-0 rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-medium text-stone-700"
+                  >
+                    Full day →
+                  </Link>
                 </div>
-                <p className="mt-0.5 text-xs text-stone-500">
-                  {formatDay(selectedDay.date)}
-                  {selectedDay.city ? ` · ${selectedDay.city}` : ""}
-                </p>
-              </div>
-              <Link
-                href={`/days/${selectedDay.id}`}
-                className="shrink-0 rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-medium text-stone-700"
-              >
-                Full day →
-              </Link>
-            </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]">
-              <DayAgendaBoard
-                agenda={agenda}
-                pending={pending}
-                dayId={selectedDay.id}
-                dayDate={selectedDay.date}
-              />
-            </div>
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]">
+                  <DayAgendaBoard
+                    agenda={agenda}
+                    pending={pending}
+                    dayId={selectedDay.id}
+                    dayDate={selectedDay.date}
+                  />
+                </div>
+              </>
+            ) : (
+              <AllDaysPanel days={days} places={places} />
+            )}
           </div>
         </section>
     </div>
+  );
+}
+
+function AllDaysPanel({
+  days,
+  places,
+}: {
+  days: TripDay[];
+  places: Place[];
+}) {
+  const dated = days.filter((day) => day.date);
+  const span = formatTripSpan(
+    dated[0]?.date ?? null,
+    dated[dated.length - 1]?.date ?? null,
+  );
+
+  return (
+    <>
+      <div className="flex shrink-0 items-start justify-between gap-3 border-b border-stone-100 px-4 py-3">
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold tracking-tight">All days</h2>
+          <p className="mt-0.5 text-xs text-stone-500">{span}</p>
+        </div>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]">
+        <ul className="space-y-4">
+          {days.map((day, index) => {
+            const items = places.filter(
+              (place) =>
+                place.dayIds.includes(day.id) && !place.pending,
+            );
+            return (
+              <li key={day.id}>
+                <Link
+                  href={`/schedule?day=${day.id}`}
+                  scroll={false}
+                  className="flex items-baseline justify-between gap-3"
+                >
+                  <span className="min-w-0 font-semibold">
+                    <span className="text-hanko">D{index + 1}</span>{" "}
+                    {day.name}
+                  </span>
+                  <span className="shrink-0 text-xs text-stone-500">
+                    {formatDay(day.date)}
+                  </span>
+                </Link>
+                {items.length === 0 ? (
+                  <p className="mt-1 text-sm text-stone-400">No places yet</p>
+                ) : (
+                  <ul className="mt-1.5 space-y-0.5">
+                    {items.map((place) => (
+                      <li key={place.id} className="text-sm text-stone-600">
+                        {place.name}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </>
   );
 }

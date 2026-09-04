@@ -14,6 +14,7 @@ export type DayMapPin = {
   lat: number;
   lng: number;
   kind: "sight" | "food" | "other";
+  label?: string;
 };
 
 function numberIcon(n: number) {
@@ -22,6 +23,16 @@ function numberIcon(n: number) {
     html: `<span style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:9999px;background:#b42318;color:#fff;font-size:12px;font-weight:600;box-shadow:0 1px 4px rgba(0,0,0,.28)">${n}</span>`,
     iconSize: [28, 28],
     iconAnchor: [14, 14],
+    popupAnchor: [0, -16],
+  });
+}
+
+function labelIcon(label: string) {
+  return L.divIcon({
+    className: "day-map-pin",
+    html: `<span style="display:flex;align-items:center;justify-content:center;min-width:28px;height:28px;padding:0 6px;border-radius:9999px;background:#b42318;color:#fff;font-size:11px;font-weight:700;letter-spacing:0.02em;box-shadow:0 1px 4px rgba(0,0,0,.28)">${label}</span>`,
+    iconSize: [32, 28],
+    iconAnchor: [16, 14],
     popupAnchor: [0, -16],
   });
 }
@@ -93,9 +104,12 @@ export default function DayMap({
 }) {
   const fallback = (city && CITY_COORDS[city]) || CITY_COORDS.Kyoto;
   const path = pins.map((pin) => [pin.lat, pin.lng] as [number, number]);
-  const sightPath = pins
-    .filter((pin) => pin.kind === "sight")
-    .map((pin) => [pin.lat, pin.lng] as [number, number]);
+  const labeled = pins.some((pin) => pin.label);
+  const sightPath = labeled
+    ? []
+    : pins
+        .filter((pin) => pin.kind === "sight")
+        .map((pin) => [pin.lat, pin.lng] as [number, number]);
   let sightNumber = 0;
   const { id: styleId, pick, tiles } = useMapStyle();
 
@@ -123,8 +137,9 @@ export default function DayMap({
           />
         ) : null}
         {pins.map((pin) => {
-          const icon =
-            pin.kind === "food"
+          const icon = pin.label
+            ? labelIcon(pin.label)
+            : pin.kind === "food"
               ? foodIcon()
               : pin.kind === "sight"
                 ? numberIcon(++sightNumber)
@@ -137,6 +152,9 @@ export default function DayMap({
             >
               <Popup>
                 <div className="text-sm">
+                  {pin.label ? (
+                    <p className="text-xs font-semibold text-hanko">{pin.label}</p>
+                  ) : null}
                   <p className="font-medium">{pin.name}</p>
                   <a
                     href={googleMapsHref({

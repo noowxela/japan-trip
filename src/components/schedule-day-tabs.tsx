@@ -12,10 +12,27 @@ export function ScheduleDayTabs({
   selectedId: string;
 }) {
   const today = tokyoToday();
+  const allActive = selectedId === "all";
 
   return (
     <div className="shrink-0 border-b border-stone-100 bg-white">
       <div className="mx-auto flex max-w-xl overflow-x-auto md:max-w-5xl">
+        <Link
+          href="/schedule?day=all"
+          scroll={false}
+          className={`relative flex min-w-[4.5rem] shrink-0 flex-col items-center px-3 py-3 text-center transition-colors ${
+            allActive ? "text-hanko" : "text-stone-500 hover:text-stone-700"
+          }`}
+        >
+          <span className="text-sm font-medium leading-tight">All</span>
+          <span className="mt-0.5 text-xs leading-tight">Days</span>
+          {allActive ? (
+            <span
+              aria-hidden
+              className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-hanko"
+            />
+          ) : null}
+        </Link>
         {days.map((day, index) => {
           const active = day.id === selectedId;
           const isToday = day.date?.slice(0, 10) === today;

@@ -7,10 +7,12 @@ import { hasToken, isConfigured } from "@/lib/notion";
 import {
   buildAgenda,
   getDays,
+  getPlaces,
   getPlacesForDay,
   getTransitForDay,
   pickFocusDay,
 } from "@/lib/trip";
+import type { Place, TripDay } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -57,9 +59,28 @@ export default async function SchedulePage({
   }
 
   const today = tokyoToday();
-  const defaultDay = pickFocusDay(days, today) ?? days[0];
+
+  if (dayParam === "all") {
+    const places = await getPlaces();
+    return (
+      <>
+        <ScheduleView
+          days={days}
+          selectedDay={null}
+          agenda={[]}
+          pending={[]}
+          mapPins={pinsForAllDays(days, places)}
+          places={places}
+        />
+      </>
+    );
+  }
+
   const selectedDay =
-    days.find((day) => day.id === dayParam) ?? defaultDay;
+    days.find((day) => day.id === dayParam) ??
+    pickFocusDay(days, today) ??
+    days[0];
+  if (!selectedDay) return null;
 
   const [places, transit] = await Promise.all([
     getPlacesForDay(selectedDay.id),
@@ -118,4 +139,38 @@ export default async function SchedulePage({
       />
     </>
   );
+}
+
+function pinKind(type: string | null) {
+  if (type === "Food" || type === "Cafe") return "food" as const;
+  if (type === "Sight") return "sight" as const;
+  return "other" as const;
+}
+
+function earliestDayIndex(place: Place, days: TripDay[]) {
+  let best = Infinity;
+  for (const dayId of place.dayIds) {
+    const index = days.findIndex((day) => day.id === dayId);
+    if (index >= 0 && index < best) best = index;
+  }
+  return Number.isFinite(best) ? best : null;
+}
+
+function pinsForAllDays(days: TripDay[], places: Place[]) {
+  return places.flatMap((place) => {
+    const dayIndex = earliestDayIndex(place, days);
+    if (dayIndex == null) return [];
+    const coords = coordsOfPlace(place);
+    if (!coords) return [];
+    return [
+      {
+        id: place.id,
+        name: place.name,
+        lat: coords.lat,
+        lng: coords.lng,
+        kind: pinKind(place.type),
+        label: `D${dayIndex + 1}`,
+      },
+    ];
+  });
 }
