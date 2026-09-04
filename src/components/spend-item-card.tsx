@@ -37,25 +37,27 @@ export function SpendItemCard({
         <input name="name" required defaultValue={item.name} className={fieldClass} />
         <SpendAmountField defaultCurrency={item.currency} defaultAmount={item.amount} />
         <input type="hidden" name="kind" value="Actual" />
-        <select
-          name="category"
-          defaultValue={item.category ?? "Other"}
-          className={fieldClass}
-        >
-          {SPEND_CATEGORIES.map((category) => (
-            <option key={category} value={category}>
-              {category}
-            </option>
-          ))}
-        </select>
-        <select name="dayId" defaultValue={item.dayIds[0] ?? ""} className={fieldClass}>
-          <option value="">No day</option>
-          {days.map((day) => (
-            <option key={day.id} value={day.id}>
-              {day.name}
-            </option>
-          ))}
-        </select>
+        <div className="grid min-w-0 grid-cols-2 gap-3">
+          <select name="dayId" defaultValue={item.dayIds[0] ?? ""} className={fieldClass}>
+            <option value="">No day</option>
+            {days.map((day) => (
+              <option key={day.id} value={day.id}>
+                {day.name}
+              </option>
+            ))}
+          </select>
+          <select
+            name="category"
+            defaultValue={item.category ?? "Other"}
+            className={fieldClass}
+          >
+            {SPEND_CATEGORIES.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
+        </div>
         <input name="notes" defaultValue={item.notes} className={fieldClass} />
         <div className="flex flex-wrap gap-2">
           <button

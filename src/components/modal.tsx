@@ -72,21 +72,26 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center"
+      className={`fixed inset-0 z-50 flex items-end justify-center transition-opacity duration-300 ease-out motion-reduce:transition-none ${
+        shown ? "opacity-100" : "opacity-0"
+      }`}
       role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
     >
       <div
+        aria-hidden
         className={`absolute inset-0 bg-stone-900/40 backdrop-blur-sm transition-opacity duration-300 ease-out motion-reduce:transition-none ${
           shown ? "opacity-100" : "opacity-0"
         }`}
+        onPointerDown={(event) => {
+          event.preventDefault();
+          onClose();
+        }}
       />
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
+        onPointerDown={(event) => event.stopPropagation()}
         onTransitionEnd={(event) => {
           if (
             event.target === event.currentTarget &&

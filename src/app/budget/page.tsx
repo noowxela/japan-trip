@@ -1,4 +1,4 @@
-import { AddSpendForm } from "@/components/add-spend-form";
+import { AddExpenseFab } from "@/components/add-spend-form";
 import { EmptyState } from "@/components/empty-state";
 import { ExpensesHero } from "@/components/expenses-hero";
 import { Nav } from "@/components/nav";
@@ -65,10 +65,10 @@ export default async function BudgetPage({
           </ul>
         ) : (
           <EmptyState title="No expenses yet">
-            Add what you spent below, or in the Spend database in Notion.
+            Tap + to log what you spent.
           </EmptyState>
         )}
-        <AddSpendForm days={days} defaultDayId={defaultDayId} />
+        <AddExpenseFab days={days} defaultDayId={defaultDayId} />
       </PageShell>
     </>
   );
