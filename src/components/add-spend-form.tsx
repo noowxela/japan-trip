@@ -4,7 +4,7 @@ import { addSpend } from "@/app/actions";
 import { ActionForm } from "@/components/action-form";
 import { btnPrimaryClass, fieldClass, formShellClass } from "@/components/page-shell";
 import { SpendAmountField } from "@/components/spend-amount-field";
-import { SPEND_CATEGORIES, SPEND_KINDS, type TripDay } from "@/lib/types";
+import { SPEND_CATEGORIES, type TripDay } from "@/lib/types";
 
 export function AddSpendForm({
   days,
@@ -18,7 +18,7 @@ export function AddSpendForm({
       action={addSpend}
       className={`${formShellClass} grid gap-3 notebook-card p-4`}
     >
-      <p className="font-medium text-stone-900">Add spend</p>
+      <p className="font-medium text-stone-900">Add expense</p>
       <input
         name="name"
         required
@@ -26,30 +26,18 @@ export function AddSpendForm({
         className={fieldClass}
       />
       <SpendAmountField />
-      <div className="grid grid-cols-2 gap-3">
-        <select
-          name="kind"
-          defaultValue="Actual"
-          className={fieldClass}
-        >
-          {SPEND_KINDS.map((kind) => (
-            <option key={kind} value={kind}>
-              {kind}
-            </option>
-          ))}
-        </select>
-        <select
-          name="category"
-          defaultValue="Food"
-          className={fieldClass}
-        >
-          {SPEND_CATEGORIES.map((category) => (
-            <option key={category} value={category}>
-              {category}
-            </option>
-          ))}
-        </select>
-      </div>
+      <input type="hidden" name="kind" value="Actual" />
+      <select
+        name="category"
+        defaultValue="Food"
+        className={fieldClass}
+      >
+        {SPEND_CATEGORIES.map((category) => (
+          <option key={category} value={category}>
+            {category}
+          </option>
+        ))}
+      </select>
       <select
         name="dayId"
         defaultValue={defaultDayId}
@@ -71,7 +59,7 @@ export function AddSpendForm({
         type="submit"
         className={btnPrimaryClass}
       >
-        Add spend
+        Add expense
       </button>
     </ActionForm>
   );

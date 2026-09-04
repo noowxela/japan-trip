@@ -186,7 +186,7 @@ export function gapBetweenStarts(
   return formatGapMinutes(b - a);
 }
 
-export function formatDualRmYen(rmAmount: number) {
-  const yen = Math.round(rmAmount * JPY_PER_RM);
+export function formatDualRmYen(rmAmount: number, jpyPerRm = JPY_PER_RM) {
+  const yen = Math.round(rmAmount * jpyPerRm);
   return `${formatRm(rmAmount)} · ${formatYen(yen)}`;
 }

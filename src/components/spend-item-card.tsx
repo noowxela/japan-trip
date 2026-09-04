@@ -9,7 +9,6 @@ import { formatSpend } from "@/lib/format";
 import { btnGhostClass, btnPrimaryClass, fieldClass } from "@/components/page-shell";
 import {
   SPEND_CATEGORIES,
-  SPEND_KINDS,
   type SpendItem,
   type TripDay,
 } from "@/lib/types";
@@ -37,26 +36,18 @@ export function SpendItemCard({
         <input type="hidden" name="id" value={item.id} />
         <input name="name" required defaultValue={item.name} className={fieldClass} />
         <SpendAmountField defaultCurrency={item.currency} defaultAmount={item.amount} />
-        <div className="grid grid-cols-2 gap-3">
-          <select name="kind" defaultValue={item.kind ?? "Actual"} className={fieldClass}>
-            {SPEND_KINDS.map((kind) => (
-              <option key={kind} value={kind}>
-                {kind}
-              </option>
-            ))}
-          </select>
-          <select
-            name="category"
-            defaultValue={item.category ?? "Other"}
-            className={fieldClass}
-          >
-            {SPEND_CATEGORIES.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
-        </div>
+        <input type="hidden" name="kind" value="Actual" />
+        <select
+          name="category"
+          defaultValue={item.category ?? "Other"}
+          className={fieldClass}
+        >
+          {SPEND_CATEGORIES.map((category) => (
+            <option key={category} value={category}>
+              {category}
+            </option>
+          ))}
+        </select>
         <select name="dayId" defaultValue={item.dayIds[0] ?? ""} className={fieldClass}>
           <option value="">No day</option>
           {days.map((day) => (

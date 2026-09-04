@@ -27,7 +27,7 @@ const tabs = [
   },
   {
     href: "/budget",
-    label: "Budget",
+    label: "Expenses",
     match: (path: string) => path === "/budget" || path === "/spend",
     icon: BudgetIcon,
   },
