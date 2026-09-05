@@ -3,14 +3,17 @@
 import { useTransition, type ReactNode } from "react";
 import type { ActionResult } from "@/lib/action-result";
 import { useToast } from "@/components/toast-provider";
+import { hapticError, hapticSuccess, shouldUseIosOverlays } from "@/lib/haptic";
 
 export function useActionToast() {
   const { toast } = useToast();
 
   return async (result: ActionResult) => {
     if (result.ok) {
+      hapticSuccess();
       if (result.message) toast(result.message);
     } else {
+      hapticError();
       toast(result.error, "error");
     }
   };
@@ -38,6 +41,8 @@ export function ActionForm({
       onSubmit={(event) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
+        // iOS only fires Taptic during a real tap. After await, Safari ignores it.
+        if (shouldUseIosOverlays()) hapticSuccess();
         startTransition(async () => {
           const result = await action(formData);
           if (result.ok && successMessage && !result.message) {

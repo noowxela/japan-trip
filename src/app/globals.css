@@ -59,6 +59,12 @@ input[type="date"]::-webkit-datetime-edit {
   transform: scale(0.95);
 }
 
+button:disabled > [data-haptic-overlay],
+fieldset:disabled [data-haptic-overlay],
+[aria-disabled="true"] > [data-haptic-overlay] {
+  pointer-events: none !important;
+}
+
 .leaflet-container {
   width: 100%;
   font-family: inherit;

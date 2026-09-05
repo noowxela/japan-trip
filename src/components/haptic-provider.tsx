@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
-import { hapticTap, isHapticControl, movedBeyondTap } from "@/lib/haptic";
+import {
+  attachIosHapticOverlays,
+  hapticTap,
+  isHapticControl,
+  movedBeyondTap,
+  shouldUseIosOverlays,
+} from "@/lib/haptic";
 
 type PendingTap = {
   pointerId: number;
@@ -11,6 +17,10 @@ type PendingTap = {
 
 export function HapticProvider() {
   useEffect(() => {
+    if (shouldUseIosOverlays()) {
+      return attachIosHapticOverlays();
+    }
+
     let pending: PendingTap | null = null;
 
     const onPointerDown = (event: PointerEvent) => {
