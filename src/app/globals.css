@@ -24,6 +24,13 @@ textarea {
   max-width: 100%;
 }
 
+/* iOS Safari zooms the page when a focused field is under 16px. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="image"]):not([type="color"]),
+select,
+textarea {
+  font-size: 16px;
+}
+
 input[type="time"]::-webkit-datetime-edit,
 input[type="date"]::-webkit-datetime-edit {
   min-width: 0;

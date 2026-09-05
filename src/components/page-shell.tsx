@@ -19,7 +19,7 @@ export const btnGhostClass =
   "notebook-btn px-4 py-2 text-sm font-medium text-stone-600";
 
 export const fieldClass =
-  "rounded-xl border border-sage bg-white px-3 py-2 text-sm outline-none focus:border-moss";
+  "rounded-xl border border-sage bg-white px-3 py-2 text-base outline-none focus:border-moss";
 
 export const eyebrowClass =
   "text-xs uppercase tracking-[0.2em] text-moss";

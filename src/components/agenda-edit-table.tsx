@@ -19,7 +19,7 @@ import {
 } from "@/lib/types";
 
 const cell =
-  "w-full min-w-0 rounded-lg border border-sage px-2 py-1.5 text-sm outline-none focus:border-moss";
+  "w-full min-w-0 rounded-lg border border-sage px-2 py-1.5 text-base outline-none focus:border-moss";
 
 const rowClass =
   "grid w-full min-w-0 grid-cols-2 gap-2 border-b border-stone-100 p-3 last:border-b-0 lg:grid-cols-[minmax(0,8rem)_3.5rem_7rem_minmax(0,1.3fr)_minmax(0,1fr)_auto] lg:items-end lg:gap-2 lg:px-3 lg:py-2";

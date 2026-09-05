@@ -174,7 +174,7 @@ export function PrepChecklist() {
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           placeholder="Add a prep task…"
-          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-stone-400"
+          className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-stone-400"
         />
         <button
           type="submit"
