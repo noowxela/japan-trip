@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Nunito } from "next/font/google";
 import { BottomNav } from "@/components/bottom-nav";
 import { EditSessionProvider } from "@/components/edit-session";
+import { HapticProvider } from "@/components/haptic-provider";
 import { ToastProvider } from "@/components/toast-provider";
 import { getEditorSession } from "@/lib/edit-session";
 import "./globals.css";
@@ -40,6 +41,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           editorName={editor.editorName}
         >
           <ToastProvider>
+            <HapticProvider />
             {children}
             <BottomNav />
           </ToastProvider>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { HapticToggle } from "@/components/haptic-toggle";
 import { UnlockEditorCard } from "@/components/unlock-editor-card";
 import { cardClass, eyebrowClass, linkCardClass, PageShell } from "@/components/page-shell";
 import { hasToken, isConfigured } from "@/lib/notion";
@@ -48,6 +49,13 @@ export default async function SettingsPage() {
                 : "Not configured — add NOTION_TOKEN and database IDs in .env.local."}
             </p>
           </div>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-sm font-medium uppercase tracking-wide text-stone-500">
+            Device
+          </h2>
+          <HapticToggle />
         </section>
 
         <section className="space-y-3">
