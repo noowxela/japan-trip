@@ -2,6 +2,58 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+
+const TOP_PX = 24;
+const DELTA_PX = 10;
+
+function useScrollHideTabBar() {
+  const pathname = usePathname();
+  const [hidden, setHidden] = useState(false);
+
+  useEffect(() => {
+    setHidden(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    let lastY = window.scrollY;
+    let frame = 0;
+
+    const apply = () => {
+      frame = 0;
+      const y = Math.max(0, window.scrollY);
+      const delta = y - lastY;
+      lastY = y;
+
+      if (y <= TOP_PX) {
+        setHidden(false);
+        return;
+      }
+      if (delta > DELTA_PX) setHidden(true);
+      else if (delta < -DELTA_PX) setHidden(false);
+    };
+
+    const onScroll = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(apply);
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, [pathname]);
+
+  useEffect(() => {
+    document.documentElement.dataset.tabBar = hidden ? "hidden" : "shown";
+    return () => {
+      delete document.documentElement.dataset.tabBar;
+    };
+  }, [hidden]);
+
+  return hidden;
+}
 
 const tabs = [
   {
@@ -45,13 +97,15 @@ const tabs = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  const hidden = useScrollHideTabBar();
 
   if (pathname === "/schedule") return null;
 
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-20 border-t border-sage/80 bg-paper/95 pb-[env(safe-area-inset-bottom)] backdrop-blur"
+      inert={hidden || undefined}
+      className="tab-bar fixed inset-x-0 bottom-0 z-20 border-t border-sage/80 bg-paper/95 pb-[env(safe-area-inset-bottom)] backdrop-blur"
     >
       <div className="mx-auto flex w-full max-w-xl items-stretch justify-around px-1 pt-1 md:max-w-5xl">
         {tabs.map((tab) => {

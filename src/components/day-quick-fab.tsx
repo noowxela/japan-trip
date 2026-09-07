@@ -25,7 +25,7 @@ export function DayQuickFab({
 
   return (
     <>
-      <div className="fixed inset-x-0 bottom-0 z-20 flex justify-end px-4 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] lg:hidden">
+      <div className="tab-bar-follow fixed inset-x-0 bottom-0 z-20 flex justify-end px-4 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] lg:hidden">
         <button
           type="button"
           onClick={() => setOpen(open === "menu" ? null : "menu")}
@@ -36,7 +36,7 @@ export function DayQuickFab({
       </div>
 
       {open === "menu" ? (
-        <div className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom,0px)+4.5rem)] z-20 notebook-card p-3 lg:hidden">
+        <div className="tab-bar-follow fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom,0px)+4.5rem)] z-20 notebook-card p-3 lg:hidden">
           <div className="grid gap-2">
             <button
               type="button"
