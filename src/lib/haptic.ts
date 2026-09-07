@@ -3,6 +3,7 @@ export const HAPTICS_CHANGED_EVENT = "japan-trip-haptics-changed";
 
 const TAP_MS = 15;
 const TAP_SLOP_PX = 10;
+const SCROLL_CANCEL_PX = 5;
 const SUCCESS_PATTERN = [12, 40, 28];
 const ERROR_PATTERN = [40, 50, 40];
 const OVERLAY_ATTR = "data-haptic-overlay";
@@ -73,6 +74,8 @@ export function isHapticControl(target: EventTarget | null): Element | null {
   return control;
 }
 
+export type GestureOrigin = { x: number; y: number; scroll: number };
+
 export function movedBeyondTap(
   startX: number,
   startY: number,
@@ -82,6 +85,35 @@ export function movedBeyondTap(
   const dx = endX - startX;
   const dy = endY - startY;
   return dx * dx + dy * dy > TAP_SLOP_PX * TAP_SLOP_PX;
+}
+
+export function pageScrollOffset(from?: Element | null): number {
+  let total = window.scrollY;
+  let node: HTMLElement | null =
+    from instanceof HTMLElement ? from : (from?.parentElement ?? null);
+  while (node && node !== document.body && node !== document.documentElement) {
+    total += node.scrollTop;
+    node = node.parentElement;
+  }
+  return total;
+}
+
+export function captureGestureOrigin(
+  x: number,
+  y: number,
+  from?: Element | null,
+): GestureOrigin {
+  return { x, y, scroll: pageScrollOffset(from) };
+}
+
+export function gestureWasScroll(
+  start: GestureOrigin,
+  endX: number,
+  endY: number,
+  from?: Element | null,
+): boolean {
+  if (movedBeyondTap(start.x, start.y, endX, endY)) return true;
+  return Math.abs(pageScrollOffset(from) - start.scroll) > SCROLL_CANCEL_PX;
 }
 
 export function attachIosHapticOverlays(): () => void {
@@ -180,21 +212,62 @@ function attachOverlay(
     "cursor:inherit",
     "-webkit-appearance:switch",
     "appearance:auto",
-    "touch-action:manipulation",
+    "touch-action:pan-y",
     `pointer-events:${hapticsEnabled() ? "auto" : "none"}`,
   ].join(";");
 
+  let origin: GestureOrigin | null = null;
+  let cancelled = false;
+
+  const onPointerDown = (event: PointerEvent) => {
+    if (!event.isPrimary) return;
+    origin = captureGestureOrigin(event.clientX, event.clientY, host);
+    cancelled = false;
+  };
+
+  const onPointerMove = (event: PointerEvent) => {
+    if (!event.isPrimary || !origin) return;
+    if (movedBeyondTap(origin.x, origin.y, event.clientX, event.clientY)) {
+      cancelled = true;
+    }
+  };
+
+  const onPointerCancel = () => {
+    cancelled = true;
+  };
+
   const onClick = (event: Event) => {
     event.stopPropagation();
+    const point = event instanceof MouseEvent ? event : null;
+    const wasScroll =
+      cancelled ||
+      (origin != null &&
+        gestureWasScroll(
+          origin,
+          point?.clientX ?? origin.x,
+          point?.clientY ?? origin.y,
+          host,
+        ));
+    origin = null;
+    if (wasScroll) {
+      event.preventDefault();
+      return;
+    }
     if (!hapticsEnabled() || isControlDisabled(host)) return;
     host.click();
   };
 
+  overlay.addEventListener("pointerdown", onPointerDown);
+  overlay.addEventListener("pointermove", onPointerMove);
+  overlay.addEventListener("pointercancel", onPointerCancel);
   overlay.addEventListener("click", onClick);
   host.appendChild(overlay);
   overlays.add(overlay);
 
   return () => {
+    overlay.removeEventListener("pointerdown", onPointerDown);
+    overlay.removeEventListener("pointermove", onPointerMove);
+    overlay.removeEventListener("pointercancel", onPointerCancel);
     overlay.removeEventListener("click", onClick);
     overlays.delete(overlay);
     overlay.remove();

@@ -1,9 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useRef, type MouseEvent, type PointerEvent } from "react";
 import { SpendCategoryIcon } from "@/components/spend-category-icon";
 import { yenForMyr } from "@/lib/exchange";
 import { formatRm, formatSpend, formatYen } from "@/lib/format";
+import {
+  captureGestureOrigin,
+  gestureWasScroll,
+  type GestureOrigin,
+} from "@/lib/haptic";
 import { toRm } from "@/lib/spend";
 import { JPY_PER_RM, type SpendItem } from "@/lib/types";
 
@@ -16,11 +22,43 @@ export function SpendItemCard({
   jpyPerRm?: number;
   displayYen?: boolean;
 }) {
+  const gesture = useRef<GestureOrigin | null>(null);
+  const cancelled = useRef(false);
+
+  const onPointerDown = (event: PointerEvent<HTMLAnchorElement>) => {
+    if (!event.isPrimary) return;
+    cancelled.current = false;
+    gesture.current = captureGestureOrigin(
+      event.clientX,
+      event.clientY,
+      event.currentTarget,
+    );
+  };
+
+  const onPointerCancel = () => {
+    cancelled.current = true;
+  };
+
+  const onClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    const start = gesture.current;
+    gesture.current = null;
+    if (
+      cancelled.current ||
+      (start &&
+        gestureWasScroll(start, event.clientX, event.clientY, event.currentTarget))
+    ) {
+      event.preventDefault();
+    }
+  };
+
   return (
     <Link
       href={`/budget/${item.id}`}
-      className="notebook-press flex min-w-0 items-start gap-3 notebook-card p-3"
+      className="notebook-press relative flex min-w-0 touch-pan-y items-start gap-3 notebook-card p-3"
       scroll={false}
+      onPointerDown={onPointerDown}
+      onPointerCancel={onPointerCancel}
+      onClick={onClick}
     >
       <SpendCategoryIcon category={item.category} />
       <div className="min-w-0 flex-1">

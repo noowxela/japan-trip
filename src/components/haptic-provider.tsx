@@ -3,16 +3,17 @@
 import { useEffect } from "react";
 import {
   attachIosHapticOverlays,
+  captureGestureOrigin,
+  gestureWasScroll,
   hapticTap,
   isHapticControl,
-  movedBeyondTap,
   shouldUseIosOverlays,
+  type GestureOrigin,
 } from "@/lib/haptic";
 
 type PendingTap = {
   pointerId: number;
-  x: number;
-  y: number;
+  origin: GestureOrigin;
 };
 
 export function HapticProvider() {
@@ -35,8 +36,7 @@ export function HapticProvider() {
       }
       pending = {
         pointerId: event.pointerId,
-        x: event.clientX,
-        y: event.clientY,
+        origin: captureGestureOrigin(event.clientX, event.clientY, event.target as Element),
       };
     };
 
@@ -44,7 +44,16 @@ export function HapticProvider() {
       const start = pending;
       pending = null;
       if (!start || start.pointerId !== event.pointerId) return;
-      if (movedBeyondTap(start.x, start.y, event.clientX, event.clientY)) return;
+      if (
+        gestureWasScroll(
+          start.origin,
+          event.clientX,
+          event.clientY,
+          event.target instanceof Element ? event.target : null,
+        )
+      ) {
+        return;
+      }
       if (!isHapticControl(event.target)) return;
       hapticTap();
     };
