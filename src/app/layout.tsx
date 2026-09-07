@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Nunito } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AppUpdateProvider } from "@/components/app-update-provider";
 import { BottomNav } from "@/components/bottom-nav";
 import { EditSessionProvider } from "@/components/edit-session";
@@ -49,6 +50,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             </AppUpdateProvider>
           </ToastProvider>
         </EditSessionProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
