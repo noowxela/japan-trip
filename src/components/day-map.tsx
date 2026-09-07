@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import L from "leaflet";
 import { MapContainer, Marker, Popup, Polyline, TileLayer, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import { useVisibleMapPins } from "@/components/hide-map-pin-button";
 import { MapStyleSwitch, useMapStyle } from "@/components/map-style-switch";
 import { CITY_COORDS } from "@/lib/types";
 import { googleMapsHref } from "@/lib/maps";
@@ -103,11 +104,12 @@ export default function DayMap({
   className?: string;
 }) {
   const fallback = (city && CITY_COORDS[city]) || CITY_COORDS.Kyoto;
-  const path = pins.map((pin) => [pin.lat, pin.lng] as [number, number]);
-  const labeled = pins.some((pin) => pin.label);
+  const visiblePins = useVisibleMapPins(pins);
+  const path = visiblePins.map((pin) => [pin.lat, pin.lng] as [number, number]);
+  const labeled = visiblePins.some((pin) => pin.label);
   const sightPath = labeled
     ? []
-    : pins
+    : visiblePins
         .filter((pin) => pin.kind === "sight")
         .map((pin) => [pin.lat, pin.lng] as [number, number]);
   let sightNumber = 0;
@@ -136,7 +138,7 @@ export default function DayMap({
             pathOptions={{ color: "#b42318", weight: 3, opacity: 0.85 }}
           />
         ) : null}
-        {pins.map((pin) => {
+        {visiblePins.map((pin) => {
           const icon = pin.label
             ? labelIcon(pin.label)
             : pin.kind === "food"

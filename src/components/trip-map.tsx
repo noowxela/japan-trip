@@ -5,6 +5,7 @@ import L from "leaflet";
 import { MapContainer, Marker, Popup, Polyline, TileLayer } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import Link from "next/link";
+import { useVisibleMapPins } from "@/components/hide-map-pin-button";
 import { MapStyleSwitch, useMapStyle } from "@/components/map-style-switch";
 import { CITY_COORDS } from "@/lib/types";
 
@@ -43,12 +44,13 @@ export default function TripMap({ hops, hopPoints, pins }: Props) {
     });
   }, []);
 
+  const visiblePins = useVisibleMapPins(pins);
   const hopCoords =
     hopPoints ??
     hops
       .map((city) => CITY_COORDS[city])
       .filter((coords): coords is [number, number] => Boolean(coords));
-  const firstPin = pins[0];
+  const firstPin = visiblePins[0];
   const mapCenter: [number, number] =
     hopCoords[0] ??
     (firstPin ? [firstPin.lat, firstPin.lng] : [35.6812, 139.7671]);
@@ -71,7 +73,7 @@ export default function TripMap({ hops, hopPoints, pins }: Props) {
       {hopCoords.length > 1 ? (
         <Polyline positions={hopCoords} pathOptions={{ color: "#b42318" }} />
       ) : null}
-      {pins.map((pin) => (
+      {visiblePins.map((pin) => (
         <Marker key={pin.id} position={[pin.lat, pin.lng]}>
           <Popup>
             <div className="text-sm">

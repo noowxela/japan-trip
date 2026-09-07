@@ -8,6 +8,7 @@ import {
 } from "@/app/actions";
 import { useActionToast } from "@/components/action-form";
 import { useCanEdit } from "@/components/edit-session";
+import { HideMapPinButton } from "@/components/hide-map-pin-button";
 import { MapsPinLink } from "@/components/maps-pin-link";
 import { VisitedToggle } from "@/components/visited-toggle";
 import { formatTime, gapBetweenStarts, startBefore } from "@/lib/format";
@@ -404,6 +405,11 @@ export function DayAgendaBoard({
                           >
                             {item.name}
                           </span>
+                          {item.kind === "place" &&
+                          item.lat != null &&
+                          item.lng != null ? (
+                            <HideMapPinButton id={item.id} name={item.name} />
+                          ) : null}
                           {item.kind === "place" && !visited ? (
                             <MapsPinLink
                               name={item.name}
