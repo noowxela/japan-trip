@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AppVersionCard } from "@/components/app-version-card";
 import { HapticToggle } from "@/components/haptic-toggle";
 import { UnlockEditorCard } from "@/components/unlock-editor-card";
 import {
@@ -7,6 +8,7 @@ import {
   settingsGroupClass,
   settingsRowClass,
 } from "@/components/page-shell";
+import { formatAppVersion } from "@/lib/app-version";
 import { hasToken, isConfigured } from "@/lib/notion";
 import { getDays } from "@/lib/trip";
 
@@ -126,11 +128,21 @@ export default async function SettingsPage() {
           </ul>
         </section>
 
+        <section className="space-y-2">
+          <h2 className="px-1 text-xs font-medium uppercase tracking-wide text-stone-500">
+            About
+          </h2>
+          <AppVersionCard />
+        </section>
+
         <section className={`${settingsGroupClass} mb-2 px-4 py-3 text-sm text-stone-500`}>
           <p className="font-medium text-stone-700">Japan Trip</p>
           <p className="mt-1">
             Mobile-first itinerary companion synced with Notion. Prep checklist
             is stored locally on this device.
+          </p>
+          <p className="mt-2 text-xs tabular-nums text-stone-400">
+            {formatAppVersion()}
           </p>
         </section>
       </PageShell>
