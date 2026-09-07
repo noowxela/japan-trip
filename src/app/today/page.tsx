@@ -17,6 +17,7 @@ import { coordsOfPlace } from "@/lib/geocode";
 import {
   buildAgenda,
   getDays,
+  getEditorNames,
   getPlaces,
   getPlacesForDay,
   getSpend,
@@ -44,11 +45,12 @@ export default async function TodayPage() {
   }
 
   const today = tokyoToday();
-  const [days, places, stays, spend] = await Promise.all([
+  const [days, places, stays, spend, people] = await Promise.all([
     getDays(),
     getPlaces(),
     getStays(),
     getSpend(),
+    getEditorNames(),
   ]);
   const focus = pickFocusDay(days, today);
   if (!focus) {
@@ -177,7 +179,7 @@ export default async function TodayPage() {
         </section>
       </PageShell>
       <EditOnly>
-        <DayQuickFab dayId={focus.id} dayDate={focus.date} days={days} />
+        <DayQuickFab dayId={focus.id} dayDate={focus.date} days={days} people={people} />
       </EditOnly>
     </>
   );

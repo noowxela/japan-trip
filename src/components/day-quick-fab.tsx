@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { AddAgendaForm } from "@/components/add-agenda-form";
+import { AddExpenseSheet } from "@/components/add-spend-form";
 import { AddPlaceForm } from "@/components/add-place-form";
 import type { TripDay } from "@/lib/types";
 
@@ -10,12 +11,17 @@ export function DayQuickFab({
   dayId,
   dayDate,
   days,
+  people = [],
 }: {
   dayId: string;
   dayDate: string | null;
   days: TripDay[];
+  people?: string[];
 }) {
-  const [open, setOpen] = useState<null | "menu" | "place" | "agenda">(null);
+  const router = useRouter();
+  const [open, setOpen] = useState<null | "menu" | "place" | "agenda" | "spend">(
+    null,
+  );
 
   return (
     <>
@@ -46,12 +52,13 @@ export function DayQuickFab({
             >
               Add agenda item
             </button>
-            <Link
-              href={`/spend?day=${dayId}`}
-              className="rounded-xl bg-stone-100 px-4 py-3 text-sm font-medium"
+            <button
+              type="button"
+              onClick={() => setOpen("spend")}
+              className="notebook-press rounded-xl bg-sage/50 px-4 py-3 text-left text-sm font-medium"
             >
               Log spend
-            </Link>
+            </button>
           </div>
         </div>
       ) : null}
@@ -89,6 +96,18 @@ export function DayQuickFab({
             <AddAgendaForm days={days} defaultDayId={dayId} dayDate={dayDate} />
           </div>
         </div>
+      ) : null}
+
+      {open === "spend" ? (
+        <AddExpenseSheet
+          days={days}
+          people={people}
+          defaultDayId={dayId}
+          onClose={() => {
+            setOpen(null);
+            router.refresh();
+          }}
+        />
       ) : null}
     </>
   );

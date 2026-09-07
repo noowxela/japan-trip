@@ -57,6 +57,8 @@ export type SpendItem = {
   category: string | null;
   notes: string;
   dayIds: string[];
+  start: string | null;
+  paidBy: string | null;
 };
 
 export type AgendaItem = {

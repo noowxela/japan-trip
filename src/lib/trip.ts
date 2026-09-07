@@ -5,6 +5,7 @@ import {
   checkboxOf,
   dateOf,
   ds,
+  hasEditorsDs,
   numberOf,
   queryAll,
   relationIdsOf,
@@ -88,6 +89,8 @@ function parseSpend(page: Awaited<ReturnType<typeof queryAll>>[number]): SpendIt
     category: selectOf(page, "Category"),
     notes: richTextOf(page, "Notes"),
     dayIds: relationIdsOf(page, "Day"),
+    start: dateOf(page, "Start"),
+    paidBy: selectOf(page, "Paid by"),
   };
 }
 
@@ -121,6 +124,19 @@ export const getSpend = cache(async () => {
   const pages = await queryAll(ds("SPEND"));
   return pages.map(parseSpend);
 });
+
+export const getEditorNames = cache(async () => {
+  if (!hasEditorsDs()) return [] as string[];
+  const pages = await queryAll(ds("EDITORS"));
+  return [...new Set(pages.map((page) => titleOf(page).trim()).filter(Boolean))].sort(
+    (a, b) => a.localeCompare(b),
+  );
+});
+
+export async function getSpendItem(id: string) {
+  const spend = await getSpend();
+  return spend.find((item) => item.id === id) ?? null;
+}
 
 export async function getDay(id: string) {
   const days = await getDays();

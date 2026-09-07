@@ -24,7 +24,7 @@ function revalidateTrip() {
   revalidatePath("/spend");
   revalidatePath("/lists");
   revalidatePath("/schedule");
-  revalidatePath("/budget");
+  revalidatePath("/budget", "layout");
   revalidatePath("/days", "layout");
 }
 
@@ -36,6 +36,10 @@ function startValue(formData: FormData) {
   if (!raw) return "";
   if (/T\d{2}:\d{2}$/.test(raw)) return `${raw}:00`;
   return raw;
+}
+
+function spendStartValue(formData: FormData) {
+  return startValue(formData) || String(formData.get("dayDate") ?? "").trim().slice(0, 10);
 }
 
 function startProp(start: string | null) {
@@ -475,8 +479,10 @@ export async function addSpend(formData: FormData): Promise<ActionResult> {
   const category = String(formData.get("category") ?? "").trim();
   const notes = String(formData.get("notes") ?? "").trim();
   const dayId = String(formData.get("dayId") ?? "").trim();
+  const paidBy = String(formData.get("paidBy") ?? "").trim();
   const currency = parseSpendCurrency(String(formData.get("currency") ?? ""));
   const amount = Number(amountRaw);
+  const start = spendStartValue(formData);
   if (!name) return actionErr("Spend name is required");
   if (!Number.isFinite(amount)) return actionErr("Amount is required");
   const notion = getNotion();
@@ -490,6 +496,8 @@ export async function addSpend(formData: FormData): Promise<ActionResult> {
       ...(category ? { Category: { select: { name: category } } } : {}),
       ...(notes ? { Notes: textProp(notes) } : {}),
       ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
+      ...(start ? { Start: startProp(start) } : {}),
+      ...(paidBy ? { "Paid by": { select: { name: paidBy } } } : {}),
     },
   });
   revalidateTrip();
@@ -506,8 +514,10 @@ export async function updateSpend(formData: FormData): Promise<ActionResult> {
   const category = String(formData.get("category") ?? "").trim();
   const notes = String(formData.get("notes") ?? "").trim();
   const dayId = String(formData.get("dayId") ?? "").trim();
+  const paidBy = String(formData.get("paidBy") ?? "").trim();
   const currency = parseSpendCurrency(String(formData.get("currency") ?? ""));
   const amount = Number(amountRaw);
+  const start = spendStartValue(formData);
   if (!id || !name) return actionErr("Spend name is required");
   if (!Number.isFinite(amount)) return actionErr("Amount is required");
   const notion = getNotion();
@@ -521,6 +531,8 @@ export async function updateSpend(formData: FormData): Promise<ActionResult> {
       Category: { select: category ? { name: category } : null },
       Notes: textProp(notes),
       Day: { relation: dayId ? [{ id: dayId }] : [] },
+      Start: startProp(start || null),
+      "Paid by": { select: paidBy ? { name: paidBy } : null },
     },
   });
   revalidateTrip();

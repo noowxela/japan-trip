@@ -1,140 +1,68 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { deleteSpend, updateSpend } from "@/app/actions";
-import { ActionForm, useActionToast } from "@/components/action-form";
-import { ConfirmDialog } from "@/components/confirm-dialog";
-import { useCanEdit } from "@/components/edit-session";
-import { SpendAmountField } from "@/components/spend-amount-field";
-import { formatSpend } from "@/lib/format";
-import { btnGhostClass, btnPrimaryClass, fieldClass } from "@/components/page-shell";
-import {
-  SPEND_CATEGORIES,
-  type SpendItem,
-  type TripDay,
-} from "@/lib/types";
+import Link from "next/link";
+import { SpendCategoryIcon } from "@/components/spend-category-icon";
+import { yenForMyr } from "@/lib/exchange";
+import { formatRm, formatSpend, formatYen } from "@/lib/format";
+import { toRm } from "@/lib/spend";
+import { JPY_PER_RM, type SpendItem } from "@/lib/types";
 
 export function SpendItemCard({
   item,
-  dayNames,
-  days,
+  jpyPerRm = JPY_PER_RM,
+  displayYen = false,
 }: {
   item: SpendItem;
-  dayNames: Map<string, string>;
-  days: TripDay[];
+  jpyPerRm?: number;
+  displayYen?: boolean;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [busy, startTransition] = useTransition();
-  const notify = useActionToast();
-  const canEdit = useCanEdit();
+  return (
+    <Link
+      href={`/budget/${item.id}`}
+      className="notebook-press flex min-w-0 items-start gap-3 notebook-card p-3"
+      scroll={false}
+    >
+      <SpendCategoryIcon category={item.category} />
+      <div className="min-w-0 flex-1">
+        <p className="font-medium break-words">{item.name}</p>
+        {item.notes ? (
+          <p className="mt-0.5 truncate text-xs text-stone-500">{item.notes}</p>
+        ) : null}
+        {item.paidBy ? (
+          <p className="mt-1 w-fit rounded-full bg-sage/70 px-2 py-0.5 text-[11px] font-medium text-stone-600">
+            {item.paidBy}
+          </p>
+        ) : null}
+      </div>
+      <SpendAmounts item={item} displayYen={displayYen} jpyPerRm={jpyPerRm} />
+    </Link>
+  );
+}
 
-  if (editing) {
-    return (
-      <ActionForm
-        action={updateSpend}
-        className="grid min-w-0 gap-3 notebook-card border-hanko/40 p-4"
-      >
-        <input type="hidden" name="id" value={item.id} />
-        <input name="name" required defaultValue={item.name} className={fieldClass} />
-        <SpendAmountField defaultCurrency={item.currency} defaultAmount={item.amount} />
-        <input type="hidden" name="kind" value="Actual" />
-        <div className="grid min-w-0 grid-cols-2 gap-3">
-          <select name="dayId" defaultValue={item.dayIds[0] ?? ""} className={fieldClass}>
-            <option value="">No day</option>
-            {days.map((day) => (
-              <option key={day.id} value={day.id}>
-                {day.name}
-              </option>
-            ))}
-          </select>
-          <select
-            name="category"
-            defaultValue={item.category ?? "Other"}
-            className={fieldClass}
-          >
-            {SPEND_CATEGORIES.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
-        </div>
-        <input name="notes" defaultValue={item.notes} className={fieldClass} />
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="submit"
-            className={btnPrimaryClass}
-          >
-            Save
-          </button>
-          <button
-            type="button"
-            onClick={() => setEditing(false)}
-            className={btnGhostClass}
-          >
-            Cancel
-          </button>
-        </div>
-      </ActionForm>
-    );
-  }
+export function SpendAmounts({
+  item,
+  displayYen,
+  jpyPerRm,
+}: {
+  item: SpendItem;
+  displayYen: boolean;
+  jpyPerRm: number;
+}) {
+  const rm = toRm(item.amount, item.currency, jpyPerRm);
+  const showConversion =
+    (displayYen && item.currency === "RM") ||
+    (!displayYen && item.currency === "Yen");
 
   return (
-    <>
-      <div className="flex min-w-0 items-start justify-between gap-3 notebook-card p-4">
-        <div>
-          <p className="font-medium break-words">{item.name}</p>
-          <p className="text-xs text-stone-500">
-            {[
-              item.category,
-              item.currency,
-              item.dayIds.map((id) => dayNames.get(id)).filter(Boolean).join(", "),
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          <p className="text-right text-sm font-medium whitespace-nowrap">
-            {formatSpend(item.amount, item.currency)}
-          </p>
-          {canEdit ? (
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="text-xs font-medium text-stone-600"
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmOpen(true)}
-                className="text-xs font-medium text-red-700"
-              >
-                Delete
-              </button>
-            </div>
-          ) : null}
-        </div>
-      </div>
-      <ConfirmDialog
-        open={confirmOpen}
-        title="Delete spend?"
-        message={`Remove “${item.name}”?`}
-        confirmLabel="Delete"
-        busy={busy}
-        onCancel={() => setConfirmOpen(false)}
-        onConfirm={() => {
-          const formData = new FormData();
-          formData.set("id", item.id);
-          startTransition(async () => {
-            await notify(await deleteSpend(formData));
-            setConfirmOpen(false);
-          });
-        }}
-      />
-    </>
+    <div className="shrink-0 text-right">
+      <p className="text-sm font-medium whitespace-nowrap">
+        {formatSpend(item.amount, item.currency)}
+      </p>
+      {showConversion ? (
+        <p className="mt-0.5 text-xs text-stone-500 whitespace-nowrap">
+          ≈ {displayYen ? formatYen(yenForMyr(rm, jpyPerRm)) : formatRm(rm)}
+        </p>
+      ) : null}
+    </div>
   );
 }

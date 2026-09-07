@@ -1,68 +1,48 @@
 "use client";
 
 import { useState } from "react";
-import { addSpend } from "@/app/actions";
-import { ActionForm } from "@/components/action-form";
-import { Modal } from "@/components/modal";
-import { btnPrimaryClass, fieldClass } from "@/components/page-shell";
-import { SpendAmountField } from "@/components/spend-amount-field";
-import { SPEND_CATEGORIES, type TripDay } from "@/lib/types";
+import { useRouter } from "next/navigation";
+import { SlideInPage } from "@/components/slide-in-page";
+import { pageShellClass } from "@/components/page-shell";
+import { SpendForm } from "@/components/spend-form";
+import type { TripDay } from "@/lib/types";
 
-export function AddSpendForm({
+export function AddExpenseSheet({
   days,
+  people = [],
   defaultDayId = "",
-  onSuccess,
+  onClose,
 }: {
   days: TripDay[];
+  people?: string[];
   defaultDayId?: string;
-  onSuccess?: () => void;
+  onClose: () => void;
 }) {
   return (
-    <ActionForm
-      action={addSpend}
-      onSuccess={onSuccess}
-      className="grid gap-3"
-    >
-      <input
-        name="name"
-        required
-        placeholder="Lunch / hotel / JR pass"
-        className={fieldClass}
-      />
-      <SpendAmountField />
-      <input type="hidden" name="kind" value="Actual" />
-      <div className="grid min-w-0 grid-cols-2 gap-3">
-        <select name="dayId" defaultValue={defaultDayId} className={fieldClass}>
-          <option value="">No day</option>
-          {days.map((day) => (
-            <option key={day.id} value={day.id}>
-              {day.name}
-            </option>
-          ))}
-        </select>
-        <select name="category" defaultValue="Food" className={fieldClass}>
-          {SPEND_CATEGORIES.map((category) => (
-            <option key={category} value={category}>
-              {category}
-            </option>
-          ))}
-        </select>
+    <SlideInPage onClose={onClose}>
+      <div className={`${pageShellClass} pt-4`}>
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Add expense</h1>
+          <p className="mt-1 text-sm text-stone-500">
+            Saved to Notion and listed on the timeline.
+          </p>
+        </div>
+        <SpendForm days={days} people={people} defaultDayId={defaultDayId} />
       </div>
-      <input name="notes" placeholder="Notes" className={fieldClass} />
-      <button type="submit" className={btnPrimaryClass}>
-        Save expense
-      </button>
-    </ActionForm>
+    </SlideInPage>
   );
 }
 
 export function AddExpenseFab({
   days,
+  people = [],
   defaultDayId = "",
 }: {
   days: TripDay[];
+  people?: string[];
   defaultDayId?: string;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
 
   return (
@@ -70,35 +50,32 @@ export function AddExpenseFab({
       <button
         type="button"
         aria-label="Add expense"
-        aria-expanded={open}
         onClick={() => setOpen(true)}
         className="fixed right-4 bottom-[calc(4.25rem+env(safe-area-inset-bottom,0px))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-hanko text-white md:right-8"
       >
-        <PlusIcon />
+        <svg
+          aria-hidden
+          viewBox="0 0 24 24"
+          className="h-7 w-7"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2.25}
+          strokeLinecap="round"
+        >
+          <path d="M12 5v14M5 12h14" />
+        </svg>
       </button>
-      <Modal open={open} onClose={() => setOpen(false)} title="Add expense">
-        <AddSpendForm
+      {open ? (
+        <AddExpenseSheet
           days={days}
+          people={people}
           defaultDayId={defaultDayId}
-          onSuccess={() => setOpen(false)}
+          onClose={() => {
+            setOpen(false);
+            router.refresh();
+          }}
         />
-      </Modal>
+      ) : null}
     </>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 24 24"
-      className="h-7 w-7"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2.25}
-      strokeLinecap="round"
-    >
-      <path d="M12 5v14M5 12h14" />
-    </svg>
   );
 }

@@ -21,6 +21,7 @@ import {
   buildAgenda,
   getDay,
   getDays,
+  getEditorNames,
   getPlaces,
   getPlacesForDay,
   getSpend,
@@ -47,13 +48,14 @@ export default async function DayPage({
   const day = await getDay(id);
   if (!day) notFound();
 
-  const [places, transit, days, stays, spend, allPlaces] = await Promise.all([
+  const [places, transit, days, stays, spend, allPlaces, people] = await Promise.all([
     getPlacesForDay(id),
     getTransitForDay(id),
     getDays(),
     getStays(),
     getSpend(),
     getPlaces(),
+    getEditorNames(),
   ]);
   const agenda = buildAgenda(places, transit);
   const pending = places.filter((place) => place.pending);
@@ -194,7 +196,7 @@ export default async function DayPage({
       </PageShell>
       {!editing ? (
         <EditOnly>
-          <DayQuickFab dayId={day.id} dayDate={day.date} days={days} />
+          <DayQuickFab dayId={day.id} dayDate={day.date} days={days} people={people} />
         </EditOnly>
       ) : null}
     </>

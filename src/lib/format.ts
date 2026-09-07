@@ -10,6 +10,16 @@ export function formatDay(date: string | null) {
   }).format(new Date(`${day}T12:00:00`));
 }
 
+export function formatTimelineDate(date: string | null) {
+  if (!date) return null;
+  const d = new Date(`${date.slice(0, 10)}T12:00:00`);
+  const month = new Intl.DateTimeFormat("en-GB", { month: "short" }).format(d);
+  return {
+    year: String(d.getFullYear()),
+    dayMonth: `${d.getDate()} ${month.toLowerCase()}`,
+  };
+}
+
 export function formatTabDate(date: string | null) {
   if (!date) return "—";
   const d = new Date(`${date.slice(0, 10)}T12:00:00`);
