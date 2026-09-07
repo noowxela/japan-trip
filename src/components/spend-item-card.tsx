@@ -23,11 +23,9 @@ export function SpendItemCard({
   displayYen?: boolean;
 }) {
   const gesture = useRef<GestureOrigin | null>(null);
-  const cancelled = useRef(false);
 
   const onPointerDown = (event: PointerEvent<HTMLAnchorElement>) => {
     if (!event.isPrimary) return;
-    cancelled.current = false;
     gesture.current = captureGestureOrigin(
       event.clientX,
       event.clientY,
@@ -35,17 +33,12 @@ export function SpendItemCard({
     );
   };
 
-  const onPointerCancel = () => {
-    cancelled.current = true;
-  };
-
   const onClick = (event: MouseEvent<HTMLAnchorElement>) => {
     const start = gesture.current;
     gesture.current = null;
     if (
-      cancelled.current ||
-      (start &&
-        gestureWasScroll(start, event.clientX, event.clientY, event.currentTarget))
+      start &&
+      gestureWasScroll(start, event.clientX, event.clientY, event.currentTarget)
     ) {
       event.preventDefault();
     }
@@ -56,8 +49,8 @@ export function SpendItemCard({
       href={`/budget/${item.id}`}
       className="notebook-press relative flex min-w-0 touch-pan-y items-start gap-3 notebook-card p-3"
       scroll={false}
+      data-no-haptic=""
       onPointerDown={onPointerDown}
-      onPointerCancel={onPointerCancel}
       onClick={onClick}
     >
       <SpendCategoryIcon category={item.category} />

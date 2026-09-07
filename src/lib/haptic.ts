@@ -212,62 +212,21 @@ function attachOverlay(
     "cursor:inherit",
     "-webkit-appearance:switch",
     "appearance:auto",
-    "touch-action:pan-y",
+    "touch-action:manipulation",
     `pointer-events:${hapticsEnabled() ? "auto" : "none"}`,
   ].join(";");
 
-  let origin: GestureOrigin | null = null;
-  let cancelled = false;
-
-  const onPointerDown = (event: PointerEvent) => {
-    if (!event.isPrimary) return;
-    origin = captureGestureOrigin(event.clientX, event.clientY, host);
-    cancelled = false;
-  };
-
-  const onPointerMove = (event: PointerEvent) => {
-    if (!event.isPrimary || !origin) return;
-    if (movedBeyondTap(origin.x, origin.y, event.clientX, event.clientY)) {
-      cancelled = true;
-    }
-  };
-
-  const onPointerCancel = () => {
-    cancelled = true;
-  };
-
   const onClick = (event: Event) => {
     event.stopPropagation();
-    const point = event instanceof MouseEvent ? event : null;
-    const wasScroll =
-      cancelled ||
-      (origin != null &&
-        gestureWasScroll(
-          origin,
-          point?.clientX ?? origin.x,
-          point?.clientY ?? origin.y,
-          host,
-        ));
-    origin = null;
-    if (wasScroll) {
-      event.preventDefault();
-      return;
-    }
     if (!hapticsEnabled() || isControlDisabled(host)) return;
     host.click();
   };
 
-  overlay.addEventListener("pointerdown", onPointerDown);
-  overlay.addEventListener("pointermove", onPointerMove);
-  overlay.addEventListener("pointercancel", onPointerCancel);
   overlay.addEventListener("click", onClick);
   host.appendChild(overlay);
   overlays.add(overlay);
 
   return () => {
-    overlay.removeEventListener("pointerdown", onPointerDown);
-    overlay.removeEventListener("pointermove", onPointerMove);
-    overlay.removeEventListener("pointercancel", onPointerCancel);
     overlay.removeEventListener("click", onClick);
     overlays.delete(overlay);
     overlay.remove();
