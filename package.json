@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@notionhq/client": "^5.25.2",
+    "@vercel/speed-insights": "^2.0.0",
     "leaflet": "^1.9.4",
     "next": "16.3.1",
     "react": "19.2.8",
