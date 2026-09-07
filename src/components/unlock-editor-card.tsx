@@ -58,9 +58,8 @@ export function UnlockEditorCard() {
         <input
           name="pin"
           required
-          type="password"
-          inputMode="numeric"
-          autoComplete="current-password"
+          type="text"
+          autoComplete="off"
           placeholder="PIN"
           className={fieldClass}
         />
