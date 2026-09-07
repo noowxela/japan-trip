@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 export const pageShellClass =
-  "mx-auto flex w-full min-w-0 max-w-xl flex-col gap-6 px-4 py-6 pb-24 pt-[max(1.5rem,env(safe-area-inset-top))] md:max-w-5xl md:px-8";
+  "mx-auto flex w-full min-w-0 max-w-xl flex-col gap-6 px-4 py-6 pb-[calc(var(--tab-bar-height,4.25rem)+1.5rem)] pt-[max(1.5rem,env(safe-area-inset-top))] md:max-w-5xl md:px-8";
 
 export const cardGridClass = "grid gap-3 sm:grid-cols-2";
 
@@ -10,7 +10,13 @@ export const formShellClass = "w-full max-w-xl";
 export const cardClass = "notebook-card p-4";
 
 export const linkCardClass =
-  "notebook-card notebook-press flex min-w-0 items-center justify-between gap-3 px-4 py-3";
+  "notebook-card notebook-press flex min-h-11 min-w-0 items-center justify-between gap-3 px-4 py-3";
+
+export const settingsGroupClass =
+  "overflow-hidden rounded-xl bg-white ring-1 ring-stone-200/80";
+
+export const settingsRowClass =
+  "flex min-h-11 w-full min-w-0 items-center justify-between gap-3 px-4 py-2.5";
 
 export const btnPrimaryClass =
   "notebook-btn bg-hanko px-4 py-2 text-sm font-medium text-white disabled:opacity-60";

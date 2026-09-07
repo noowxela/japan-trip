@@ -10,6 +10,10 @@
   --font-sans: var(--font-nunito);
 }
 
+:root {
+  --tab-bar-height: calc(4.25rem + env(safe-area-inset-bottom, 0px));
+}
+
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
