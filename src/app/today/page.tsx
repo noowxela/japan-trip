@@ -14,6 +14,7 @@ import { formatDay, formatRm, formatTime, tokyoToday } from "@/lib/format";
 import { hasToken, isConfigured } from "@/lib/notion";
 import { byDay, moneySummary } from "@/lib/spend";
 import { coordsOfPlace } from "@/lib/geocode";
+import { mapPinsForDay } from "@/lib/schedule-pins";
 import {
   buildAgenda,
   getDays,
@@ -75,23 +76,7 @@ export default async function TodayPage() {
   const dayMoney = moneySummary(byDay(spend, focus.id));
   const carryOver = unvisitedFromPastDays(days, places, today);
   const otherPending = pendingFromOtherDays(places, focus.id);
-  const mapPins = agenda.flatMap((item) => {
-    if (item.kind !== "place" || item.lat == null || item.lng == null) return [];
-    return [
-      {
-        id: item.id,
-        name: item.name,
-        lat: item.lat,
-        lng: item.lng,
-        kind:
-          item.chip === "Food" || item.chip === "Cafe"
-            ? ("food" as const)
-            : item.chip === "Sight"
-              ? ("sight" as const)
-              : ("other" as const),
-      },
-    ];
-  });
+  const mapPins = mapPinsForDay(agenda, pending, stays, focus.date);
 
   return (
     <>

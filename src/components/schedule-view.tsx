@@ -6,7 +6,7 @@ import { DayAgendaBoard } from "@/components/day-agenda-board";
 import { DayMapLoader } from "@/components/day-map-loader";
 import { ScheduleDayTabs } from "@/components/schedule-day-tabs";
 import { StatusBadge } from "@/components/status-badge";
-import { formatDay, formatTripSpan } from "@/lib/format";
+import { formatCachedAt, formatDay, formatTripSpan } from "@/lib/format";
 import type { DayScheduleSlice, SchedulePin } from "@/lib/schedule-pins";
 import type { Place, TripDay } from "@/lib/types";
 
@@ -33,12 +33,14 @@ export function ScheduleView({
   byDay,
   allPins,
   initialDayId,
+  cachedAt = null,
 }: {
   days: TripDay[];
   places: Place[];
   byDay: Record<string, DayScheduleSlice>;
   allPins: SchedulePin[];
   initialDayId: string;
+  cachedAt?: string | null;
 }) {
   const [selectedId, setSelectedId] = useState(initialDayId);
   const selectedDay =
@@ -196,6 +198,11 @@ export function ScheduleView({
             <path d="M15 18 9 12l6-6" />
           </svg>
         </Link>
+        {cachedAt ? (
+          <p className="absolute right-2 top-[max(0.5rem,env(safe-area-inset-top,0px))] z-1100 max-w-[70%] rounded-full bg-white/90 px-3 py-2 text-right text-[11px] font-medium text-stone-600 shadow-sm backdrop-blur">
+            Saved itinerary · {formatCachedAt(cachedAt)}
+          </p>
+        ) : null}
       </div>
 
       <section

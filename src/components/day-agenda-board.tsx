@@ -12,6 +12,7 @@ import { HideMapPinButton } from "@/components/hide-map-pin-button";
 import { MapsPinLink } from "@/components/maps-pin-link";
 import { VisitedToggle } from "@/components/visited-toggle";
 import { formatTime, gapBetweenStarts, startBefore } from "@/lib/format";
+import { walkLabelBetween } from "@/lib/geo";
 import type { AgendaItem, Place } from "@/lib/types";
 
 type DragPayload = { id: string; from: "pending" | "agenda" };
@@ -344,6 +345,8 @@ export function DayAgendaBoard({
                 previous && item.start
                   ? gapBetweenStarts(previous.start, item.start)
                   : null;
+              const walk = previous ? walkLabelBetween(previous, item) : null;
+              const between = [gap, walk].filter(Boolean).join(" · ");
               return (
                 <li
                   key={`${item.kind}-${item.id}`}
@@ -355,9 +358,9 @@ export function DayAgendaBoard({
                   onDragLeave={() => setOver(null)}
                   onDrop={dropOnAgenda(item)}
                 >
-                  {gap ? (
+                  {between ? (
                     <p className="mb-2 ml-1 text-[11px] font-medium uppercase tracking-wide text-emerald-700">
-                      {gap}
+                      {between}
                     </p>
                   ) : null}
                   {over === dropId ? (

@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Japan Trip",
     short_name: "Japan Trip",
     description: "Mobile-first itinerary companion synced with Notion",
-    start_url: "/today",
+    start_url: "/",
     display: "standalone",
     background_color: "#f6f1e8",
     theme_color: "#b42318",

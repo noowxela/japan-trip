@@ -196,6 +196,20 @@ export function gapBetweenStarts(
   return formatGapMinutes(b - a);
 }
 
+export function formatCachedAt(iso: string) {
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return "earlier";
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    hourCycle: "h23",
+    timeZone: "Asia/Tokyo",
+  }).format(parsed);
+}
+
 export function formatDualRmYen(rmAmount: number, jpyPerRm = JPY_PER_RM) {
   const yen = Math.round(rmAmount * jpyPerRm);
   return `${formatRm(rmAmount)} · ${formatYen(yen)}`;

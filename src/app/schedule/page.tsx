@@ -1,13 +1,11 @@
 import Link from "next/link";
 import { EmptyState } from "@/components/empty-state";
+import { ScheduleOfflineFallback } from "@/components/schedule-offline";
 import { ScheduleView } from "@/components/schedule-view";
-import { tokyoToday } from "@/lib/format";
+import { TripCacheSync } from "@/components/trip-cache-sync";
 import { hasToken, isConfigured } from "@/lib/notion";
-import {
-  buildScheduleSlices,
-  pinsForAllDays,
-} from "@/lib/schedule-pins";
-import { getDays, getPlaces, getTransit, pickFocusDay } from "@/lib/trip";
+import { schedulePropsFromSnapshot } from "@/lib/schedule-pins";
+import { loadTripSnapshot } from "@/lib/trip-snapshot";
 
 export const dynamic = "force-dynamic";
 
@@ -35,44 +33,39 @@ export default async function SchedulePage({
   }
 
   const { day: dayParam } = await searchParams;
-  const [days, places, transit] = await Promise.all([
-    getDays(),
-    getPlaces(),
-    getTransit(),
-  ]);
 
-  if (days.length === 0) {
+  try {
+    const snapshot = await loadTripSnapshot();
+    const props = schedulePropsFromSnapshot(snapshot, dayParam);
+    if (!props) {
+      return (
+        <>
+          <div className="mx-auto max-w-xl px-4 py-6 md:max-w-5xl md:px-8">
+            <EmptyState title="No days yet">
+              Add trip days in{" "}
+              <Link href="/settings" className="font-medium text-hanko">
+                Settings
+              </Link>
+              .
+            </EmptyState>
+          </div>
+        </>
+      );
+    }
+
     return (
       <>
-        <div className="mx-auto max-w-xl px-4 py-6 md:max-w-5xl md:px-8">
-          <EmptyState title="No days yet">
-            Add trip days in{" "}
-            <Link href="/settings" className="font-medium text-hanko">
-              Settings
-            </Link>
-            .
-          </EmptyState>
-        </div>
+        <TripCacheSync snapshot={snapshot} />
+        <ScheduleView
+          days={props.days}
+          places={props.places}
+          byDay={props.byDay}
+          allPins={props.allPins}
+          initialDayId={props.initialDayId}
+        />
       </>
     );
+  } catch {
+    return <ScheduleOfflineFallback dayParam={dayParam} />;
   }
-
-  const today = tokyoToday();
-  const focusDay = pickFocusDay(days, today) ?? days[0];
-  const initialDayId =
-    dayParam === "all" || days.some((day) => day.id === dayParam)
-      ? (dayParam as string)
-      : focusDay.id;
-
-  return (
-    <>
-      <ScheduleView
-        days={days}
-        places={places}
-        byDay={buildScheduleSlices(days, places, transit)}
-        allPins={pinsForAllDays(days, places)}
-        initialDayId={initialDayId}
-      />
-    </>
-  );
 }

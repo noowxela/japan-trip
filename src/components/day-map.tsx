@@ -14,7 +14,7 @@ export type DayMapPin = {
   name: string;
   lat: number;
   lng: number;
-  kind: "sight" | "food" | "other";
+  kind: "sight" | "food" | "other" | "stay";
   label?: string;
 };
 
@@ -42,6 +42,16 @@ function foodIcon() {
   return L.divIcon({
     className: "day-map-pin",
     html: `<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="#ea580c" stroke="#fff" stroke-width="1.4" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9.2" r="2.4" fill="#fff"/></svg>`,
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
+    popupAnchor: [0, -24],
+  });
+}
+
+function stayIcon() {
+  return L.divIcon({
+    className: "day-map-pin",
+    html: `<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="#047857" stroke="#fff" stroke-width="1.4" d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-8.5z"/></svg>`,
     iconSize: [26, 26],
     iconAnchor: [13, 26],
     popupAnchor: [0, -24],
@@ -139,7 +149,9 @@ export default function DayMap({
           />
         ) : null}
         {visiblePins.map((pin) => {
-          const icon = pin.label
+          const icon = pin.kind === "stay"
+            ? stayIcon()
+            : pin.label
             ? labelIcon(pin.label)
             : pin.kind === "food"
               ? foodIcon()

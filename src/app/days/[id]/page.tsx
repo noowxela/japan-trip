@@ -14,8 +14,8 @@ import { DayQuickFab } from "@/components/day-quick-fab";
 import { EditOnly } from "@/components/edit-session";
 import { PageShell } from "@/components/page-shell";
 import { getEditorSession } from "@/lib/edit-session";
+import { mapPinsForDay } from "@/lib/schedule-pins";
 import { formatRm, tokyoToday } from "@/lib/format";
-import { coordsOfPlace } from "@/lib/geocode";
 import { byDay, moneySummary } from "@/lib/spend";
 import {
   buildAgenda,
@@ -64,45 +64,7 @@ export default async function DayPage({
   const today = tokyoToday();
   const carryOver = unvisitedFromPastDays(days, allPlaces, today);
   const otherPending = pendingFromOtherDays(allPlaces, id);
-  const mapPins = [
-    ...agenda.flatMap((item) => {
-      if (item.kind !== "place" || item.lat == null || item.lng == null) {
-        return [];
-      }
-      return [
-        {
-          id: item.id,
-          name: item.name,
-          lat: item.lat,
-          lng: item.lng,
-          kind:
-            item.chip === "Food" || item.chip === "Cafe"
-              ? ("food" as const)
-              : item.chip === "Sight"
-                ? ("sight" as const)
-                : ("other" as const),
-        },
-      ];
-    }),
-    ...pending.flatMap((place) => {
-      const coords = coordsOfPlace(place);
-      if (!coords) return [];
-      return [
-        {
-          id: place.id,
-          name: place.name,
-          lat: coords.lat,
-          lng: coords.lng,
-          kind:
-            place.type === "Food" || place.type === "Cafe"
-              ? ("food" as const)
-              : place.type === "Sight"
-                ? ("sight" as const)
-                : ("other" as const),
-        },
-      ];
-    }),
-  ];
+  const mapPins = mapPinsForDay(agenda, pending, stays, day.date);
 
   return (
     <>
