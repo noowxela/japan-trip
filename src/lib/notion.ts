@@ -31,7 +31,7 @@ export function getNotion() {
 }
 
 export function ds(
-  name: "DAYS" | "PLACES" | "STAYS" | "TRANSIT" | "SPEND" | "EDITORS",
+  name: "DAYS" | "PLACES" | "STAYS" | "TRANSIT" | "SPEND" | "EDITORS" | "PREP",
 ) {
   const id = process.env[`NOTION_${name}_DS`];
   if (!id) {
@@ -42,6 +42,10 @@ export function ds(
 
 export function hasEditorsDs() {
   return Boolean(process.env.NOTION_EDITORS_DS);
+}
+
+export function hasPrepDs() {
+  return Boolean(process.env.NOTION_PREP_DS);
 }
 
 export async function queryAll(

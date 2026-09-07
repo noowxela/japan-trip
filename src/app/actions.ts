@@ -24,6 +24,7 @@ function revalidateTrip() {
   revalidatePath("/spend");
   revalidatePath("/lists");
   revalidatePath("/schedule");
+  revalidatePath("/prep");
   revalidatePath("/budget", "layout");
   revalidatePath("/days", "layout");
 }
@@ -546,6 +547,49 @@ export async function deleteSpend(formData: FormData): Promise<ActionResult> {
   if (!id) return actionErr("Missing spend item");
   await trashPage(id);
   return actionOk("Spend deleted");
+}
+
+export async function addPrepItem(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
+  const name = String(formData.get("name") ?? "").trim();
+  const order = orderValue(formData);
+  if (!name) return actionErr("Prep task is required");
+  const notion = getNotion();
+  await notion.pages.create({
+    parent: { data_source_id: ds("PREP") },
+    properties: {
+      Name: titleProp(name),
+      Done: { checkbox: false },
+      ...(order !== null ? { Order: { number: order } } : {}),
+    },
+  });
+  revalidateTrip();
+  return actionOk("Prep task added");
+}
+
+export async function togglePrepItem(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
+  const id = String(formData.get("id") ?? "").trim();
+  const done = String(formData.get("done") ?? "") === "true";
+  if (!id) return actionErr("Missing prep task");
+  const notion = getNotion();
+  await notion.pages.update({
+    page_id: id,
+    properties: { Done: { checkbox: done } },
+  });
+  revalidateTrip();
+  return actionOk();
+}
+
+export async function deletePrepItem(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) return actionErr("Missing prep task");
+  await trashPage(id);
+  return actionOk("Prep task removed");
 }
 
 export async function movePendingToDay(formData: FormData): Promise<ActionResult> {

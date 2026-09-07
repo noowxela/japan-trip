@@ -6,6 +6,7 @@ import {
   dateOf,
   ds,
   hasEditorsDs,
+  hasPrepDs,
   numberOf,
   queryAll,
   relationIdsOf,
@@ -18,6 +19,7 @@ import {
 import { parseSpendCurrency } from "@/lib/spend";
 import type {
   Place,
+  PrepItem,
   SpendItem,
   Stay,
   Transit,
@@ -99,6 +101,15 @@ function parseSpend(page: Awaited<ReturnType<typeof queryAll>>[number]): SpendIt
   };
 }
 
+function parsePrep(page: Awaited<ReturnType<typeof queryAll>>[number]): PrepItem {
+  return {
+    id: page.id,
+    name: titleOf(page),
+    done: checkboxOf(page, "Done"),
+    order: numberOf(page, "Order"),
+  };
+}
+
 export const getDays = cache(async () => {
   const pages = await queryAll(ds("DAYS"), {
     sorts: [{ property: "Date", direction: "ascending" }],
@@ -136,6 +147,19 @@ export const getEditorNames = cache(async () => {
   return [...new Set(pages.map((page) => titleOf(page).trim()).filter(Boolean))].sort(
     (a, b) => a.localeCompare(b),
   );
+});
+
+export const getPrep = cache(async () => {
+  if (!hasPrepDs()) return [] as PrepItem[];
+  const pages = await queryAll(ds("PREP"));
+  return pages
+    .map(parsePrep)
+    .sort((a, b) => {
+      const ao = a.order ?? Number.MAX_SAFE_INTEGER;
+      const bo = b.order ?? Number.MAX_SAFE_INTEGER;
+      if (ao !== bo) return ao - bo;
+      return a.name.localeCompare(b.name);
+    });
 });
 
 export async function getSpendItem(id: string) {

@@ -61,6 +61,13 @@ export type SpendItem = {
   paidBy: string | null;
 };
 
+export type PrepItem = {
+  id: string;
+  name: string;
+  done: boolean;
+  order: number | null;
+};
+
 export type AgendaItem = {
   id: string;
   kind: "place" | "transit";

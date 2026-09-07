@@ -139,7 +139,7 @@ export default async function SettingsPage() {
           <p className="font-medium text-stone-700">Japan Trip</p>
           <p className="mt-1">
             Mobile-first itinerary companion synced with Notion. Prep checklist
-            is stored locally on this device.
+            syncs with the Prep database.
           </p>
           <p className="mt-2 text-xs tabular-nums text-stone-400">
             {formatAppVersion()}
