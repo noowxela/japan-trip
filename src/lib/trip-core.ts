@@ -42,7 +42,7 @@ export function buildAgenda(places: Place[], transit: Transit[]): AgendaItem[] {
           kind: "place" as const,
           name: place.name,
           chip: place.type,
-          detail: "",
+          detail: place.notes.trim(),
           start: place.start,
           order: null,
           visited: place.visited,

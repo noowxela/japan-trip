@@ -142,7 +142,7 @@ export function ScheduleDayTabs({
   }
 
   return (
-    <div className="relative shrink-0 border-b border-stone-100 bg-white">
+    <div className="relative z-10 shrink-0 bg-white shadow-[0_8px_18px_rgba(28,25,23,0.08)]">
       <div
         ref={scrollerRef}
         role="tablist"

@@ -264,7 +264,7 @@ export function ScheduleView({
             onSelect={selectDay}
           />
 
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-stone-50">
             {selectedDay ? (
               <div
                 key={selectedDay.id}

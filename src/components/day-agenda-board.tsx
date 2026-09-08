@@ -5,13 +5,14 @@ import {
   confirmPendingPlace,
   movePendingToDay,
   parkPlaceAsPending,
+  toggleVisited,
 } from "@/app/actions";
 import { useActionToast } from "@/components/action-form";
 import { useCanEdit } from "@/components/edit-session";
 import { HideMapPinButton } from "@/components/hide-map-pin-button";
 import { MapsPinLink } from "@/components/maps-pin-link";
-import { VisitedToggle } from "@/components/visited-toggle";
-import { formatTime, gapBetweenStarts, startBefore } from "@/lib/format";
+import { Modal } from "@/components/modal";
+import { formatTimeAmPm, gapBetweenStarts, startBefore } from "@/lib/format";
 import { walkLabelBetween } from "@/lib/geo";
 import { sightNumbersFromAgenda } from "@/lib/schedule-pins";
 import type { AgendaItem, Place } from "@/lib/types";
@@ -303,6 +304,7 @@ export function DayAgendaBoard({
 }) {
   const [busy, startTransition] = useTransition();
   const [over, setOver] = useState<string | null>(null);
+  const [menuId, setMenuId] = useState<string | null>(null);
   const notify = useActionToast();
   const canEdit = useCanEdit();
   const visitedCount = agenda.filter(
@@ -332,8 +334,21 @@ export function DayAgendaBoard({
     const formData = new FormData();
     formData.set("id", id);
     formData.set("dayId", dayId);
+    setMenuId(null);
     startTransition(async () => notify(await parkPlaceAsPending(formData)));
   }
+
+  function setVisited(id: string, visited: boolean) {
+    const formData = new FormData();
+    formData.set("id", id);
+    formData.set("visited", visited ? "true" : "false");
+    setMenuId(null);
+    startTransition(async () => notify(await toggleVisited(formData)));
+  }
+
+  const menuItem = agenda.find(
+    (item) => item.kind === "place" && item.id === menuId,
+  );
 
   return (
     <div className={`grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start ${busy ? "opacity-70" : ""}`}>
@@ -363,12 +378,13 @@ export function DayAgendaBoard({
           <ol className="relative">
             <span
               aria-hidden
-              className="pointer-events-none absolute top-3 bottom-8 left-2.5 w-px -translate-x-1/2 bg-stone-300"
+              className="pointer-events-none absolute top-3 bottom-8 left-[5.125rem] w-px -translate-x-1/2 bg-stone-300"
             />
             {agenda.map((item, index) => {
               const food = item.kind === "place" && isFoodChip(item.chip);
               const visited = item.kind === "place" && Boolean(item.visited);
               const sightNo = item.kind === "place" ? sightNumbers.get(item.id) : undefined;
+              const timeLabel = formatTimeAmPm(item.start) ?? "—";
               const dropId = `before-${item.id}`;
               const previous = index > 0 ? agenda[index - 1] : null;
               const gap =
@@ -389,17 +405,22 @@ export function DayAgendaBoard({
                   onDrop={dropOnAgenda(item)}
                 >
                   {between ? (
-                    <p className="mb-2 ml-8 text-[11px] font-medium uppercase tracking-wide text-emerald-700">
+                    <p className="mb-2 ml-[6.5rem] text-[11px] font-medium uppercase tracking-wide text-emerald-700">
                       {between}
                     </p>
                   ) : null}
                   {over === dropId ? (
-                    <p className="mb-2 ml-8 rounded-full bg-hanko px-3 py-1 text-center text-[11px] font-medium text-white">
+                    <p className="mb-2 ml-[6.5rem] rounded-full bg-hanko px-3 py-1 text-center text-[11px] font-medium text-white">
                       Drop to add before this
                     </p>
                   ) : null}
                   <div className="flex items-start gap-3">
-                    <TimelineMark number={sightNo} food={food} visited={visited} />
+                    <div className="flex shrink-0 items-start gap-2">
+                      <p className="mt-1.5 w-16 shrink-0 text-right text-[11px] font-semibold tabular-nums leading-5 text-stone-500">
+                        {timeLabel}
+                      </p>
+                      <TimelineMark number={sightNo} food={food} visited={visited} />
+                    </div>
                     <div
                       draggable={canEdit && item.kind === "place" && !visited}
                       onDragStart={(event) => {
@@ -410,22 +431,15 @@ export function DayAgendaBoard({
                         );
                         event.dataTransfer.effectAllowed = "move";
                       }}
-                      className={`min-w-0 flex-1 rounded-2xl border border-stone-200 bg-white p-4 ${
-                        visited
-                          ? "border-emerald-100 bg-emerald-50/40 opacity-70"
-                          : ""
+                      className={`min-w-0 flex-1 rounded-2xl p-4 ${
+                        visited ? "bg-emerald-50/40 opacity-70" : "bg-white"
                       }`}
                     >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-xs uppercase tracking-wide text-stone-500">
-                          {[formatTime(item.start) ?? "Anytime", item.chip]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </p>
                         <p className="flex items-start gap-1">
                           <span
-                            className={`text-lg font-medium break-words ${
+                            className={`text-sm font-medium break-words ${
                               visited ? "line-through text-stone-500" : ""
                             }`}
                           >
@@ -447,26 +461,30 @@ export function DayAgendaBoard({
                           ) : null}
                         </p>
                         {item.detail ? (
-                          <p className="text-sm text-stone-600">{item.detail}</p>
+                          <p className="mt-0.5 whitespace-pre-wrap text-xs leading-snug text-stone-500">
+                            {item.detail}
+                          </p>
                         ) : null}
                       </div>
-                      <div className="flex shrink-0 flex-col items-end gap-2">
-                        {item.kind === "place" ? (
-                          <VisitedToggle
-                            id={item.id}
-                            visited={Boolean(item.visited)}
-                          />
-                        ) : null}
-                        {item.kind === "place" && !visited && canEdit ? (
+                        {item.kind === "place" && canEdit ? (
                           <button
                             type="button"
-                            onClick={() => parkPlace(item.id)}
-                            className="text-[11px] font-medium text-[#ea580c]"
+                            aria-label={`Actions for ${item.name}`}
+                            draggable={false}
+                            onPointerDown={(event) => event.stopPropagation()}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setMenuId(item.id);
+                            }}
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-stone-400 hover:bg-stone-100 hover:text-stone-700"
                           >
-                            Park
+                            <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+                              <circle cx="6" cy="12" r="1.7" fill="currentColor" />
+                              <circle cx="12" cy="12" r="1.7" fill="currentColor" />
+                              <circle cx="18" cy="12" r="1.7" fill="currentColor" />
+                            </svg>
                           </button>
                         ) : null}
-                      </div>
                     </div>
                   </div>
                   </div>
@@ -480,7 +498,7 @@ export function DayAgendaBoard({
               }}
               onDragLeave={() => setOver(null)}
               onDrop={dropOnAgenda(null)}
-              className={`ml-8 h-8 rounded-full border border-dashed ${
+              className={`ml-[6.5rem] h-8 rounded-full border border-dashed ${
                 over === "agenda-end"
                   ? "border-hanko bg-hanko/10"
                   : "border-transparent"
@@ -500,6 +518,37 @@ export function DayAgendaBoard({
         dayDate={dayDate}
         mobileSheet
       />
+      <Modal
+        open={menuItem != null}
+        onClose={() => setMenuId(null)}
+        title={menuItem?.name ?? "Actions"}
+        variant="alert"
+      >
+        {menuItem ? (
+          <>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                setVisited(menuItem.id, !Boolean(menuItem.visited))
+              }
+              className="w-full border-t border-stone-200/80 py-3 text-center text-[17px] font-normal text-blue-600 disabled:opacity-60"
+            >
+              {menuItem.visited ? "Mark as not visited" : "Mark visited"}
+            </button>
+            {!menuItem.visited ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => parkPlace(menuItem.id)}
+                className="w-full border-t border-stone-200/80 py-3 text-center text-[17px] font-normal text-[#ea580c] disabled:opacity-60"
+              >
+                Park
+              </button>
+            ) : null}
+          </>
+        ) : null}
+      </Modal>
     </div>
   );
 }

@@ -54,6 +54,18 @@ export function formatRange(start: string | null, end: string | null) {
   return formatDay(start ?? end);
 }
 
+export function formatTimeAmPm(start: string | null) {
+  const time = formatTime(start);
+  if (!time) return null;
+  const [hourPart, minute] = time.split(":");
+  let hour = Number(hourPart);
+  if (!Number.isFinite(hour) || !minute) return time;
+  const suffix = hour >= 12 ? "PM" : "AM";
+  hour = hour % 12;
+  if (hour === 0) hour = 12;
+  return `${hour}:${minute} ${suffix}`;
+}
+
 export function formatTime(start: string | null) {
   if (!start || !start.includes("T")) return null;
   const parsed = new Date(start);
