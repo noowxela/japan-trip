@@ -15,14 +15,34 @@ const nunito = Nunito({
   subsets: ["latin"],
 });
 
+const siteTitle = "Japan Trip";
+const siteDescription = "Itinerary companion synced with Notion";
+
 export const metadata: Metadata = {
-  title: "Japan Trip",
-  description: "Itinerary companion synced with Notion",
-  applicationName: "Japan Trip",
+  metadataBase: new URL(
+    process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : "http://localhost:3000",
+  ),
+  title: siteTitle,
+  description: siteDescription,
+  applicationName: siteTitle,
   appleWebApp: {
     capable: true,
-    title: "Japan Trip",
+    title: siteTitle,
     statusBarStyle: "default",
+  },
+  openGraph: {
+    title: siteTitle,
+    description: siteDescription,
+    siteName: siteTitle,
+    type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: siteTitle,
+    description: siteDescription,
   },
 };
 
