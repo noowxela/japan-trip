@@ -26,6 +26,29 @@ export function pinKind(type: string | null): SchedulePin["kind"] {
   return "other";
 }
 
+export function sightNumbersById(
+  pins: { id: string; kind: string; label?: string }[],
+): Map<string, number> {
+  const numbers = new Map<string, number>();
+  let n = 0;
+  for (const pin of pins) {
+    if (pin.label || pin.kind !== "sight") continue;
+    numbers.set(pin.id, ++n);
+  }
+  return numbers;
+}
+
+export function sightNumbersFromAgenda(agenda: AgendaItem[]): Map<string, number> {
+  return sightNumbersById(
+    agenda.flatMap((item) => {
+      if (item.kind !== "place" || item.lat == null || item.lng == null) {
+        return [];
+      }
+      return [{ id: item.id, kind: pinKind(item.chip) }];
+    }),
+  );
+}
+
 export function pinsFromAgenda(
   agenda: AgendaItem[],
   pending: Place[],

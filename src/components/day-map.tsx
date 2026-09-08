@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import L from "leaflet";
 import { MapContainer, Marker, Popup, Polyline, ScaleControl, TileLayer, Tooltip, ZoomControl, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { useVisibleMapPins } from "@/components/hide-map-pin-button";
 import { MapStyleSwitch, useMapStyle } from "@/components/map-style-switch";
+import { sightNumbersById } from "@/lib/schedule-pins";
 import { CITY_COORDS } from "@/lib/types";
 import { googleMapsHref } from "@/lib/maps";
 
@@ -206,6 +207,7 @@ export default function DayMap({
 }) {
   const fallback = (city && CITY_COORDS[city]) || CITY_COORDS.Kyoto;
   const visiblePins = useVisibleMapPins(pins);
+  const sightNumbers = useMemo(() => sightNumbersById(pins), [pins]);
   const path = visiblePins.map((pin) => [pin.lat, pin.lng] as [number, number]);
   const labeled = visiblePins.some((pin) => pin.label);
   const sightPath = labeled
@@ -213,7 +215,6 @@ export default function DayMap({
     : visiblePins
         .filter((pin) => pin.kind === "sight")
         .map((pin) => [pin.lat, pin.lng] as [number, number]);
-  let sightNumber = 0;
   const { id: styleId, pick, tiles } = useMapStyle();
   const [hideLabels, setHideLabels] = useState(false);
   const [internalFullscreen, setInternalFullscreen] = useState(false);
@@ -281,7 +282,7 @@ export default function DayMap({
             : pin.kind === "food"
               ? foodIcon()
               : pin.kind === "sight"
-                ? numberIcon(++sightNumber)
+                ? numberIcon(sightNumbers.get(pin.id) ?? 0)
                 : otherIcon();
           return (
             <Marker

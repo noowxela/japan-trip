@@ -13,6 +13,7 @@ import { MapsPinLink } from "@/components/maps-pin-link";
 import { VisitedToggle } from "@/components/visited-toggle";
 import { formatTime, gapBetweenStarts, startBefore } from "@/lib/format";
 import { walkLabelBetween } from "@/lib/geo";
+import { sightNumbersFromAgenda } from "@/lib/schedule-pins";
 import type { AgendaItem, Place } from "@/lib/types";
 
 type DragPayload = { id: string; from: "pending" | "agenda" };
@@ -27,6 +28,29 @@ function readPayload(event: React.DragEvent) {
 
 function isFoodChip(chip: string | null) {
   return chip === "Food" || chip === "Cafe";
+}
+
+function TimelineMark({
+  number,
+  food,
+  visited,
+}: {
+  number?: number;
+  food: boolean;
+  visited: boolean;
+}) {
+  const tone = visited ? "bg-emerald-500" : food ? "bg-[#ea580c]" : "bg-hanko";
+  return (
+    <span className="relative z-10 mt-1.5 flex h-5 w-5 shrink-0 items-center justify-center">
+      {number != null ? (
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-hanko text-[10px] font-semibold text-white shadow-sm ring-[3px] ring-white">
+          {number}
+        </span>
+      ) : (
+        <span className={`h-2.5 w-2.5 rounded-full ring-[3px] ring-white ${tone}`} />
+      )}
+    </span>
+  );
 }
 
 function PendingCard({
@@ -284,6 +308,7 @@ export function DayAgendaBoard({
   const visitedCount = agenda.filter(
     (item) => item.kind === "place" && item.visited,
   ).length;
+  const sightNumbers = sightNumbersFromAgenda(agenda);
 
   function dropOnAgenda(before: AgendaItem | null) {
     return (event: React.DragEvent) => {
@@ -335,10 +360,15 @@ export function DayAgendaBoard({
             No stops yet. Add from pending below or use quick add.
           </div>
         ) : (
-          <ol className="relative space-y-0 border-l-2 border-stone-200 pl-5">
+          <ol className="relative">
+            <span
+              aria-hidden
+              className="pointer-events-none absolute top-3 bottom-8 left-2.5 w-px -translate-x-1/2 bg-stone-300"
+            />
             {agenda.map((item, index) => {
               const food = item.kind === "place" && isFoodChip(item.chip);
-              const visited = item.kind === "place" && item.visited;
+              const visited = item.kind === "place" && Boolean(item.visited);
+              const sightNo = item.kind === "place" ? sightNumbers.get(item.id) : undefined;
               const dropId = `before-${item.id}`;
               const previous = index > 0 ? agenda[index - 1] : null;
               const gap =
@@ -359,40 +389,33 @@ export function DayAgendaBoard({
                   onDrop={dropOnAgenda(item)}
                 >
                   {between ? (
-                    <p className="mb-2 ml-1 text-[11px] font-medium uppercase tracking-wide text-emerald-700">
+                    <p className="mb-2 ml-8 text-[11px] font-medium uppercase tracking-wide text-emerald-700">
                       {between}
                     </p>
                   ) : null}
                   {over === dropId ? (
-                    <p className="mb-2 rounded-full bg-hanko px-3 py-1 text-center text-[11px] font-medium text-white">
+                    <p className="mb-2 ml-8 rounded-full bg-hanko px-3 py-1 text-center text-[11px] font-medium text-white">
                       Drop to add before this
                     </p>
                   ) : null}
-                  <span
-                    className={`absolute -left-[1.4rem] top-1.5 h-3 w-3 rounded-full ${
-                      visited
-                        ? "bg-emerald-500"
-                        : food
-                          ? "bg-[#ea580c]"
-                          : "bg-hanko"
-                    }`}
-                  />
-                  <div
-                    draggable={canEdit && item.kind === "place" && !visited}
-                    onDragStart={(event) => {
-                      if (item.kind !== "place" || visited) return;
-                      event.dataTransfer.setData(
-                        "text/plain",
-                        JSON.stringify({ id: item.id, from: "agenda" }),
-                      );
-                      event.dataTransfer.effectAllowed = "move";
-                    }}
-                    className={`rounded-2xl border border-stone-200 bg-white p-4 ${
-                      visited
-                        ? "border-emerald-100 bg-emerald-50/40 opacity-70"
-                        : ""
-                    }`}
-                  >
+                  <div className="flex items-start gap-3">
+                    <TimelineMark number={sightNo} food={food} visited={visited} />
+                    <div
+                      draggable={canEdit && item.kind === "place" && !visited}
+                      onDragStart={(event) => {
+                        if (item.kind !== "place" || visited) return;
+                        event.dataTransfer.setData(
+                          "text/plain",
+                          JSON.stringify({ id: item.id, from: "agenda" }),
+                        );
+                        event.dataTransfer.effectAllowed = "move";
+                      }}
+                      className={`min-w-0 flex-1 rounded-2xl border border-stone-200 bg-white p-4 ${
+                        visited
+                          ? "border-emerald-100 bg-emerald-50/40 opacity-70"
+                          : ""
+                      }`}
+                    >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="text-xs uppercase tracking-wide text-stone-500">
@@ -446,6 +469,7 @@ export function DayAgendaBoard({
                       </div>
                     </div>
                   </div>
+                  </div>
                 </li>
               );
             })}
@@ -456,7 +480,7 @@ export function DayAgendaBoard({
               }}
               onDragLeave={() => setOver(null)}
               onDrop={dropOnAgenda(null)}
-              className={`h-8 rounded-full border border-dashed ${
+              className={`ml-8 h-8 rounded-full border border-dashed ${
                 over === "agenda-end"
                   ? "border-hanko bg-hanko/10"
                   : "border-transparent"

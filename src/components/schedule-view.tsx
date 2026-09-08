@@ -256,9 +256,6 @@ export function ScheduleView({
             className="flex shrink-0 cursor-grab touch-none flex-col items-center pt-2 pb-1 active:cursor-grabbing"
           >
             <span className="h-1 w-10 rounded-full bg-stone-300" />
-            <span className="mt-1 text-[10px] font-medium tracking-wide text-stone-400">
-              {expanded ? "Drag down for map" : "Drag up for full schedule"}
-            </span>
           </button>
 
           <ScheduleDayTabs
