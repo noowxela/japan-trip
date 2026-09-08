@@ -83,6 +83,7 @@ export function ScheduleView({
   } | null>(null);
   const [snapIndex, setSnapIndex] = useState(DEFAULT_SNAP);
   const [dragHeight, setDragHeight] = useState<number | null>(null);
+  const [mapFullscreen, setMapFullscreen] = useState(false);
 
   const sheetHeight =
     dragHeight != null ? `${dragHeight}px` : `${SNAPS[snapIndex] * 100}%`;
@@ -120,6 +121,7 @@ export function ScheduleView({
   );
 
   function onHandlePointerDown(event: React.PointerEvent<HTMLButtonElement>) {
+    if (mapFullscreen) return;
     if (event.button !== 0) return;
     const sheet = event.currentTarget.parentElement;
     if (!sheet) return;
@@ -173,6 +175,15 @@ export function ScheduleView({
     }
   }
 
+  useEffect(() => {
+    if (!mapFullscreen) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setMapFullscreen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mapFullscreen]);
+
   return (
     <div
       ref={rootRef}
@@ -183,6 +194,8 @@ export function ScheduleView({
           city={mapCity}
           pins={mapPins}
           className="h-full border-0"
+          fullscreen={mapFullscreen}
+          onFullscreenChange={setMapFullscreen}
         />
         <Link
           href="/"
@@ -205,15 +218,30 @@ export function ScheduleView({
             Saved itinerary · {formatCachedAt(cachedAt)}
           </p>
         ) : null}
+        {mapFullscreen ? (
+          <button
+            type="button"
+            onClick={() => setMapFullscreen(false)}
+            className="absolute bottom-[max(1.25rem,calc(env(safe-area-inset-bottom,0px)+0.75rem))] left-1/2 z-1100 -translate-x-1/2 rounded-full bg-white px-4 py-2.5 text-sm font-medium text-stone-800 shadow-md"
+          >
+            Show schedule
+          </button>
+        ) : null}
       </div>
 
       <section
-        className="relative z-20 flex min-h-64 shrink-0 flex-col overflow-hidden rounded-t-2xl border-t border-stone-200 bg-white shadow-[0_-8px_32px_rgba(28,25,23,0.12)]"
+        className={`relative z-20 flex shrink-0 flex-col overflow-hidden rounded-t-2xl border-t border-stone-200 bg-white shadow-[0_-8px_32px_rgba(28,25,23,0.12)] ${
+          mapFullscreen ? "pointer-events-none min-h-0" : "min-h-64"
+        }`}
         style={{
-          height: sheetHeight,
-          maxHeight: "calc(100% - 2.75rem)",
-          transition: dragHeight == null ? "height 220ms ease" : "none",
+          height: mapFullscreen ? 0 : sheetHeight,
+          maxHeight: mapFullscreen ? 0 : "calc(100% - 2.75rem)",
+          transition:
+            dragHeight == null
+              ? "height 320ms cubic-bezier(0.32, 0.72, 0, 1), max-height 320ms cubic-bezier(0.32, 0.72, 0, 1)"
+              : "none",
         }}
+        aria-hidden={mapFullscreen}
       >
           <button
             type="button"

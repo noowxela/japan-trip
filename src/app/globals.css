@@ -92,18 +92,8 @@ fieldset:disabled [data-haptic-overlay],
   border: none;
 }
 
-.day-map-fullscreen-btn {
-  display: flex !important;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  color: #333;
-}
-
 .day-map-fullscreen-btn svg {
-  width: 15px;
-  height: 15px;
+  display: block;
 }
 
 .day-map-fullscreen .leaflet-bottom {

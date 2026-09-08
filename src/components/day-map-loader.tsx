@@ -16,10 +16,22 @@ export function DayMapLoader({
   city,
   pins,
   className = "",
+  fullscreen,
+  onFullscreenChange,
 }: {
   city: string | null;
   pins: DayMapPin[];
   className?: string;
+  fullscreen?: boolean;
+  onFullscreenChange?: (value: boolean) => void;
 }) {
-  return <DayMap city={city} pins={pins} className={className} />;
+  return (
+    <DayMap
+      city={city}
+      pins={pins}
+      className={className}
+      fullscreen={fullscreen}
+      onFullscreenChange={onFullscreenChange}
+    />
+  );
 }
