@@ -107,13 +107,14 @@ export function DayCard({
     );
   }
 
+  const isHeader = href === null;
   const meta = (
     <div className="flex flex-wrap items-center gap-2">
       <p className="text-xs uppercase tracking-wide text-stone-500">
         {formatDay(day.date)}
         {day.city ? ` · ${day.city}` : ""}
       </p>
-      <StatusBadge status={day.status} />
+      {isHeader ? null : <StatusBadge status={day.status} />}
     </div>
   );
   const title = href ? (
@@ -140,7 +141,7 @@ export function DayCard({
         ) : (
           <div className="min-w-0 flex-1">{body}</div>
         )}
-        {canEdit ? (
+        {canEdit && !isHeader ? (
           <button
             type="button"
             onClick={() => setEditing(true)}

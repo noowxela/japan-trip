@@ -4,11 +4,12 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DayAgendaBoard } from "@/components/day-agenda-board";
 import { DayMapLoader } from "@/components/day-map-loader";
+import { useHiddenMapPinIds } from "@/components/hide-map-pin-button";
 import { ScheduleDayTabs } from "@/components/schedule-day-tabs";
-import { StatusBadge } from "@/components/status-badge";
 import { formatCachedAt, formatDay, formatTripSpan } from "@/lib/format";
+import { toggleHiddenMapPin } from "@/lib/hidden-map-pins";
 import type { DayScheduleSlice, SchedulePin } from "@/lib/schedule-pins";
-import type { Place, TripDay } from "@/lib/types";
+import type { Place, Stay, TripDay } from "@/lib/types";
 
 const SNAPS = [0.4, 0.68, 0.92] as const;
 const DEFAULT_SNAP = 1;
@@ -50,6 +51,7 @@ export function ScheduleView({
   const slice = selectedDay ? byDay[selectedDay.id] : null;
   const agenda = slice?.agenda ?? [];
   const pending = slice?.pending ?? [];
+  const lodging = slice?.stays ?? [];
   const mapPins = selectedDay ? (slice?.mapPins ?? []) : allPins;
   const mapCity =
     selectedDay?.city ?? days.find((day) => day.city)?.city ?? null;
@@ -246,7 +248,9 @@ export function ScheduleView({
                       <h2 className="text-lg font-semibold tracking-tight">
                         {selectedDay.name}
                       </h2>
-                      <StatusBadge status={selectedDay.status} />
+                      {lodging.map((stay) => (
+                        <StayLocationBadge key={stay.id} stay={stay} />
+                      ))}
                     </div>
                     <p className="mt-0.5 text-xs text-stone-500">
                       {formatDay(selectedDay.date)}
@@ -276,6 +280,49 @@ export function ScheduleView({
           </div>
         </section>
     </div>
+  );
+}
+
+function StayLocationBadge({ stay }: { stay: Stay }) {
+  const hiddenIds = useHiddenMapPinIds();
+  const hidden = hiddenIds.has(stay.id);
+  const label = hidden
+    ? `Show ${stay.name} on the map`
+    : `Hide ${stay.name} from the map`;
+
+  return (
+    <span
+      title={stay.address || stay.name}
+      className={`inline-flex max-w-56 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+        hidden
+          ? "bg-stone-100 text-stone-400"
+          : "bg-emerald-50 text-emerald-800"
+      }`}
+    >
+      <button
+        type="button"
+        aria-label={label}
+        aria-pressed={hidden}
+        title={hidden ? "Show on map" : "Hide from map"}
+        onClick={() => toggleHiddenMapPin(stay.id)}
+        className="-ml-0.5 inline-flex shrink-0 rounded-full p-0.5 hover:bg-black/5"
+      >
+        <svg
+          aria-hidden
+          viewBox="0 0 24 24"
+          className="h-3 w-3"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M3 10h18M5 10V8l7-4 7 4v2M5 10v10h14V10M9 20v-6h6v6" />
+          {hidden ? <path d="M4 20 20 4" /> : null}
+        </svg>
+      </button>
+      <span className="truncate">{stay.name}</span>
+    </span>
   );
 }
 

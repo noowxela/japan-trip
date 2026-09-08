@@ -17,6 +17,7 @@ export type DayScheduleSlice = {
   agenda: AgendaItem[];
   pending: Place[];
   mapPins: SchedulePin[];
+  stays: Stay[];
 };
 
 export function pinKind(type: string | null): SchedulePin["kind"] {
@@ -130,6 +131,7 @@ export function buildScheduleSlices(
       agenda,
       pending,
       mapPins: mapPinsForDay(agenda, pending, stays, day.date),
+      stays: staysForDate(stays, day.date),
     };
   }
   return slices;

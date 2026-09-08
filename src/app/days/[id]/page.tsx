@@ -15,8 +15,7 @@ import { EditOnly } from "@/components/edit-session";
 import { PageShell } from "@/components/page-shell";
 import { getEditorSession } from "@/lib/edit-session";
 import { mapPinsForDay } from "@/lib/schedule-pins";
-import { formatRm, tokyoToday } from "@/lib/format";
-import { byDay, moneySummary } from "@/lib/spend";
+import { tokyoToday } from "@/lib/format";
 import {
   buildAgenda,
   getDay,
@@ -24,7 +23,6 @@ import {
   getEditorNames,
   getPlaces,
   getPlacesForDay,
-  getSpend,
   getStays,
   getTransitForDay,
   pendingFromOtherDays,
@@ -48,19 +46,17 @@ export default async function DayPage({
   const day = await getDay(id);
   if (!day) notFound();
 
-  const [places, transit, days, stays, spend, allPlaces, people] = await Promise.all([
+  const [places, transit, days, stays, allPlaces, people] = await Promise.all([
     getPlacesForDay(id),
     getTransitForDay(id),
     getDays(),
     getStays(),
-    getSpend(),
     getPlaces(),
     getEditorNames(),
   ]);
   const agenda = buildAgenda(places, transit);
   const pending = places.filter((place) => place.pending);
   const lodging = staysForDate(stays, day.date);
-  const dayMoney = moneySummary(byDay(spend, id));
   const today = tokyoToday();
   const carryOver = unvisitedFromPastDays(days, allPlaces, today);
   const otherPending = pendingFromOtherDays(allPlaces, id);
@@ -76,13 +72,7 @@ export default async function DayPage({
             { label: day.name },
           ]}
         />
-        <div className="space-y-3">
-          <DayCard day={day} href={null} />
-          <p className="px-1 text-sm text-stone-500">
-            {formatRm(dayMoney.actual)} spent · {formatRm(dayMoney.estimate)}{" "}
-            estimated
-          </p>
-        </div>
+        <DayCard day={day} href={null} />
 
         {lodging.length > 0 ? (
           <p className="notebook-card px-4 py-2 text-sm text-stone-600">
