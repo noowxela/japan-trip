@@ -241,8 +241,8 @@ export function ScheduleView({
 
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {selectedDay ? (
-              <>
-                <div className="flex shrink-0 items-start justify-between gap-3 border-b border-stone-100 px-4 py-3">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]">
+                <div className="flex items-start justify-between gap-3 border-b border-stone-100 px-4 py-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="text-lg font-semibold tracking-tight">
@@ -260,8 +260,7 @@ export function ScheduleView({
                     Full day →
                   </Link>
                 </div>
-
-                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]">
+                <div className="px-4 py-3">
                   <DayAgendaBoard
                     agenda={agenda}
                     pending={pending}
@@ -269,7 +268,7 @@ export function ScheduleView({
                     dayDate={selectedDay.date}
                   />
                 </div>
-              </>
+              </div>
             ) : (
               <AllDaysPanel days={days} places={places} onSelectDay={selectDay} />
             )}
@@ -382,47 +381,43 @@ function AllDaysPanel({
   );
 
   return (
-    <>
-      <div className="flex shrink-0 items-start justify-between gap-3 border-b border-stone-100 px-4 py-3">
-        <div className="min-w-0">
-          <h2 className="text-lg font-semibold tracking-tight">All days</h2>
-          <p className="mt-0.5 text-xs text-stone-500">{span}</p>
-        </div>
+    <div
+      ref={scrollerRef}
+      className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]"
+    >
+      <div className="border-b border-stone-100 px-4 py-3">
+        <h2 className="text-lg font-semibold tracking-tight">All days</h2>
+        <p className="mt-0.5 text-xs text-stone-500">{span}</p>
       </div>
-      <div
-        ref={scrollerRef}
-        className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]"
-      >
-        <ul className="space-y-4">
-          {days.map((day, index) => {
-            const items = places.filter(
-              (place) =>
-                place.dayIds.includes(day.id) && !place.pending,
-            );
-            return (
-              <li key={day.id}>
-                <AllDayJumpButton
-                  day={day}
-                  index={index}
-                  onSelectDay={onSelectDay}
-                />
-                {items.length === 0 ? (
-                  <p className="mt-1 text-sm text-stone-400">No places yet</p>
-                ) : (
-                  <ul className="mt-1.5 space-y-0.5">
-                    {items.map((place) => (
-                      <li key={place.id} className="text-sm text-stone-600">
-                        {place.name}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-    </>
+      <ul className="space-y-4 px-4 pb-3">
+        {days.map((day, index) => {
+          const items = places.filter(
+            (place) =>
+              place.dayIds.includes(day.id) && !place.pending,
+          );
+          return (
+            <li key={day.id}>
+              <AllDayJumpButton
+                day={day}
+                index={index}
+                onSelectDay={onSelectDay}
+              />
+              {items.length === 0 ? (
+                <p className="mt-1 text-sm text-stone-400">No places yet</p>
+              ) : (
+                <ul className="mt-1.5 space-y-0.5">
+                  {items.map((place) => (
+                    <li key={place.id} className="text-sm text-stone-600">
+                      {place.name}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 
