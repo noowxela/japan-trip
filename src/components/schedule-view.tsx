@@ -326,6 +326,49 @@ function StayLocationBadge({ stay }: { stay: Stay }) {
   );
 }
 
+function useSuppressClickAfterScroll() {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const list = el.querySelector("ul");
+    let ignoreClick = false;
+    let restoreTimer = 0;
+
+    const onPointerDown = () => {
+      ignoreClick = false;
+    };
+    const onScroll = () => {
+      ignoreClick = true;
+      if (list) list.style.pointerEvents = "none";
+      window.clearTimeout(restoreTimer);
+      restoreTimer = window.setTimeout(() => {
+        if (list) list.style.pointerEvents = "";
+      }, 150);
+    };
+    const onClickCapture = (event: MouseEvent) => {
+      if (!ignoreClick) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      ignoreClick = false;
+    };
+
+    el.addEventListener("pointerdown", onPointerDown);
+    el.addEventListener("scroll", onScroll, { passive: true });
+    el.addEventListener("click", onClickCapture, true);
+    return () => {
+      window.clearTimeout(restoreTimer);
+      if (list) list.style.pointerEvents = "";
+      el.removeEventListener("pointerdown", onPointerDown);
+      el.removeEventListener("scroll", onScroll);
+      el.removeEventListener("click", onClickCapture, true);
+    };
+  }, []);
+
+  return ref;
+}
+
 function AllDaysPanel({
   days,
   places,
@@ -335,6 +378,7 @@ function AllDaysPanel({
   places: Place[];
   onSelectDay: (id: string) => void;
 }) {
+  const scrollerRef = useSuppressClickAfterScroll();
   const dated = days.filter((day) => day.date);
   const span = formatTripSpan(
     dated[0]?.date ?? null,
@@ -349,7 +393,10 @@ function AllDaysPanel({
           <p className="mt-0.5 text-xs text-stone-500">{span}</p>
         </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]">
+      <div
+        ref={scrollerRef}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]"
+      >
         <ul className="space-y-4">
           {days.map((day, index) => {
             const items = places.filter(
@@ -358,19 +405,11 @@ function AllDaysPanel({
             );
             return (
               <li key={day.id}>
-                <button
-                  type="button"
-                  onClick={() => onSelectDay(day.id)}
-                  className="flex w-full items-baseline justify-between gap-3 text-left"
-                >
-                  <span className="min-w-0 font-semibold">
-                    <span className="text-hanko">D{index + 1}</span>{" "}
-                    {day.name}
-                  </span>
-                  <span className="shrink-0 text-xs text-stone-500">
-                    {formatDay(day.date)}
-                  </span>
-                </button>
+                <AllDayJumpButton
+                  day={day}
+                  index={index}
+                  onSelectDay={onSelectDay}
+                />
                 {items.length === 0 ? (
                   <p className="mt-1 text-sm text-stone-400">No places yet</p>
                 ) : (
@@ -388,5 +427,61 @@ function AllDaysPanel({
         </ul>
       </div>
     </>
+  );
+}
+
+function AllDayJumpButton({
+  day,
+  index,
+  onSelectDay,
+}: {
+  day: TripDay;
+  index: number;
+  onSelectDay: (id: string) => void;
+}) {
+  const skipClickRef = useRef(false);
+  const originRef = useRef<{ x: number; y: number } | null>(null);
+
+  return (
+    <button
+      type="button"
+      onPointerDown={(event) => {
+        if (event.button !== 0) return;
+        originRef.current = { x: event.clientX, y: event.clientY };
+        skipClickRef.current = false;
+      }}
+      onPointerMove={(event) => {
+        const origin = originRef.current;
+        if (!origin) return;
+        if (
+          Math.abs(event.clientX - origin.x) > TAP_SLOP_PX ||
+          Math.abs(event.clientY - origin.y) > TAP_SLOP_PX
+        ) {
+          skipClickRef.current = true;
+        }
+      }}
+      onPointerUp={() => {
+        originRef.current = null;
+      }}
+      onPointerCancel={() => {
+        skipClickRef.current = true;
+        originRef.current = null;
+      }}
+      onClick={() => {
+        if (skipClickRef.current) {
+          skipClickRef.current = false;
+          return;
+        }
+        onSelectDay(day.id);
+      }}
+      className="flex w-full touch-pan-y items-baseline justify-between gap-3 text-left"
+    >
+      <span className="min-w-0 font-semibold">
+        <span className="text-hanko">D{index + 1}</span> {day.name}
+      </span>
+      <span className="shrink-0 text-xs text-stone-500">
+        {formatDay(day.date)}
+      </span>
+    </button>
   );
 }
