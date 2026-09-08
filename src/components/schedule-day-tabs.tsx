@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { formatTabDate, tokyoToday } from "@/lib/format";
 import type { TripDay } from "@/lib/types";
 
-const TAB_WIDTH_PX = 88;
+const TAB_WIDTH_PX = 56;
 
 export function ScheduleDayTabs({
   days,
@@ -17,90 +17,105 @@ export function ScheduleDayTabs({
 }) {
   const today = tokyoToday();
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const itemEls = useRef<(HTMLButtonElement | null)[]>([]);
   const fromScrollRef = useRef(false);
-  const readyRef = useRef(false);
+  const movedRef = useRef(false);
+  const rafRef = useRef(0);
   const settleTimer = useRef(0);
-  const scrolledRef = useRef(false);
   const selectedIdRef = useRef(selectedId);
   const onSelectRef = useRef(onSelect);
-  selectedIdRef.current = selectedId;
-  onSelectRef.current = onSelect;
+  const visualIdRef = useRef(selectedId);
 
   const items = useMemo(
     () => [
-      { id: "all", dateLabel: "All", dayLabel: "Days", isToday: false },
-      ...days.map((day, index) => {
-        const isToday = day.date?.slice(0, 10) === today;
-        return {
-          id: day.id,
-          dateLabel: formatTabDate(day.date),
-          dayLabel: `Day ${index + 1}${isToday ? " · Today" : ""}`,
-          isToday,
-        };
-      }),
+      { id: "all", dateLabel: "All", dayLabel: "Days" },
+      ...days.map((day, index) => ({
+        id: day.id,
+        dateLabel: formatTabDate(day.date),
+        dayLabel:
+          day.date?.slice(0, 10) === today ? "Today" : `Day ${index + 1}`,
+      })),
     ],
     [days, today],
   );
 
-  const scrollToId = useCallback((id: string, behavior: ScrollBehavior) => {
+  const [visualId, setVisualId] = useState(selectedId);
+  const hasScrollEnd =
+    typeof window !== "undefined" && "onscrollend" in window;
+
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+    onSelectRef.current = onSelect;
+    visualIdRef.current = visualId;
+  });
+
+  const scrollToId = useCallback((id: string) => {
     const root = scrollerRef.current;
-    const el = root?.querySelector<HTMLElement>(`[data-day-id="${id}"]`);
+    const el = itemEls.current.find((node) => node?.dataset.dayId === id);
     if (!root || !el) return;
-    root.scrollTo({
-      left: el.offsetLeft - (root.clientWidth - el.offsetWidth) / 2,
-      behavior,
-    });
+    root.scrollLeft = el.offsetLeft - (root.clientWidth - el.offsetWidth) / 2;
   }, []);
 
   useLayoutEffect(() => {
     if (fromScrollRef.current) {
       fromScrollRef.current = false;
+      setVisualId(selectedId);
       return;
     }
-    scrollToId(selectedId, readyRef.current ? "smooth" : "instant");
-    readyRef.current = true;
+    setVisualId(selectedId);
+    scrollToId(selectedId);
   }, [selectedId, scrollToId, items.length]);
 
   const nearestId = useCallback(() => {
     const root = scrollerRef.current;
     if (!root) return null;
     const mid = root.scrollLeft + root.clientWidth / 2;
-    let bestId = items[0]?.id ?? null;
+    let bestId: string | null = null;
     let bestDist = Infinity;
-    for (const item of items) {
-      const el = root.querySelector<HTMLElement>(`[data-day-id="${item.id}"]`);
+    for (const el of itemEls.current) {
       if (!el) continue;
       const dist = Math.abs(el.offsetLeft + el.offsetWidth / 2 - mid);
       if (dist < bestDist) {
         bestDist = dist;
-        bestId = item.id;
+        bestId = el.dataset.dayId ?? null;
       }
     }
     return bestId;
-  }, [items]);
+  }, []);
 
-  function commitCenteredDay() {
+  const commitCenteredDay = useCallback(() => {
     const id = nearestId();
-    if (!id || id === selectedIdRef.current) return;
+    if (!id) return;
+    setVisualId(id);
+    if (id === selectedIdRef.current) return;
     fromScrollRef.current = true;
     onSelectRef.current(id);
-  }
+  }, [nearestId]);
 
   useEffect(() => {
     const root = scrollerRef.current;
     if (!root) return;
     const onScrollEnd = () => commitCenteredDay();
-    root.addEventListener("scrollend", onScrollEnd);
+    root.addEventListener("scrollend", onScrollEnd, { passive: true });
     return () => {
       root.removeEventListener("scrollend", onScrollEnd);
       window.clearTimeout(settleTimer.current);
+      cancelAnimationFrame(rafRef.current);
     };
-  }, [nearestId]);
+  }, [commitCenteredDay]);
 
   function onScroll() {
-    scrolledRef.current = true;
+    movedRef.current = true;
+    if (!rafRef.current) {
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = 0;
+        const id = nearestId();
+        if (id && id !== visualIdRef.current) setVisualId(id);
+      });
+    }
+    if (hasScrollEnd) return;
     window.clearTimeout(settleTimer.current);
-    settleTimer.current = window.setTimeout(commitCenteredDay, 80);
+    settleTimer.current = window.setTimeout(commitCenteredDay, 140);
   }
 
   return (
@@ -110,17 +125,18 @@ export function ScheduleDayTabs({
         role="tablist"
         aria-label="Trip days"
         onPointerDown={() => {
-          scrolledRef.current = false;
+          movedRef.current = false;
         }}
         onScroll={onScroll}
         className="flex w-full min-w-0 snap-x snap-mandatory overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-none"
         style={{
           paddingLeft: `calc(50% - ${TAB_WIDTH_PX / 2}px)`,
           paddingRight: `calc(50% - ${TAB_WIDTH_PX / 2}px)`,
+          WebkitOverflowScrolling: "touch",
         }}
       >
-        {items.map((item) => {
-          const active = item.id === selectedId;
+        {items.map((item, index) => {
+          const active = item.id === visualId;
           return (
             <button
               key={item.id}
@@ -128,25 +144,28 @@ export function ScheduleDayTabs({
               role="tab"
               aria-selected={active}
               data-day-id={item.id}
+              ref={(node) => {
+                itemEls.current[index] = node;
+              }}
               onClick={() => {
-                if (scrolledRef.current) return;
+                if (movedRef.current) return;
                 onSelect(item.id);
               }}
-              className={`relative flex h-[3.7rem] w-22 shrink-0 snap-center snap-always touch-pan-x flex-col items-center justify-center px-1 text-center transition-colors ${
+              className={`flex h-12 w-14 shrink-0 snap-center touch-pan-x flex-col items-center justify-center text-center ${
                 active ? "text-hanko" : "text-stone-400"
               }`}
             >
-              <span className="text-sm font-medium leading-tight">
+              <span className="text-[13px] font-medium leading-none">
                 {item.dateLabel}
               </span>
-              <span className="mt-0.5 text-xs leading-tight">{item.dayLabel}</span>
+              <span className="mt-1 text-[11px] leading-none">{item.dayLabel}</span>
             </button>
           );
         })}
       </div>
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 mx-auto h-0.5 w-10 rounded-full bg-hanko"
+        className="pointer-events-none absolute inset-x-0 bottom-0 mx-auto h-0.5 w-7 rounded-full bg-hanko"
       />
     </div>
   );
