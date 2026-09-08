@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import { MapContainer, Marker, Popup, Polyline, TileLayer, ZoomControl, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -68,6 +68,60 @@ function otherIcon() {
   });
 }
 
+function MapFullscreenToggle({
+  active,
+  onToggle,
+}: {
+  active: boolean;
+  onToggle: () => void;
+}) {
+  const map = useMap();
+  const onToggleRef = useRef(onToggle);
+
+  useEffect(() => {
+    onToggleRef.current = onToggle;
+  });
+
+  useEffect(() => {
+    const control = new L.Control({ position: "bottomright" });
+    control.onAdd = () => {
+      const wrap = L.DomUtil.create("div", "leaflet-bar leaflet-control");
+      const btn = L.DomUtil.create("a", "day-map-fullscreen-btn") as HTMLAnchorElement;
+      wrap.appendChild(btn);
+      btn.href = "#";
+      btn.setAttribute("role", "button");
+      L.DomEvent.disableClickPropagation(wrap);
+      L.DomEvent.disableScrollPropagation(wrap);
+      L.DomEvent.on(btn, "click", (event) => {
+        L.DomEvent.preventDefault(event);
+        onToggleRef.current();
+      });
+      return wrap;
+    };
+    control.addTo(map);
+    return () => {
+      control.remove();
+    };
+  }, [map]);
+
+  useEffect(() => {
+    const btn = map
+      .getContainer()
+      .querySelector(".day-map-fullscreen-btn");
+    if (!(btn instanceof HTMLElement)) return;
+    const label = active ? "Exit full screen" : "Full screen map";
+    btn.title = label;
+    btn.setAttribute("aria-label", label);
+    btn.innerHTML = active
+      ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 9 4 4M4 10V4h6M15 9l5-5M20 10V4h-6M9 15l-5 5M4 14v6h6M15 15l5 5M20 14v6h-6"/></svg>`
+      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg>`;
+    const timer = window.setTimeout(() => map.invalidateSize(), 80);
+    return () => window.clearTimeout(timer);
+  }, [map, active]);
+
+  return null;
+}
+
 function FitPins({
   positions,
   fallback,
@@ -124,10 +178,29 @@ export default function DayMap({
         .map((pin) => [pin.lat, pin.lng] as [number, number]);
   let sightNumber = 0;
   const { id: styleId, pick, tiles } = useMapStyle();
+  const [fullscreen, setFullscreen] = useState(false);
+
+  useEffect(() => {
+    if (!fullscreen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setFullscreen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [fullscreen]);
 
   return (
     <div
-      className={`relative w-full overflow-hidden border-sage ${className || "h-52 rounded-2xl border sm:h-64 md:h-72"}`.trim()}
+      className={
+        fullscreen
+          ? "day-map-fullscreen fixed inset-0 z-2000 overflow-hidden bg-white"
+          : `relative w-full overflow-hidden border-sage ${className || "h-52 rounded-2xl border sm:h-64 md:h-72"}`.trim()
+      }
     >
       <MapContainer
         center={fallback}
@@ -138,6 +211,10 @@ export default function DayMap({
         zoomControl={false}
       >
         <ZoomControl position="bottomright" />
+        <MapFullscreenToggle
+          active={fullscreen}
+          onToggle={() => setFullscreen((value) => !value)}
+        />
         <FitPins positions={path} fallback={fallback} />
         <TileLayer
           key={styleId}

@@ -28,7 +28,7 @@ export function MapStyleSwitch({
   onChange: (id: MapStyleId) => void;
 }) {
   return (
-    <div className="absolute right-2 top-2 z-[1000] flex max-w-[min(100%-0.75rem,22rem)] flex-wrap justify-end gap-1 rounded-full bg-white/90 p-1 shadow-sm backdrop-blur">
+    <div className="absolute right-2 top-[max(0.5rem,env(safe-area-inset-top,0px))] z-[1000] flex max-w-[min(100%-0.75rem,22rem)] flex-wrap justify-end gap-1 rounded-full bg-white/90 p-1 shadow-sm backdrop-blur">
       {MAP_STYLE_IDS.map((style) => {
         const active = style === id;
         return (

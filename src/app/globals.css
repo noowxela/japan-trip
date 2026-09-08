@@ -92,6 +92,32 @@ fieldset:disabled [data-haptic-overlay],
   border: none;
 }
 
+.day-map-fullscreen-btn {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  color: #333;
+}
+
+.day-map-fullscreen-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.day-map-fullscreen .leaflet-bottom {
+  bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.day-map-fullscreen .leaflet-right {
+  right: env(safe-area-inset-right, 0px);
+}
+
+.day-map-fullscreen .leaflet-top {
+  top: env(safe-area-inset-top, 0px);
+}
+
 @keyframes schedule-pane {
   from {
     opacity: 0.35;
