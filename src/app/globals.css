@@ -92,6 +92,48 @@ fieldset:disabled [data-haptic-overlay],
   border: none;
 }
 
+.leaflet-container:not(.day-map-named) .leaflet-tooltip.day-map-pin-name,
+.day-map-labels-off .leaflet-tooltip.day-map-pin-name {
+  display: none;
+}
+
+.leaflet-tooltip.day-map-pin-name {
+  padding: 4px 9px;
+  border: 0.5px solid rgba(255, 255, 255, 0.62);
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.42);
+  color: #1c1917;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  box-shadow:
+    0 1px 8px rgba(0, 0, 0, 0.12),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px) saturate(1.7);
+  -webkit-backdrop-filter: blur(16px) saturate(1.7);
+  white-space: nowrap;
+  max-width: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.leaflet-tooltip.day-map-pin-name::before {
+  display: none;
+}
+
+.leaflet-control-scale {
+  margin-bottom: 8px;
+}
+
+.leaflet-control-scale-line {
+  border-color: #1c1917;
+  color: #1c1917;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
 .day-map-fullscreen-btn svg {
   display: block;
 }

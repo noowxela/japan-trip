@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import L from "leaflet";
-import { MapContainer, Marker, Popup, Polyline, TileLayer, ZoomControl } from "react-leaflet";
+import { MapContainer, Marker, Popup, Polyline, ScaleControl, TileLayer, ZoomControl } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import Link from "next/link";
 import { useVisibleMapPins } from "@/components/hide-map-pin-button";
@@ -66,6 +66,7 @@ export default function TripMap({ hops, hopPoints, pins }: Props) {
         scrollWheelZoom={scrollWheelZoom}
         zoomControl={false}
       >
+      <ScaleControl position="bottomright" imperial={false} maxWidth={80} />
       <ZoomControl position="bottomright" />
       <TileLayer
         key={styleId}

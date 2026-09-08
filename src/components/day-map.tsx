@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import L from "leaflet";
-import { MapContainer, Marker, Popup, Polyline, TileLayer, ZoomControl, useMap } from "react-leaflet";
+import { MapContainer, Marker, Popup, Polyline, ScaleControl, TileLayer, Tooltip, ZoomControl, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { useVisibleMapPins } from "@/components/hide-map-pin-button";
 import { MapStyleSwitch, useMapStyle } from "@/components/map-style-switch";
@@ -44,6 +44,7 @@ function foodIcon() {
     html: `<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="#ea580c" stroke="#fff" stroke-width="1.4" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9.2" r="2.4" fill="#fff"/></svg>`,
     iconSize: [26, 26],
     iconAnchor: [13, 26],
+    tooltipAnchor: [0, -17],
     popupAnchor: [0, -24],
   });
 }
@@ -68,6 +69,53 @@ function otherIcon() {
   });
 }
 
+const NAME_ZOOM = 14;
+
+function MapZoomGate({ minZoom }: { minZoom: number }) {
+  const map = useMap();
+  useEffect(() => {
+    const el = map.getContainer();
+    function update() {
+      el.classList.toggle("day-map-named", map.getZoom() >= minZoom);
+    }
+    update();
+    map.on("zoom zoomend", update);
+    return () => {
+      map.off("zoom zoomend", update);
+      el.classList.remove("day-map-named");
+    };
+  }, [map, minZoom]);
+  return null;
+}
+
+const MAP_CORNER_BTN =
+  "flex h-8 w-8 items-center justify-center rounded-sm border border-black/20 bg-white text-stone-700 shadow-sm";
+
+function MapLabelsButton({
+  hidden,
+  onToggle,
+}: {
+  hidden: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={hidden ? "Show pin names" : "Hide pin names"}
+      aria-pressed={hidden}
+      title={hidden ? "Show pin names" : "Hide pin names"}
+      onClick={onToggle}
+      className={`${MAP_CORNER_BTN} ${hidden ? "text-stone-400" : ""}`}
+    >
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <rect x="3" y="8" width="14" height="8" rx="4" />
+        <path d="M17 12h4" />
+        {hidden ? <path d="M4 20 20 4" /> : null}
+      </svg>
+    </button>
+  );
+}
+
 function MapFullscreenButton({
   active,
   onToggle,
@@ -82,7 +130,7 @@ function MapFullscreenButton({
       aria-pressed={active}
       title={active ? "Show schedule" : "Full screen map"}
       onClick={onToggle}
-      className="day-map-fullscreen-btn absolute right-2.5 bottom-[calc(6.75rem+env(safe-area-inset-bottom,0px))] z-1100 flex h-8 w-8 items-center justify-center rounded-sm border border-black/20 bg-white text-stone-700 shadow-sm"
+      className={`day-map-fullscreen-btn ${MAP_CORNER_BTN}`}
     >
       {active ? (
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
@@ -97,6 +145,10 @@ function MapFullscreenButton({
   );
 }
 
+function pinBoundsKey(positions: [number, number][]) {
+  return positions.map(([lat, lng]) => `${lat},${lng}`).join("|");
+}
+
 function FitPins({
   positions,
   fallback,
@@ -105,14 +157,18 @@ function FitPins({
   fallback: [number, number];
 }) {
   const map = useMap();
+  const boundsKey = pinBoundsKey(positions);
+  const fallbackKey = `${fallback[0]},${fallback[1]}`;
   useEffect(() => {
+    const pts = positions;
+    const origin = fallback;
     function fit() {
-      if (positions.length > 1) {
-        map.fitBounds(positions, { padding: [36, 36], maxZoom: 15 });
-      } else if (positions.length === 1) {
-        map.setView(positions[0], 14);
+      if (pts.length > 1) {
+        map.fitBounds(pts, { padding: [36, 36], maxZoom: 15 });
+      } else if (pts.length === 1) {
+        map.setView(pts[0], 14);
       } else {
-        map.setView(fallback, 12);
+        map.setView(origin, 12);
       }
       map.invalidateSize();
     }
@@ -129,7 +185,9 @@ function FitPins({
       window.clearTimeout(timer);
       observer?.disconnect();
     };
-  }, [map, positions, fallback]);
+    // boundsKey / fallbackKey encode the coordinates so a parent re-render
+    // (e.g. pin labels appearing) does not refit and zoom the user back out.
+  }, [map, boundsKey, fallbackKey]);
   return null;
 }
 
@@ -157,6 +215,7 @@ export default function DayMap({
         .map((pin) => [pin.lat, pin.lng] as [number, number]);
   let sightNumber = 0;
   const { id: styleId, pick, tiles } = useMapStyle();
+  const [hideLabels, setHideLabels] = useState(false);
   const [internalFullscreen, setInternalFullscreen] = useState(false);
   const controlled = onFullscreenChange != null;
   const fullscreen = controlled ? Boolean(fullscreenProp) : internalFullscreen;
@@ -185,9 +244,10 @@ export default function DayMap({
   return (
     <div
       className={
-        overlay
+        (overlay
           ? "day-map-fullscreen fixed inset-0 z-2000 overflow-hidden bg-white"
-          : `relative w-full overflow-hidden border-sage ${className || "h-52 rounded-2xl border sm:h-64 md:h-72"}`.trim()
+          : `relative w-full overflow-hidden border-sage ${className || "h-52 rounded-2xl border sm:h-64 md:h-72"}`.trim()) +
+        (hideLabels ? " day-map-labels-off" : "")
       }
     >
       <MapContainer
@@ -198,7 +258,9 @@ export default function DayMap({
         scrollWheelZoom={false}
         zoomControl={false}
       >
+        <ScaleControl position="bottomright" imperial={false} maxWidth={80} />
         <ZoomControl position="bottomright" />
+        <MapZoomGate minZoom={NAME_ZOOM} />
         <FitPins positions={path} fallback={fallback} />
         <TileLayer
           key={styleId}
@@ -227,6 +289,16 @@ export default function DayMap({
               position={[pin.lat, pin.lng]}
               icon={icon}
             >
+              <Tooltip
+                permanent
+                interactive={false}
+                direction="right"
+                offset={pin.kind === "food" ? [14, 0] : [12, 0]}
+                opacity={1}
+                className="day-map-pin-name"
+              >
+                {pin.name}
+              </Tooltip>
               <Popup>
                 <div className="text-sm">
                   {pin.label ? (
@@ -252,7 +324,10 @@ export default function DayMap({
         })}
       </MapContainer>
       <MapStyleSwitch id={styleId} onChange={pick} />
-      <MapFullscreenButton active={fullscreen} onToggle={toggleFullscreen} />
+      <div className="absolute right-2.5 bottom-[calc(9rem+env(safe-area-inset-bottom,0px))] z-1100 flex flex-col gap-1.5">
+        <MapLabelsButton hidden={hideLabels} onToggle={() => setHideLabels((value) => !value)} />
+        <MapFullscreenButton active={fullscreen} onToggle={toggleFullscreen} />
+      </div>
     </div>
   );
 }
