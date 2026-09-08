@@ -241,7 +241,10 @@ export function ScheduleView({
 
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {selectedDay ? (
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]">
+              <div
+                key={selectedDay.id}
+                className="schedule-pane min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]"
+              >
                 <div className="flex items-start justify-between gap-3 border-b border-stone-100 px-4 py-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">

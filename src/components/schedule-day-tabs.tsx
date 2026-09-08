@@ -6,6 +6,12 @@ import type { TripDay } from "@/lib/types";
 
 const TAB_WIDTH_PX = 56;
 
+type TabMotion = {
+  scale: number;
+  opacity: number;
+  color: string;
+};
+
 export function ScheduleDayTabs({
   days,
   selectedId,
@@ -40,6 +46,7 @@ export function ScheduleDayTabs({
   );
 
   const [visualId, setVisualId] = useState(selectedId);
+  const [motion, setMotion] = useState<Record<string, TabMotion>>({});
   const hasScrollEnd =
     typeof window !== "undefined" && "onscrollend" in window;
 
@@ -56,41 +63,58 @@ export function ScheduleDayTabs({
     root.scrollLeft = el.offsetLeft - (root.clientWidth - el.offsetWidth) / 2;
   }, []);
 
-  useLayoutEffect(() => {
-    if (fromScrollRef.current) {
-      fromScrollRef.current = false;
-      setVisualId(selectedId);
-      return;
-    }
-    setVisualId(selectedId);
-    scrollToId(selectedId);
-  }, [selectedId, scrollToId, items.length]);
-
-  const nearestId = useCallback(() => {
+  const measure = useCallback(() => {
     const root = scrollerRef.current;
-    if (!root) return null;
+    if (!root) return { bestId: null as string | null, byId: {} as Record<string, TabMotion> };
     const mid = root.scrollLeft + root.clientWidth / 2;
+    const byId: Record<string, TabMotion> = {};
     let bestId: string | null = null;
     let bestDist = Infinity;
     for (const el of itemEls.current) {
       if (!el) continue;
+      const id = el.dataset.dayId;
+      if (!id) continue;
       const dist = Math.abs(el.offsetLeft + el.offsetWidth / 2 - mid);
+      const t = Math.min(1, dist / TAB_WIDTH_PX);
+      byId[id] = {
+        scale: 1.08 - t * 0.22,
+        opacity: 1 - t * 0.48,
+        color: `rgb(${Math.round(180 + (168 - 180) * t)} ${Math.round(35 + (162 - 35) * t)} ${Math.round(24 + (158 - 24) * t)})`,
+      };
       if (dist < bestDist) {
         bestDist = dist;
-        bestId = el.dataset.dayId ?? null;
+        bestId = id;
       }
     }
-    return bestId;
+    return { bestId, byId };
   }, []);
 
+  const paintMotion = useCallback(() => {
+    const next = measure();
+    setMotion(next.byId);
+    return next.bestId;
+  }, [measure]);
+
+  useLayoutEffect(() => {
+    if (fromScrollRef.current) {
+      fromScrollRef.current = false;
+      setVisualId(selectedId);
+      paintMotion();
+      return;
+    }
+    setVisualId(selectedId);
+    scrollToId(selectedId);
+    paintMotion();
+  }, [selectedId, scrollToId, paintMotion, items.length]);
+
   const commitCenteredDay = useCallback(() => {
-    const id = nearestId();
+    const id = paintMotion();
     if (!id) return;
     setVisualId(id);
     if (id === selectedIdRef.current) return;
     fromScrollRef.current = true;
     onSelectRef.current(id);
-  }, [nearestId]);
+  }, [paintMotion]);
 
   useEffect(() => {
     const root = scrollerRef.current;
@@ -109,8 +133,7 @@ export function ScheduleDayTabs({
     if (!rafRef.current) {
       rafRef.current = requestAnimationFrame(() => {
         rafRef.current = 0;
-        const id = nearestId();
-        if (id && id !== visualIdRef.current) setVisualId(id);
+        paintMotion();
       });
     }
     if (hasScrollEnd) return;
@@ -137,6 +160,7 @@ export function ScheduleDayTabs({
       >
         {items.map((item, index) => {
           const active = item.id === visualId;
+          const tab = motion[item.id];
           return (
             <button
               key={item.id}
@@ -151,9 +175,16 @@ export function ScheduleDayTabs({
                 if (movedRef.current) return;
                 onSelect(item.id);
               }}
-              className={`flex h-12 w-14 shrink-0 snap-center touch-pan-x flex-col items-center justify-center text-center ${
-                active ? "text-hanko" : "text-stone-400"
-              }`}
+              className="flex h-12 w-14 origin-center shrink-0 snap-center touch-pan-x flex-col items-center justify-center text-center text-stone-400"
+              style={
+                tab
+                  ? {
+                      transform: `scale(${tab.scale})`,
+                      opacity: tab.opacity,
+                      color: tab.color,
+                    }
+                  : undefined
+              }
             >
               <span className="text-[13px] font-medium leading-none">
                 {item.dateLabel}
