@@ -252,10 +252,6 @@ export function ScheduleView({
                         <StayLocationBadge key={stay.id} stay={stay} />
                       ))}
                     </div>
-                    <p className="mt-0.5 text-xs text-stone-500">
-                      {formatDay(selectedDay.date)}
-                      {selectedDay.city ? ` · ${selectedDay.city}` : ""}
-                    </p>
                   </div>
                   <Link
                     href={`/days/${selectedDay.id}`}
