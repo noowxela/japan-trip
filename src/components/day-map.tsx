@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import L from "leaflet";
-import { MapContainer, Marker, Popup, Polyline, TileLayer, useMap } from "react-leaflet";
+import { MapContainer, Marker, Popup, Polyline, TileLayer, ZoomControl, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { useVisibleMapPins } from "@/components/hide-map-pin-button";
 import { MapStyleSwitch, useMapStyle } from "@/components/map-style-switch";
@@ -135,7 +135,9 @@ export default function DayMap({
         className="h-full w-full"
         style={{ height: "100%", width: "100%" }}
         scrollWheelZoom={false}
+        zoomControl={false}
       >
+        <ZoomControl position="bottomright" />
         <FitPins positions={path} fallback={fallback} />
         <TileLayer
           key={styleId}

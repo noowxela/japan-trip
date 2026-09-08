@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import L from "leaflet";
-import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet";
+import { MapContainer, Marker, TileLayer, ZoomControl, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { MapStyleSwitch, useMapStyle } from "@/components/map-style-switch";
 
@@ -34,7 +34,9 @@ export function PlacePreviewMap({ lat, lng }: { lat: number; lng: number }) {
         className="h-full w-full"
         style={{ height: "100%", width: "100%" }}
         scrollWheelZoom={false}
+        zoomControl={false}
       >
+        <ZoomControl position="bottomright" />
         <InvalidateSize />
         <TileLayer
           key={styleId}
