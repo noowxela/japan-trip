@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "setup:notion": "npm run setup:api --prefix notion",
     "migrate:v2": "npm run migrate:v2 --prefix notion",
