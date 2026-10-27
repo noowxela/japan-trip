@@ -1,54 +1,79 @@
-import Link from "next/link";
-import { cardClass, eyebrowClass, PageShell } from "@/components/page-shell";
 import { ListsSubNav } from "@/components/lists-sub-nav";
+import { NotionNotReady } from "@/components/notion-not-ready";
+import {
+  CompactRow,
+  CompactRowList,
+  PageHeader,
+} from "@/components/compact";
+import { PageShell } from "@/components/page-shell";
+import { t } from "@/lib/i18n/dictionaries";
+import { getLocale } from "@/lib/i18n/server";
+import { notionReady } from "@/lib/notion";
 import { listCounts, getPlaces, getStays, getTransit } from "@/lib/trip";
 
 export const dynamic = "force-dynamic";
 
-const lists = [
-  { href: "/places", label: "Places", hint: "Sights, food, shops" },
-  { href: "/stays", label: "Stays", hint: "Hotels and bookings" },
-  { href: "/transit", label: "Transit", hint: "Trains, flights, metro" },
-];
-
 export default async function ListsPage() {
+  if (!notionReady()) {
+    return <NotionNotReady />;
+  }
+
+  const locale = await getLocale();
   const [places, stays, transit] = await Promise.all([
     getPlaces(),
     getStays(),
     getTransit(),
   ]);
   const counts = listCounts(places, stays, transit);
+  const lists = [
+    {
+      href: "/places",
+      label: t(locale, "places.title"),
+      hint: t(locale, "lists.placesHint"),
+      count: t(locale, "lists.placesCount", {
+        n: counts.places,
+        pending: counts.pending,
+      }),
+    },
+    {
+      href: "/stays",
+      label: t(locale, "stays.title"),
+      hint: t(locale, "lists.staysHint"),
+      count: t(locale, "lists.staysCount", { n: counts.stays }),
+    },
+    {
+      href: "/transit",
+      label: t(locale, "transit.title"),
+      hint: t(locale, "lists.transitHint"),
+      count: t(locale, "lists.transitCount", { n: counts.transit }),
+    },
+  ];
 
   return (
     <>
       <PageShell>
-        <div>
-          <p className={eyebrowClass}>
-            Databases
-          </p>
-          <h1 className="text-3xl font-semibold tracking-tight">Lists</h1>
-        </div>
+        <PageHeader
+          eyebrow={t(locale, "lists.eyebrow")}
+          title={t(locale, "lists.title")}
+        />
         <ListsSubNav current="/lists" />
-        <ul className="grid gap-3 sm:grid-cols-3">
+        <CompactRowList>
           {lists.map((list) => (
             <li key={list.href}>
-              <Link
+              <CompactRow
                 href={list.href}
-                className={`notebook-press block ${cardClass}`}
-              >
-                <p className="text-lg font-medium">{list.label}</p>
-                <p className="text-sm text-stone-500">{list.hint}</p>
-                <p className="mt-2 text-xs font-medium text-moss">
-                  {list.href === "/places"
-                    ? `${counts.places} places · ${counts.pending} pending`
-                    : list.href === "/stays"
-                      ? `${counts.stays} stays`
-                      : `${counts.transit} moves`}
-                </p>
-              </Link>
+                title={list.label}
+                meta={list.count}
+                secondary={list.hint}
+                trailing={
+                  <span className="pr-2 text-[12px] text-ink-muted" aria-hidden>
+                    ›
+                  </span>
+                }
+              />
             </li>
           ))}
-        </ul>
+        </CompactRowList>
       </PageShell>
     </>
   );

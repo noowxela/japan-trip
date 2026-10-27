@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { AddPlaceForm } from "@/components/add-place-form";
-import { Modal } from "@/components/modal";
-import { btnPrimaryClass } from "@/components/page-shell";
+import { ListAddSheet } from "@/components/list-add-sheet";
+import { useT } from "@/components/i18n-provider";
 import type { TripDay } from "@/lib/types";
 
 export function AddPlaceModal({
@@ -13,25 +12,11 @@ export function AddPlaceModal({
   days: TripDay[];
   defaultDayId?: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const { t } = useT();
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className={`shrink-0 ${btnPrimaryClass}`}
-      >
-        Add place
-      </button>
-      <Modal open={open} onClose={() => setOpen(false)} title="Add a place">
-        <AddPlaceForm
-          days={days}
-          defaultDayId={defaultDayId}
-          embedded
-          onSuccess={() => setOpen(false)}
-        />
-      </Modal>
-    </>
+    <ListAddSheet title={t("form.addPlace")}>
+      <AddPlaceForm days={days} defaultDayId={defaultDayId} embedded />
+    </ListAddSheet>
   );
 }

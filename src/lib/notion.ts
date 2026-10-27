@@ -19,6 +19,10 @@ export function hasToken() {
   return Boolean(process.env.NOTION_TOKEN);
 }
 
+export function notionReady() {
+  return hasToken() && isConfigured();
+}
+
 export function getNotion() {
   const token = process.env.NOTION_TOKEN;
   if (!token) {

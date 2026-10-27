@@ -1,58 +1,120 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
+import { CacheFallbackSignal } from "@/components/cache-fallback";
 import { EmptyState } from "@/components/empty-state";
+import { useT } from "@/components/i18n-provider";
 import { ScheduleView } from "@/components/schedule-view";
 import { schedulePropsFromSnapshot } from "@/lib/schedule-pins";
-import { readTripCache } from "@/lib/trip-cache";
+import { readTripCache, TRIP_CACHE_STORAGE_KEY } from "@/lib/trip-cache";
 
-export function ScheduleOfflineFallback({ dayParam }: { dayParam?: string }) {
-  const [ready, setReady] = useState(false);
-  const [props, setProps] = useState<ReturnType<
-    typeof schedulePropsFromSnapshot
-  > | null>(null);
-  const [savedAt, setSavedAt] = useState<string | null>(null);
+type OfflineReady = {
+  ready: true;
+  props: ReturnType<typeof schedulePropsFromSnapshot>;
+  savedAt: string | null;
+};
 
-  useEffect(() => {
-    const snapshot = readTripCache();
-    setSavedAt(snapshot?.savedAt ?? null);
-    setProps(snapshot ? schedulePropsFromSnapshot(snapshot, dayParam) : null);
-    setReady(true);
-  }, [dayParam]);
+type OfflineState = { ready: false } | OfflineReady;
 
-  if (!ready) {
+const serverState: OfflineState = { ready: false };
+const clientCache = new Map<string, OfflineReady>();
+
+function subscribeTripCache(onStoreChange: () => void) {
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === null || event.key === TRIP_CACHE_STORAGE_KEY) {
+      clientCache.clear();
+      onStoreChange();
+    }
+  };
+  window.addEventListener("storage", onStorage);
+  return () => window.removeEventListener("storage", onStorage);
+}
+
+function getOfflineSnapshot(
+  dayParam: string | undefined,
+  bareSchedule: boolean,
+): OfflineReady {
+  const key = `${dayParam ?? ""}|${bareSchedule ? "1" : "0"}`;
+  const cached = clientCache.get(key);
+  if (cached) return cached;
+
+  const snapshot = readTripCache();
+  const value: OfflineReady = {
+    ready: true,
+    props: snapshot
+      ? schedulePropsFromSnapshot(snapshot, dayParam, {
+          preferTodayDuringTrip: bareSchedule,
+        })
+      : null,
+    savedAt: snapshot?.savedAt ?? null,
+  };
+  clientCache.set(key, value);
+  return value;
+}
+
+export function ScheduleOfflineFallback({
+  dayParam,
+  modeParam,
+  bareSchedule = false,
+}: {
+  dayParam?: string;
+  modeParam?: string;
+  bareSchedule?: boolean;
+}) {
+  const { t } = useT();
+  const state = useSyncExternalStore(
+    subscribeTripCache,
+    () => getOfflineSnapshot(dayParam, bareSchedule),
+    () => serverState,
+  );
+
+  if (!state.ready) {
     return (
-      <div className="flex h-dvh items-center justify-center bg-paper px-4 text-sm text-stone-500">
-        Loading saved itinerary…
+      <div className="flex h-dvh items-center justify-center bg-canvas px-4 text-sm text-ink-muted">
+        {t("schedule.loadingSaved")}
       </div>
     );
   }
 
-  if (!props) {
+  if (!state.props) {
     return (
       <div className="mx-auto max-w-xl px-4 py-6 md:max-w-5xl md:px-8">
-        <EmptyState title="Can't reach Notion">
-          No saved itinerary on this phone. Open Schedule once while online, then
-          it will work underground.
+        <EmptyState title={t("schedule.offlineTitle")}>
+          {t("schedule.offlineBody")}
         </EmptyState>
         <p className="mt-4 text-center text-sm">
-          <Link href="/" className="font-medium text-hanko">
-            Back to Overview
+          <Link href="/" className="font-medium text-ink-muted no-underline">
+            {t("nav.backOverview")}
           </Link>
         </p>
       </div>
     );
   }
 
+  const wantNow =
+    modeParam === "now" || (bareSchedule && state.props.phase === "during");
+  const initialMode =
+    modeParam === "edit"
+      ? ("edit" as const)
+      : wantNow && state.props.nowModeAllowed
+        ? ("now" as const)
+        : ("view" as const);
+
   return (
-    <ScheduleView
-      days={props.days}
-      places={props.places}
-      byDay={props.byDay}
-      allPins={props.allPins}
-      initialDayId={props.initialDayId}
-      cachedAt={savedAt}
-    />
+    <>
+      <CacheFallbackSignal />
+      <ScheduleView
+        days={state.props.days}
+        places={state.props.places}
+        byDay={state.props.byDay}
+        allPins={state.props.allPins}
+        initialDayId={state.props.initialDayId}
+        initialMode={initialMode}
+        cachedAt={state.savedAt}
+        today={state.props.today}
+        phase={state.props.phase}
+      />
+    </>
   );
 }

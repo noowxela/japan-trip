@@ -2,6 +2,61 @@ import { dateKey } from "@/lib/format";
 import { coordsOfPlace } from "@/lib/geocode";
 import type { AgendaItem, Place, Stay, Transit, TripDay } from "@/lib/types";
 
+export function tripPhase(
+  days: TripDay[],
+  today: string,
+): "before" | "during" | "after" | "none" {
+  const dated = days.filter((day) => day.date);
+  if (dated.length === 0) return "none";
+  const first = dateKey(dated[0].date)!;
+  const last = dateKey(dated[dated.length - 1].date)!;
+  if (today < first) return "before";
+  if (today > last) return "after";
+  return "during";
+}
+
+function agendaItemTimeMs(item: AgendaItem): number | null {
+  if (!item.start || !item.start.includes("T")) return null;
+  const ms = Date.parse(item.start);
+  return Number.isNaN(ms) ? null : ms;
+}
+
+export function nextAgendaItem(
+  agenda: AgendaItem[],
+  opts: { now: Date; isToday: boolean },
+): { item: AgendaItem; status: "now" | "next" } | null {
+  const remaining = agenda.filter(
+    (item) => item.kind !== "place" || !item.visited,
+  );
+  if (remaining.length === 0) return null;
+
+  if (!opts.isToday) {
+    return { item: remaining[0], status: "next" };
+  }
+
+  const nowMs = opts.now.getTime();
+
+  for (let i = 0; i < agenda.length; i++) {
+    const item = agenda[i];
+    if (item.kind === "place" && item.visited) continue;
+
+    const time = agendaItemTimeMs(item);
+    if (time != null && time < nowMs) {
+      const laterStarted = agenda.slice(i + 1).some((later) => {
+        const laterTime = agendaItemTimeMs(later);
+        return laterTime != null && laterTime <= nowMs;
+      });
+      if (item.kind === "transit" || laterStarted) continue;
+    }
+
+    const status: "now" | "next" =
+      time != null && time <= nowMs ? "now" : "next";
+    return { item, status };
+  }
+
+  return null;
+}
+
 export function pickFocusDay(days: TripDay[], today: string) {
   const dated = days.filter((day) => day.date);
   return (

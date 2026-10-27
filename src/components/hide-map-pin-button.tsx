@@ -8,6 +8,7 @@ import {
   toggleHiddenMapPin,
   visibleMapPins,
 } from "@/lib/hidden-map-pins";
+import { useT } from "@/components/i18n-provider";
 
 const emptySet = () => new Set<string>();
 
@@ -44,15 +45,18 @@ export function HideMapPinButton({
   name: string;
 }) {
   const hiddenIds = useHiddenMapPinIds();
+  const { t } = useT();
   const hidden = hiddenIds.has(id);
-  const label = hidden ? `Show ${name} on the map` : `Hide ${name} from the map`;
+  const label = hidden
+    ? t("stay.showOnMap", { name })
+    : t("stay.hideFromMap", { name });
 
   return (
     <button
       type="button"
       aria-label={label}
       aria-pressed={hidden}
-      title={hidden ? "Show on map" : "Hide from map"}
+      title={hidden ? t("stay.show") : t("stay.hide")}
       draggable={false}
       onPointerDown={(event) => event.stopPropagation()}
       onClick={(event) => {
@@ -61,8 +65,8 @@ export function HideMapPinButton({
       }}
       className={`mt-0.5 inline-flex shrink-0 rounded-full p-1 ${
         hidden
-          ? "text-stone-300 hover:bg-stone-100 hover:text-stone-500"
-          : "text-stone-400 hover:bg-stone-100 hover:text-stone-700"
+          ? "text-ink-muted hover:bg-canvas hover:text-ink"
+          : "text-ink-muted hover:bg-canvas hover:text-ink"
       }`}
     >
       <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">

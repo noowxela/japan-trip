@@ -1,147 +1,223 @@
-import Link from "next/link";
+import { setLocale, setTheme } from "@/app/actions";
 import { AppVersionCard } from "@/components/app-version-card";
+import {
+  CompactRow,
+  CompactRowList,
+  PageHeader,
+  SectionHeader,
+} from "@/components/compact";
 import { HapticToggle } from "@/components/haptic-toggle";
 import { UnlockEditorCard } from "@/components/unlock-editor-card";
-import {
-  eyebrowClass,
-  PageShell,
-  settingsGroupClass,
-  settingsRowClass,
-} from "@/components/page-shell";
+import { PageShell, settingsGroupClass } from "@/components/page-shell";
 import { formatAppVersion } from "@/lib/app-version";
-import { hasToken, isConfigured } from "@/lib/notion";
+import { t } from "@/lib/i18n/dictionaries";
+import { getLocale } from "@/lib/i18n/server";
+import { notionReady } from "@/lib/notion";
+import { getThemePreference } from "@/lib/theme-server";
 import { getDays } from "@/lib/trip";
 
 export const dynamic = "force-dynamic";
 
 function Chevron() {
   return (
-    <svg
-      aria-hidden
-      viewBox="0 0 24 24"
-      className="h-5 w-5 shrink-0 text-stone-300"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m9 6 6 6-6 6" />
-    </svg>
+    <span className="pr-1 text-[12px] text-ink-muted" aria-hidden>
+      ›
+    </span>
   );
 }
 
 export default async function SettingsPage() {
-  const notionReady = hasToken() && isConfigured();
-  const days = notionReady ? await getDays() : [];
+  const locale = await getLocale();
+  const themePreference = await getThemePreference();
+  const ready = notionReady();
+  const days = ready ? await getDays() : [];
 
   const tripLinks = [
     {
       href: "/days",
-      label: "Trip days",
+      label: t(locale, "more.tripDays"),
       detail: days.length
-        ? `${days.length} itinerary ${days.length === 1 ? "day" : "days"}`
-        : "Add, edit, and manage itinerary days",
+        ? t(
+            locale,
+            days.length === 1 ? "more.tripDaysCount" : "more.tripDaysCountPlural",
+            { n: days.length },
+          )
+        : t(locale, "more.tripDaysDetail"),
     },
   ];
 
   const toolLinks = [
-    { href: "/today", label: "Today", detail: "Focused view of the current day" },
-    { href: "/map", label: "Map", detail: "City path and place pins" },
-    { href: "/lists", label: "Lists", detail: "Places, stays, and transit" },
-    { href: "/places", label: "Places", detail: "All sights and stops" },
-    { href: "/stays", label: "Stays", detail: "Hotels and lodging" },
-    { href: "/transit", label: "Transit", detail: "Trains, flights, and moves" },
+    {
+      href: "/prep",
+      label: t(locale, "more.prep"),
+      detail: t(locale, "more.prepDetail"),
+    },
+    {
+      href: "/lists",
+      label: t(locale, "more.lists"),
+      detail: t(locale, "more.listsDetail"),
+    },
+    {
+      href: "/places",
+      label: t(locale, "more.places"),
+      detail: t(locale, "more.placesDetail"),
+    },
+    {
+      href: "/stays",
+      label: t(locale, "more.stays"),
+      detail: t(locale, "more.staysDetail"),
+    },
+    {
+      href: "/transit",
+      label: t(locale, "more.transit"),
+      detail: t(locale, "more.transitDetail"),
+    },
   ];
+
+  const languages = [
+    { lang: "zh", label: t(locale, "lang.zh") },
+    { lang: "en", label: t(locale, "lang.en") },
+  ] as const;
+
+  const themes = [
+    { theme: "system", label: t(locale, "theme.system") },
+    { theme: "light", label: t(locale, "theme.light") },
+    { theme: "dark", label: t(locale, "theme.dark") },
+  ] as const;
 
   return (
     <>
       <PageShell>
-        <div>
-          <p className={eyebrowClass}>App</p>
-          <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
-        </div>
+        <PageHeader
+          eyebrow={t(locale, "more.eyebrow")}
+          title={t(locale, "more.title")}
+        />
 
-        <section className="space-y-2">
-          <h2 className="px-1 text-xs font-medium uppercase tracking-wide text-stone-500">
-            Status
-          </h2>
-          <div className={`${settingsGroupClass} px-4 py-3`}>
-            <p className="text-[17px] font-medium text-stone-800">Notion sync</p>
-            <p className="mt-0.5 text-sm text-stone-500">
-              {notionReady
-                ? "Connected — itinerary data loads from Notion."
-                : "Not configured — add NOTION_TOKEN and database IDs in .env.local."}
-            </p>
+        <section className="space-y-1.5">
+          <SectionHeader title={t(locale, "lang.section")} />
+          <div
+            role="group"
+            aria-label={t(locale, "lang.label")}
+            className="flex h-8 overflow-hidden rounded-lg bg-canvas p-0.5"
+          >
+            {languages.map((item) => {
+              const active = locale === item.lang;
+              return (
+                <form key={item.lang} action={setLocale} className="min-w-0 flex-1">
+                  <input type="hidden" name="lang" value={item.lang} />
+                  <button
+                    type="submit"
+                    aria-pressed={active}
+                    className={`flex h-full w-full items-center justify-center rounded-md px-2 text-[12px] font-medium ${
+                      active ? "bg-surface text-ink shadow-sm" : "text-ink-muted"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                </form>
+              );
+            })}
           </div>
         </section>
 
-        <section className="space-y-2">
-          <h2 className="px-1 text-xs font-medium uppercase tracking-wide text-stone-500">
-            Trip
-          </h2>
-          <ul className={settingsGroupClass}>
-            {tripLinks.map((link) => (
-              <li key={link.href} className="border-b border-stone-100 last:border-b-0">
-                <Link href={link.href} className={settingsRowClass}>
-                  <div className="min-w-0">
-                    <p className="text-[17px] text-stone-900">{link.label}</p>
-                    <p className="text-sm text-stone-500">{link.detail}</p>
-                  </div>
-                  <Chevron />
-                </Link>
-              </li>
-            ))}
-          </ul>
+        <section className="space-y-1.5">
+          <SectionHeader title={t(locale, "theme.section")} />
+          <div
+            role="group"
+            aria-label={t(locale, "theme.label")}
+            className="flex h-8 overflow-hidden rounded-lg bg-canvas p-0.5"
+          >
+            {themes.map((item) => {
+              const active = themePreference === item.theme;
+              return (
+                <form key={item.theme} action={setTheme} className="min-w-0 flex-1">
+                  <input type="hidden" name="theme" value={item.theme} />
+                  <button
+                    type="submit"
+                    aria-pressed={active}
+                    className={`flex h-full w-full items-center justify-center rounded-md px-1.5 text-[12px] font-medium ${
+                      active ? "bg-surface text-ink shadow-sm" : "text-ink-muted"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                </form>
+              );
+            })}
+          </div>
         </section>
 
-        <section className="space-y-2">
-          <h2 className="px-1 text-xs font-medium uppercase tracking-wide text-stone-500">
-            Device
-          </h2>
+        <section className="space-y-1.5">
+          <SectionHeader title={t(locale, "more.tripTools")} />
+          <CompactRowList>
+            {toolLinks.map((link) => (
+              <li key={link.href}>
+                <CompactRow
+                  href={link.href}
+                  title={link.label}
+                  secondary={link.detail}
+                  trailing={<Chevron />}
+                />
+              </li>
+            ))}
+          </CompactRowList>
+        </section>
+
+        <section className="space-y-1.5">
+          <SectionHeader title={t(locale, "more.status")} />
+          <CompactRowList>
+            <li>
+              <CompactRow
+                title={t(locale, "more.notionSync")}
+                secondary={
+                  ready
+                    ? t(locale, "more.notionConnected")
+                    : t(locale, "more.notionMissing")
+                }
+              />
+            </li>
+          </CompactRowList>
+        </section>
+
+        <section className="space-y-1.5">
+          <SectionHeader title={t(locale, "more.trip")} />
+          <CompactRowList>
+            {tripLinks.map((link) => (
+              <li key={link.href}>
+                <CompactRow
+                  href={link.href}
+                  title={link.label}
+                  secondary={link.detail}
+                  trailing={<Chevron />}
+                />
+              </li>
+            ))}
+          </CompactRowList>
+        </section>
+
+        <section className="space-y-1.5">
+          <SectionHeader title={t(locale, "more.device")} />
           <HapticToggle />
         </section>
 
-        <section className="space-y-2">
-          <h2 className="px-1 text-xs font-medium uppercase tracking-wide text-stone-500">
-            Editing
-          </h2>
+        <section className="space-y-1.5">
+          <SectionHeader title={t(locale, "more.editing")} />
           <UnlockEditorCard />
         </section>
 
-        <section className="space-y-2">
-          <h2 className="px-1 text-xs font-medium uppercase tracking-wide text-stone-500">
-            More
-          </h2>
-          <ul className={settingsGroupClass}>
-            {toolLinks.map((link) => (
-              <li key={link.href} className="border-b border-stone-100 last:border-b-0">
-                <Link href={link.href} className={settingsRowClass}>
-                  <div className="min-w-0">
-                    <p className="text-[17px] text-stone-900">{link.label}</p>
-                    <p className="text-sm text-stone-500">{link.detail}</p>
-                  </div>
-                  <Chevron />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="space-y-2">
-          <h2 className="px-1 text-xs font-medium uppercase tracking-wide text-stone-500">
-            About
-          </h2>
+        <section className="space-y-1.5">
+          <SectionHeader title={t(locale, "more.about")} />
           <AppVersionCard />
         </section>
 
-        <section className={`${settingsGroupClass} mb-2 px-4 py-3 text-sm text-stone-500`}>
-          <p className="font-medium text-stone-700">Japan Trip</p>
-          <p className="mt-1">
-            Mobile-first itinerary companion synced with Notion. Prep checklist
-            syncs with the Prep database.
+        <section
+          className={`${settingsGroupClass} mb-2 px-3 py-2.5 text-[12px] text-ink-muted`}
+        >
+          <p className="text-[14px] font-medium text-ink">
+            {t(locale, "more.appName")}
           </p>
-          <p className="mt-2 text-xs tabular-nums text-stone-400">
+          <p className="mt-0.5">{t(locale, "more.aboutBody")}</p>
+          <p className="mt-1.5 text-[11px] tabular-nums text-ink-muted">
             {formatAppVersion()}
           </p>
         </section>

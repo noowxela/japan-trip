@@ -1,35 +1,65 @@
 import { PrepChecklist } from "@/components/prep-checklist";
 import { EmptyState } from "@/components/empty-state";
+import { PageHeader } from "@/components/compact";
 import { PageShell } from "@/components/page-shell";
-import { hasPrepDs, hasToken, isConfigured } from "@/lib/notion";
-import { getPrep } from "@/lib/trip";
+import { TripCacheSync } from "@/components/trip-cache-sync";
+import { t } from "@/lib/i18n/dictionaries";
+import { getLocale } from "@/lib/i18n/server";
+import { hasPrepDs, notionReady } from "@/lib/notion";
+import { makeTripSnapshot } from "@/lib/trip-cache";
+import {
+  getDays,
+  getPlaces,
+  getPrep,
+  getSpend,
+  getStays,
+  getTransit,
+} from "@/lib/trip";
 
 export const dynamic = "force-dynamic";
 
 export default async function PrepPage() {
-  const notionReady = hasToken() && isConfigured();
-  const prepReady = notionReady && hasPrepDs();
-  const items = prepReady ? await getPrep() : [];
+  const locale = await getLocale();
+  const ready = notionReady();
+  const prepReady = ready && hasPrepDs();
+  const [days, places, transit, stays, spend, items] = ready
+    ? await Promise.all([
+        getDays(),
+        getPlaces(),
+        getTransit(),
+        getStays(),
+        getSpend(),
+        prepReady ? getPrep() : Promise.resolve([]),
+      ])
+    : [[], [], [], [], [], []];
 
   return (
     <>
+      {ready ? (
+        <TripCacheSync
+          snapshot={makeTripSnapshot({
+            days,
+            places,
+            transit,
+            stays,
+            spend,
+            prep: items,
+          })}
+        />
+      ) : null}
       <PageShell>
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-moss">
-            Before you go
-          </p>
-          <h1 className="text-3xl font-semibold tracking-tight">Prep list</h1>
-          <p className="mt-1 text-sm text-stone-500">
-            Packing and booking tasks shared in Notion.
-          </p>
-        </div>
+        <PageHeader
+          eyebrow={t(locale, "prep.eyebrow")}
+          title={t(locale, "prep.listTitle")}
+        />
+        <p className="-mt-1 text-[12px] text-ink-muted">
+          {t(locale, "prep.subtitle")}
+        </p>
         {prepReady ? (
           <PrepChecklist items={items} />
         ) : (
-          <EmptyState title="Prep database is not ready">
-            {notionReady
-              ? "Run npm run migrate:v2 to create the Prep database, then restart the app."
-              : "Connect Notion first, then run npm run migrate:v2."}
+          <EmptyState title={t(locale, "prep.notReady")}>
+            {ready ? t(locale, "prep.migrate") : t(locale, "prep.connect")}
           </EmptyState>
         )}
       </PageShell>

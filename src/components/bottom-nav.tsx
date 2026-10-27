@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useT } from "@/components/i18n-provider";
 
 const TOP_PX = 24;
 const DELTA_PX = 10;
@@ -10,10 +11,12 @@ const DELTA_PX = 10;
 function useScrollHideTabBar() {
   const pathname = usePathname();
   const [hidden, setHidden] = useState(false);
+  const [prevPathname, setPrevPathname] = useState(pathname);
 
-  useEffect(() => {
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
     setHidden(false);
-  }, [pathname]);
+  }
 
   useEffect(() => {
     let lastY = window.scrollY;
@@ -55,57 +58,62 @@ function useScrollHideTabBar() {
   return hidden;
 }
 
-const tabs = [
-  {
-    href: "/",
-    label: "Overview",
-    match: (path: string) => path === "/",
-    icon: OverviewIcon,
-  },
-  {
-    href: "/prep",
-    label: "Prep",
-    match: (path: string) => path === "/prep",
-    icon: PrepIcon,
-  },
-  {
-    href: "/schedule",
-    label: "Schedule",
-    match: (path: string) =>
-      path === "/schedule" ||
-      path === "/today" ||
-      path.startsWith("/days/"),
-    icon: ScheduleIcon,
-  },
-  {
-    href: "/budget",
-    label: "Expenses",
-    match: (path: string) =>
-      path === "/budget" ||
-      path.startsWith("/budget/") ||
-      path === "/spend" ||
-      path.startsWith("/spend"),
-    icon: BudgetIcon,
-  },
-  {
-    href: "/settings",
-    label: "Settings",
-    match: (path: string) => path === "/settings" || path === "/days",
-    icon: SettingsIcon,
-  },
-] as const;
-
 export function BottomNav() {
   const pathname = usePathname();
   const hidden = useScrollHideTabBar();
+  const { t } = useT();
 
   if (pathname === "/schedule") return null;
 
+  const tabs = [
+    {
+      href: "/",
+      label: t("nav.overview"),
+      match: (path: string) => path === "/",
+      icon: OverviewIcon,
+    },
+    {
+      href: "/schedule",
+      label: t("nav.schedule"),
+      match: (path: string) => path === "/schedule",
+      icon: ScheduleIcon,
+    },
+    {
+      href: "/map",
+      label: t("nav.map"),
+      match: (path: string) => path === "/map",
+      icon: MapIcon,
+    },
+    {
+      href: "/budget",
+      label: t("nav.expenses"),
+      match: (path: string) =>
+        path === "/budget" ||
+        path.startsWith("/budget/") ||
+        path === "/spend" ||
+        path.startsWith("/spend"),
+      icon: BudgetIcon,
+    },
+    {
+      href: "/settings",
+      label: t("nav.more"),
+      match: (path: string) =>
+        path === "/settings" ||
+        path === "/prep" ||
+        path === "/lists" ||
+        path === "/places" ||
+        path === "/stays" ||
+        path === "/transit" ||
+        path === "/days",
+      icon: MoreIcon,
+    },
+  ] as const;
+
   return (
     <nav
-      aria-label="Main"
+      aria-label={t("nav.main")}
       inert={hidden || undefined}
-      className="tab-bar fixed inset-x-0 bottom-0 z-20 border-t border-sage/80 bg-paper/95 pb-[env(safe-area-inset-bottom)] backdrop-blur"
+      className="tab-bar fixed inset-x-0 bottom-0 z-20 border-t border-line bg-canvas/95 pb-[env(safe-area-inset-bottom)] backdrop-blur"
     >
       <div className="mx-auto flex w-full max-w-xl items-stretch justify-around px-1 pt-1 md:max-w-5xl">
         {tabs.map((tab) => {
@@ -115,10 +123,10 @@ export function BottomNav() {
             <Link
               key={tab.href}
               href={tab.href}
-              className={`notebook-press flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-xl px-1 py-2 text-[10px] font-medium leading-tight transition-colors ${
+              className={`notebook-press flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-medium leading-tight transition-transform motion-reduce:transition-none ${
                 active
-                  ? "text-moss"
-                  : "text-stone-500 hover:text-stone-700"
+                  ? "scale-[1.02] text-accent"
+                  : "text-ink-muted hover:text-ink"
               }`}
             >
               <Icon active={active} />
@@ -146,22 +154,6 @@ function OverviewIcon({ active }: { active: boolean }) {
   );
 }
 
-function PrepIcon({ active }: { active: boolean }) {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 24 24"
-      className="h-6 w-6"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={active ? 2.25 : 1.75}
-    >
-      <path d="M9 11 12 14 22 4" />
-      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-    </svg>
-  );
-}
-
 function ScheduleIcon({ active }: { active: boolean }) {
   return (
     <svg
@@ -174,6 +166,22 @@ function ScheduleIcon({ active }: { active: boolean }) {
     >
       <rect x="3" y="4" width="18" height="18" rx="2" />
       <path d="M16 2v4M8 2v4M3 10h18" />
+    </svg>
+  );
+}
+
+function MapIcon({ active }: { active: boolean }) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      className="h-6 w-6"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={active ? 2.25 : 1.75}
+    >
+      <path d="M9 3 3 5.5V21l6-2.5 6 2.5 6-2.5V3l-6 2.5L9 3Z" />
+      <path d="M9 3v15.5M15 5.5V21" />
     </svg>
   );
 }
@@ -193,7 +201,7 @@ function BudgetIcon({ active }: { active: boolean }) {
   );
 }
 
-function SettingsIcon({ active }: { active: boolean }) {
+function MoreIcon({ active }: { active: boolean }) {
   return (
     <svg
       aria-hidden
@@ -203,8 +211,9 @@ function SettingsIcon({ active }: { active: boolean }) {
       stroke="currentColor"
       strokeWidth={active ? 2.25 : 1.75}
     >
-      <circle cx="12" cy="12" r="3" />
-      <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+      <circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none" />
     </svg>
   );
 }

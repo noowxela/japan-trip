@@ -11,6 +11,7 @@ import {
   type TouchEvent,
 } from "react";
 import { useRouter } from "next/navigation";
+import { useT } from "@/components/i18n-provider";
 
 const SLIDE_MS = 380;
 const EDGE_PX = 28;
@@ -26,7 +27,7 @@ export function useSlideIn() {
 export function SlideInPage({
   children,
   backHref = "/budget",
-  backLabel = "Expenses",
+  backLabel,
   onClose,
 }: {
   children: ReactNode;
@@ -35,6 +36,8 @@ export function SlideInPage({
   onClose?: () => void;
 }) {
   const router = useRouter();
+  const { t } = useT();
+  const label = backLabel ?? t("nav.expenses");
   const [shown, setShown] = useState(false);
   const [dragX, setDragX] = useState(0);
   const [grabbing, setGrabbing] = useState(false);
@@ -118,8 +121,8 @@ export function SlideInPage({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={backLabel}
-        className="fixed inset-0 z-40 overflow-y-auto overscroll-x-none overscroll-contain bg-paper will-change-transform motion-reduce:transition-none"
+        aria-label={label}
+        className="fixed inset-0 z-40 overflow-y-auto overscroll-x-none overscroll-contain bg-canvas will-change-transform motion-reduce:transition-none"
         style={{
           transform: shown
             ? `translate3d(${dragX}px,0,0)`
@@ -134,14 +137,14 @@ export function SlideInPage({
         onTouchEnd={onTouchEnd}
         onTouchCancel={onTouchEnd}
       >
-        <div className="sticky top-0 z-10 border-b border-sage/80 bg-paper/95 px-2 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur">
+        <div className="sticky top-0 z-10 border-b border-line bg-canvas/95 px-2 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur">
           <button
             type="button"
             onClick={close}
-            className="flex min-h-11 items-center gap-0.5 px-2 text-[17px] font-medium text-hanko"
+            className="flex min-h-11 items-center gap-0.5 px-2 text-[17px] font-medium text-ink-muted no-underline"
           >
             <BackChevron />
-            {backLabel}
+            {label}
           </button>
         </div>
         {children}

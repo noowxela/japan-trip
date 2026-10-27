@@ -1,43 +1,50 @@
 import { AddTransitForm } from "@/components/add-transit-form";
 import { EmptyState } from "@/components/empty-state";
-import { EditOnly } from "@/components/edit-session";
+import { ListAddSheet } from "@/components/list-add-sheet";
 import { ListsSubNav } from "@/components/lists-sub-nav";
+import {
+  CompactRowList,
+  PageHeader,
+} from "@/components/compact";
 import { PageShell } from "@/components/page-shell";
 import { TransitCard } from "@/components/transit-card";
+import { t } from "@/lib/i18n/dictionaries";
+import { getLocale } from "@/lib/i18n/server";
 import { getDays, getTransit } from "@/lib/trip";
 
 export const dynamic = "force-dynamic";
 
 export default async function TransitPage() {
+  const locale = await getLocale();
   const [days, transit] = await Promise.all([getDays(), getTransit()]);
   const dayNames = new Map(days.map((day) => [day.id, day.name]));
 
   return (
     <>
       <PageShell>
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-moss">
-            Moves
-          </p>
-          <h1 className="text-3xl font-semibold tracking-tight">Transit</h1>
-        </div>
+        <PageHeader
+          eyebrow={t(locale, "transit.eyebrow")}
+          title={t(locale, "transit.title")}
+          action={
+            <ListAddSheet title={t(locale, "form.addTransit")}>
+              <AddTransitForm days={days} embedded />
+            </ListAddSheet>
+          }
+        />
         <ListsSubNav current="/transit" />
         {transit.length === 0 ? (
-          <EmptyState title="No transit yet">
-            Add a train or flight below, or in the Transit database in Notion.
+          <EmptyState title={t(locale, "transit.empty")}>
+            {t(locale, "transit.emptyBody")}
           </EmptyState>
         ) : (
-          <ul className="grid gap-3 sm:grid-cols-2">
+          <CompactRowList>
             {transit.map((item) => (
               <li key={item.id}>
                 <TransitCard item={item} dayNames={dayNames} days={days} />
               </li>
             ))}
-          </ul>
+          </CompactRowList>
         )}
-        <EditOnly>
-          <AddTransitForm days={days} />
-        </EditOnly>
       </PageShell>
     </>
   );

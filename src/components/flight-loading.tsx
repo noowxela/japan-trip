@@ -1,18 +1,25 @@
+"use client";
+
+import { useT } from "@/components/i18n-provider";
+
 type FlightLoadingProps = {
   message?: string;
   className?: string;
 };
 
 export function FlightLoading({
-  message = "Syncing trip data…",
+  message,
   className = "",
 }: FlightLoadingProps) {
+  const { t } = useT();
+  const text = message ?? t("common.syncing");
+
   return (
     <div
       className={`flex min-h-[50vh] flex-col items-center justify-center gap-5 ${className}`.trim()}
       role="status"
       aria-live="polite"
-      aria-label={message}
+      aria-label={text}
     >
       <div className="flight-loading-scene">
         <div className="flight-loading-plane">
@@ -20,8 +27,8 @@ export function FlightLoading({
         </div>
         <div className="flight-loading-shadow" aria-hidden="true" />
       </div>
-      <p className="rounded-full bg-white px-5 py-2 text-sm text-stone-600 shadow-sm">
-        {message}
+      <p className="rounded-full bg-surface px-5 py-2 text-sm text-ink-muted shadow-sm">
+        {text}
       </p>
     </div>
   );
@@ -42,9 +49,9 @@ function FlightIcon() {
           L91 56 L88 53 L74 27 Q72 25 61 25 Z"
           fill="#3DA99E"
           stroke="#3DA99E"
-          stroke-width="1.5"
-          stroke-linejoin="round"
-          stroke-linecap="round"/>
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+          strokeLinecap="round"/>
       </g>
     </svg>
 

@@ -1,44 +1,32 @@
 import { AddPlaceModal } from "@/components/add-place-modal";
-import { EmptyState } from "@/components/empty-state";
-import { EditOnly } from "@/components/edit-session";
 import { ListsSubNav } from "@/components/lists-sub-nav";
-import { eyebrowClass, PageShell } from "@/components/page-shell";
+import { PageHeader } from "@/components/compact";
+import { PageShell } from "@/components/page-shell";
+import { NotionNotReady } from "@/components/notion-not-ready";
 import { PlacesList } from "@/components/places-list";
-import { hasToken, isConfigured } from "@/lib/notion";
+import { t } from "@/lib/i18n/dictionaries";
+import { getLocale } from "@/lib/i18n/server";
+import { notionReady } from "@/lib/notion";
 import { getDays, getPlaces } from "@/lib/trip";
 
 export const dynamic = "force-dynamic";
 
 export default async function PlacesPage() {
-  if (!hasToken() || !isConfigured()) {
-    return (
-      <>
-        <PageShell>
-          <EmptyState title="Notion is not ready">
-            Add NOTION_TOKEN and run <code>npm run setup:notion</code> then{" "}
-            <code>npm run migrate:v2</code>.
-          </EmptyState>
-        </PageShell>
-      </>
-    );
+  if (!notionReady()) {
+    return <NotionNotReady />;
   }
 
+  const locale = await getLocale();
   const [days, places] = await Promise.all([getDays(), getPlaces()]);
 
   return (
     <>
       <PageShell>
-        <div className="flex items-end justify-between gap-3">
-          <div>
-            <p className={eyebrowClass}>
-              Guide
-            </p>
-            <h1 className="text-3xl font-semibold tracking-tight">Places</h1>
-          </div>
-          <EditOnly>
-            <AddPlaceModal days={days} />
-          </EditOnly>
-        </div>
+        <PageHeader
+          eyebrow={t(locale, "places.eyebrow")}
+          title={t(locale, "places.title")}
+          action={<AddPlaceModal days={days} />}
+        />
         <ListsSubNav current="/places" />
         <PlacesList places={places} days={days} />
       </PageShell>

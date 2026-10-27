@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import {
   deletePlace,
   deleteTransit,
@@ -9,8 +9,10 @@ import {
   updateTransit,
 } from "@/app/actions";
 import { useActionToast } from "@/components/action-form";
-import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useT } from "@/components/i18n-provider";
+import { useTrashUndo } from "@/components/use-trash-undo";
 import { dateKey, formatTime } from "@/lib/format";
+import { labelMode, labelType } from "@/lib/i18n/dictionaries";
 import {
   PLACE_TYPES,
   TRANSIT_MODES,
@@ -19,10 +21,10 @@ import {
 } from "@/lib/types";
 
 const cell =
-  "w-full min-w-0 rounded-lg border border-sage px-2 py-1.5 text-base outline-none focus:border-moss";
+  "h-9 w-full min-w-0 rounded-lg border border-line px-2 text-sm outline-none focus:border-accent";
 
 const rowClass =
-  "grid w-full min-w-0 grid-cols-2 gap-2 border-b border-stone-100 p-3 last:border-b-0 lg:grid-cols-[minmax(0,8rem)_3.5rem_7rem_minmax(0,1.3fr)_minmax(0,1fr)_auto] lg:items-end lg:gap-2 lg:px-3 lg:py-2";
+  "grid w-full min-w-0 grid-cols-2 gap-2 border-b border-line p-2 last:border-b-0 lg:grid-cols-[minmax(0,8rem)_3.5rem_7rem_minmax(0,1.3fr)_minmax(0,1fr)_auto] lg:items-end lg:gap-2 lg:px-2 lg:py-1.5";
 
 function Field({
   label,
@@ -35,7 +37,7 @@ function Field({
 }) {
   return (
     <label className={`grid min-w-0 gap-1 ${className}`}>
-      <span className="text-[11px] font-medium uppercase tracking-wide text-stone-500 lg:sr-only">
+      <span className="text-[11px] font-medium text-ink-muted lg:sr-only">
         {label}
       </span>
       {children}
@@ -65,51 +67,35 @@ function TimeField({ defaultValue }: { defaultValue?: string }) {
 }
 
 function SaveButton({ pending }: { pending: boolean }) {
+  const { t } = useT();
   return (
     <button
       type="submit"
       disabled={pending}
-      className="shrink-0 notebook-btn bg-hanko px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+      className="shrink-0 notebook-btn bg-accent px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
     >
-      {pending ? "Saving…" : "Save"}
+      {pending ? t("common.saving") : t("common.save")}
     </button>
   );
 }
 
-function DeleteButton({
-  name,
-  onDelete,
-}: {
-  name: string;
-  onDelete: () => void;
-}) {
-  const [confirmOpen, setConfirmOpen] = useState(false);
+function DeleteButton({ onDelete }: { onDelete: () => void }) {
   const [busy, startTransition] = useTransition();
+  const { t } = useT();
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setConfirmOpen(true)}
-        className="notebook-btn shrink-0 px-3 py-1.5 text-xs font-medium text-red-700"
-      >
-        Delete
-      </button>
-      <ConfirmDialog
-        open={confirmOpen}
-        title="Delete stop?"
-        message={`Remove “${name}”?`}
-        confirmLabel="Delete"
-        busy={busy}
-        onCancel={() => setConfirmOpen(false)}
-        onConfirm={() => {
-          startTransition(async () => {
-            await onDelete();
-            setConfirmOpen(false);
-          });
-        }}
-      />
-    </>
+    <button
+      type="button"
+      disabled={busy}
+      onClick={() => {
+        startTransition(async () => {
+          await onDelete();
+        });
+      }}
+      className="notebook-btn inline-flex min-h-11 shrink-0 items-center px-3 text-xs font-medium text-accent disabled:opacity-60"
+    >
+      {t("common.delete")}
+    </button>
   );
 }
 
@@ -124,6 +110,7 @@ export function AgendaEditTable({
   dayId: string;
   dayDate: string | null;
 }) {
+  const { t } = useT();
   const rows: Array<
     | { kind: "place"; place: Place }
     | { kind: "transit"; transit: Transit }
@@ -143,21 +130,21 @@ export function AgendaEditTable({
 
   if (rows.length === 0) {
     return (
-      <p className="notebook-card border-dashed px-4 py-6 text-sm text-stone-500 shadow-none">
-        No stops yet. Add a place or transit below.
+      <p className="notebook-card border-dashed px-4 py-6 text-sm text-ink-muted shadow-none">
+        {t("agenda.noStopsEdit")}
       </p>
     );
   }
 
   return (
     <div className="min-w-0 overflow-hidden notebook-card">
-      <div className="hidden grid-cols-[8rem_3.5rem_7rem_minmax(0,1.3fr)_minmax(0,1fr)_auto] gap-2 border-b border-sage px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-stone-500 lg:grid">
-        <span>Time</span>
+      <div className="hidden grid-cols-[8rem_3.5rem_7rem_minmax(0,1.3fr)_minmax(0,1fr)_auto] gap-2 border-b border-line px-3 py-2 text-[11px] font-medium text-ink-muted lg:grid">
+        <span>{t("form.time")}</span>
         <span>#</span>
-        <span>Kind</span>
-        <span>Name</span>
-        <span>Detail</span>
-        <span className="text-right">Edit</span>
+        <span>{t("form.kind")}</span>
+        <span>{t("form.name")}</span>
+        <span>{t("form.detail")}</span>
+        <span className="text-right">{t("common.edit")}</span>
       </div>
       {rows.map((row) =>
         row.kind === "place" ? (
@@ -191,6 +178,8 @@ function PlaceEditRow({
 }) {
   const [pending, startTransition] = useTransition();
   const notify = useActionToast();
+  const trashWithUndo = useTrashUndo();
+  const { t, locale } = useT();
 
   return (
     <form
@@ -208,20 +197,20 @@ function PlaceEditRow({
       <input type="hidden" name="dayDate" value={dateKey(dayDate) ?? ""} />
       <input type="hidden" name="mapsUrl" value={place.mapsUrl ?? ""} />
       <input type="hidden" name="notes" value={place.notes} />
-      <Field label="Time">
+      <Field label={t("form.time")}>
         <TimeField defaultValue={formatTime(place.start) ?? ""} />
       </Field>
       <div className="hidden lg:block" />
-      <Field label="Kind" className="col-span-2 lg:col-span-1">
+      <Field label={t("form.kind")} className="col-span-2 lg:col-span-1">
         <select name="type" defaultValue={place.type ?? "Sight"} className={cell}>
           {PLACE_TYPES.map((type) => (
             <option key={type} value={type}>
-              {type}
+              {labelType(locale, type)}
             </option>
           ))}
         </select>
       </Field>
-      <Field label="Name" className="col-span-2 lg:col-span-2">
+      <Field label={t("form.name")} className="col-span-2 lg:col-span-2">
         <input
           name="name"
           required
@@ -232,11 +221,10 @@ function PlaceEditRow({
       <div className="col-span-2 flex w-full min-w-0 justify-end gap-2 lg:col-span-1">
         <SaveButton pending={pending} />
         <DeleteButton
-          name={place.name}
           onDelete={async () => {
             const formData = new FormData();
             formData.set("id", place.id);
-            await notify(await deletePlace(formData));
+            await trashWithUndo(await deletePlace(formData), place.id, "place");
           }}
         />
       </div>
@@ -255,6 +243,8 @@ function TransitEditRow({
 }) {
   const [pending, startTransition] = useTransition();
   const notify = useActionToast();
+  const trashWithUndo = useTrashUndo();
+  const { t, locale } = useT();
 
   return (
     <form
@@ -280,7 +270,7 @@ function TransitEditRow({
         type="hidden"
         value={dateKey(item.date) ?? dateKey(dayDate) ?? ""}
       />
-      <Field label="Time">
+      <Field label={t("form.time")}>
         <TimeField defaultValue={formatTime(item.start) ?? ""} />
       </Field>
       <Field label="#">
@@ -291,30 +281,30 @@ function TransitEditRow({
           className={cell}
         />
       </Field>
-      <Field label="Kind" className="col-span-2 lg:col-span-1">
+      <Field label={t("form.kind")} className="col-span-2 lg:col-span-1">
         <select name="mode" defaultValue={item.mode ?? "Metro"} className={cell}>
           {TRANSIT_MODES.map((mode) => (
             <option key={mode} value={mode}>
-              {mode}
+              {labelMode(locale, mode)}
             </option>
           ))}
         </select>
       </Field>
-      <Field label="Name" className="col-span-2 lg:col-span-1">
+      <Field label={t("form.name")} className="col-span-2 lg:col-span-1">
         <input name="name" required defaultValue={item.name} className={cell} />
       </Field>
-      <Field label="From / to" className="col-span-2 lg:col-span-1">
+      <Field label={t("form.fromTo")} className="col-span-2 lg:col-span-1">
         <div className="grid grid-cols-2 gap-1">
           <input
             name="from"
             defaultValue={item.from}
-            placeholder="From"
+            placeholder={t("form.from")}
             className={cell}
           />
           <input
             name="to"
             defaultValue={item.to}
-            placeholder="To"
+            placeholder={t("form.to")}
             className={cell}
           />
         </div>
@@ -322,11 +312,10 @@ function TransitEditRow({
       <div className="col-span-2 flex w-full min-w-0 justify-end gap-2 lg:col-span-1">
         <SaveButton pending={pending} />
         <DeleteButton
-          name={item.name}
           onDelete={async () => {
             const formData = new FormData();
             formData.set("id", item.id);
-            await notify(await deleteTransit(formData));
+            await trashWithUndo(await deleteTransit(formData), item.id, "transit");
           }}
         />
       </div>

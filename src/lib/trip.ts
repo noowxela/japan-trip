@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { cache } from "react";
 import { dateKey } from "@/lib/format";
 import { coordsOfPlace } from "@/lib/geocode";
@@ -16,6 +17,7 @@ import {
   titleOf,
   urlOf,
 } from "@/lib/notion";
+import { spendDuplicateMatches } from "@/lib/outbox-core";
 import { parseSpendCurrency } from "@/lib/spend";
 import type {
   Place,
@@ -29,9 +31,22 @@ import { CITY_COORDS } from "@/lib/types";
 
 export {
   buildAgenda,
+  nextAgendaItem,
   pickFocusDay,
   staysForDate,
+  tripPhase,
 } from "@/lib/trip-core";
+
+export const TRIP_TAGS = {
+  trip: "trip",
+  days: "trip:days",
+  places: "trip:places",
+  stays: "trip:stays",
+  transit: "trip:transit",
+  spend: "trip:spend",
+  editors: "trip:editors",
+  prep: "trip:prep",
+} as const;
 
 function parseDay(page: Awaited<ReturnType<typeof queryAll>>[number]): TripDay {
   return {
@@ -110,61 +125,134 @@ function parsePrep(page: Awaited<ReturnType<typeof queryAll>>[number]): PrepItem
   };
 }
 
-export const getDays = cache(async () => {
-  const pages = await queryAll(ds("DAYS"), {
-    sorts: [{ property: "Date", direction: "ascending" }],
-  });
-  return pages.map(parseDay);
-});
-
-export const getPlaces = cache(async () => {
-  const pages = await queryAll(ds("PLACES"));
-  return pages.map(parsePlace);
-});
-
-export const getStays = cache(async () => {
-  const pages = await queryAll(ds("STAYS"), {
-    sorts: [{ property: "Check-in", direction: "ascending" }],
-  });
-  return pages.map(parseStay);
-});
-
-export const getTransit = cache(async () => {
-  const pages = await queryAll(ds("TRANSIT"), {
-    sorts: [{ property: "Date", direction: "ascending" }],
-  });
-  return pages.map(parseTransit);
-});
-
-export const getSpend = cache(async () => {
-  const pages = await queryAll(ds("SPEND"));
-  return pages.map(parseSpend);
-});
-
-export const getEditorNames = cache(async () => {
-  if (!hasEditorsDs()) return [] as string[];
-  const pages = await queryAll(ds("EDITORS"));
-  return [...new Set(pages.map((page) => titleOf(page).trim()).filter(Boolean))].sort(
-    (a, b) => a.localeCompare(b),
-  );
-});
-
-export const getPrep = cache(async () => {
-  if (!hasPrepDs()) return [] as PrepItem[];
-  const pages = await queryAll(ds("PREP"));
-  return pages
-    .map(parsePrep)
-    .sort((a, b) => {
-      const ao = a.order ?? Number.MAX_SAFE_INTEGER;
-      const bo = b.order ?? Number.MAX_SAFE_INTEGER;
-      if (ao !== bo) return ao - bo;
-      return a.name.localeCompare(b.name);
+const cachedGetDays = unstable_cache(
+  async () => {
+    const pages = await queryAll(ds("DAYS"), {
+      sorts: [{ property: "Date", direction: "ascending" }],
     });
-});
+    return pages.map(parseDay);
+  },
+  ["trip-days"],
+  { revalidate: 60, tags: [TRIP_TAGS.trip, TRIP_TAGS.days] },
+);
+
+const cachedGetPlaces = unstable_cache(
+  async () => {
+    const pages = await queryAll(ds("PLACES"));
+    return pages.map(parsePlace);
+  },
+  ["trip-places"],
+  { revalidate: 60, tags: [TRIP_TAGS.trip, TRIP_TAGS.places] },
+);
+
+const cachedGetStays = unstable_cache(
+  async () => {
+    const pages = await queryAll(ds("STAYS"), {
+      sorts: [{ property: "Check-in", direction: "ascending" }],
+    });
+    return pages.map(parseStay);
+  },
+  ["trip-stays"],
+  { revalidate: 60, tags: [TRIP_TAGS.trip, TRIP_TAGS.stays] },
+);
+
+const cachedGetTransit = unstable_cache(
+  async () => {
+    const pages = await queryAll(ds("TRANSIT"), {
+      sorts: [{ property: "Date", direction: "ascending" }],
+    });
+    return pages.map(parseTransit);
+  },
+  ["trip-transit"],
+  { revalidate: 60, tags: [TRIP_TAGS.trip, TRIP_TAGS.transit] },
+);
+
+const cachedGetSpend = unstable_cache(
+  async () => {
+    const pages = await queryAll(ds("SPEND"));
+    return pages.map(parseSpend);
+  },
+  ["trip-spend"],
+  { revalidate: 60, tags: [TRIP_TAGS.trip, TRIP_TAGS.spend] },
+);
+
+const cachedGetEditorNames = unstable_cache(
+  async () => {
+    if (!hasEditorsDs()) return [] as string[];
+    const pages = await queryAll(ds("EDITORS"));
+    return [
+      ...new Set(pages.map((page) => titleOf(page).trim()).filter(Boolean)),
+    ].sort((a, b) => a.localeCompare(b));
+  },
+  ["trip-editors"],
+  { revalidate: 60, tags: [TRIP_TAGS.trip, TRIP_TAGS.editors] },
+);
+
+const cachedGetPrep = unstable_cache(
+  async () => {
+    if (!hasPrepDs()) return [] as PrepItem[];
+    const pages = await queryAll(ds("PREP"));
+    return pages
+      .map(parsePrep)
+      .sort((a, b) => {
+        const ao = a.order ?? Number.MAX_SAFE_INTEGER;
+        const bo = b.order ?? Number.MAX_SAFE_INTEGER;
+        if (ao !== bo) return ao - bo;
+        return a.name.localeCompare(b.name);
+      });
+  },
+  ["trip-prep"],
+  { revalidate: 60, tags: [TRIP_TAGS.trip, TRIP_TAGS.prep] },
+);
+
+export const getDays = cache(() => cachedGetDays());
+export const getPlaces = cache(() => cachedGetPlaces());
+export const getStays = cache(() => cachedGetStays());
+export const getTransit = cache(() => cachedGetTransit());
+export const getSpend = cache(() => cachedGetSpend());
+export const getEditorNames = cache(() => cachedGetEditorNames());
+export const getPrep = cache(() => cachedGetPrep());
 
 export async function getSpendItem(id: string) {
   const spend = await getSpend();
   return spend.find((item) => item.id === id) ?? null;
+}
+
+/** Uncached spend scan for addSpend idempotency (outbox replay retries only). */
+export async function findSpendDuplicate(input: {
+  name: string;
+  amount: number;
+  currency: string;
+  dayId: string;
+  createdAt: string;
+  firstAttemptAt: string;
+}): Promise<SpendItem | null> {
+  const pages = await queryAll(ds("SPEND"));
+  for (const page of pages) {
+    const item = parseSpend(page);
+    if (
+      !spendDuplicateMatches({
+        name: input.name,
+        amount: input.amount,
+        currency: input.currency,
+        dayId: input.dayId,
+        createdAt: input.createdAt,
+        firstAttemptAt: input.firstAttemptAt,
+        candidate: {
+          name: item.name,
+          amount: item.amount,
+          currency: item.currency,
+          dayIds: item.dayIds,
+          start: item.start,
+          createdTime: page.created_time,
+        },
+      })
+    ) {
+      continue;
+    }
+    return item;
+  }
+  return null;
 }
 
 export async function getDay(id: string) {

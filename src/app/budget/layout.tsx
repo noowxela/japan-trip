@@ -2,13 +2,23 @@ import type { ReactNode } from "react";
 import { AddExpenseFab } from "@/components/add-spend-form";
 import { BudgetBoard } from "@/components/budget-board";
 import { BudgetStack } from "@/components/budget-stack";
-import { EmptyState } from "@/components/empty-state";
-import { EditOnly } from "@/components/edit-session";
+import { NotionNotReady } from "@/components/notion-not-ready";
 import { PageShell } from "@/components/page-shell";
+import { QuickExpenseTripSync } from "@/components/quick-expense-provider";
+import { TripCacheSync } from "@/components/trip-cache-sync";
 import { getMyrToJpy, yenForMyr } from "@/lib/exchange";
-import { hasToken, isConfigured } from "@/lib/notion";
+import { notionReady } from "@/lib/notion";
 import { moneySummary } from "@/lib/spend";
-import { getDays, getEditorNames, getSpend } from "@/lib/trip";
+import { makeTripSnapshot } from "@/lib/trip-cache";
+import {
+  getDays,
+  getEditorNames,
+  getPlaces,
+  getPrep,
+  getSpend,
+  getStays,
+  getTransit,
+} from "@/lib/trip";
 
 export const dynamic = "force-dynamic";
 
@@ -17,32 +27,43 @@ export default async function BudgetLayout({
 }: {
   children: ReactNode;
 }) {
-  if (!hasToken() || !isConfigured()) {
+  if (!notionReady()) {
     return (
       <>
-        <PageShell>
-          <EmptyState title="Notion is not ready">
-            Add NOTION_TOKEN and run <code>npm run setup:notion</code> then{" "}
-            <code>npm run migrate:v2</code>.
-          </EmptyState>
-        </PageShell>
+        <NotionNotReady />
         {children}
       </>
     );
   }
 
-  const [days, spend, fx, people] = await Promise.all([
-    getDays(),
-    getSpend(),
-    getMyrToJpy(),
-    getEditorNames(),
-  ]);
+  const [days, spend, places, transit, stays, prep, fx, people] =
+    await Promise.all([
+      getDays(),
+      getSpend(),
+      getPlaces(),
+      getTransit(),
+      getStays(),
+      getPrep(),
+      getMyrToJpy(),
+      getEditorNames(),
+    ]);
   const money = moneySummary(spend, fx.jpyPerRm);
   const actuals = spend.filter((item) => item.kind === "Actual");
 
   return (
     <>
-      <PageShell>
+      <TripCacheSync
+        snapshot={makeTripSnapshot({
+          days,
+          places,
+          transit,
+          stays,
+          spend,
+          prep,
+        })}
+      />
+      <QuickExpenseTripSync days={days} people={people} />
+      <PageShell className="gap-3 py-4">
         <BudgetStack>
           <BudgetBoard
             actuals={actuals}
@@ -56,9 +77,7 @@ export default async function BudgetLayout({
           />
         </BudgetStack>
       </PageShell>
-      <EditOnly>
-        <AddExpenseFab days={days} people={people} />
-      </EditOnly>
+      <AddExpenseFab days={days} people={people} />
       {children}
     </>
   );

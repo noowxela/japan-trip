@@ -1,18 +1,24 @@
+"use client";
+
+import { useT } from "@/components/i18n-provider";
+import { labelStatus } from "@/lib/i18n/dictionaries";
+
 const tones: Record<string, string> = {
-  Planned: "bg-stone-100 text-stone-700",
-  Confirmed: "bg-emerald-100 text-emerald-800",
-  Done: "bg-hanko/10 text-hanko",
+  Planned: "bg-canvas text-ink-muted",
+  Confirmed: "bg-ok-soft text-ok",
+  Done: "bg-ok-soft text-ok",
 };
 
 export function StatusBadge({ status }: { status: string | null }) {
+  const { locale } = useT();
   if (!status) return null;
   return (
     <span
-      className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
-        tones[status] ?? "bg-stone-100 text-stone-700"
+      className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${
+        tones[status] ?? "bg-canvas text-ink-muted"
       }`}
     >
-      {status}
+      {labelStatus(locale, status)}
     </span>
   );
 }

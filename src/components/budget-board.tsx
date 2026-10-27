@@ -1,23 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { EditorLockButton } from "@/components/editor-lock-button";
 import { EmptyState } from "@/components/empty-state";
-import { eyebrowClass } from "@/components/page-shell";
+import { useT } from "@/components/i18n-provider";
+import { useOutbox } from "@/components/outbox-provider";
 import { categoryColor } from "@/components/spend-category-icon";
 import { SpendItemCard } from "@/components/spend-item-card";
 import { SpendTimeline, formatAmount } from "@/components/spend-timeline";
-import { formatYen } from "@/lib/format";
+import { labelCategory } from "@/lib/i18n/dictionaries";
 import { categoryBreakdown, topSpend } from "@/lib/spend";
-import type { SpendItem, TripDay } from "@/lib/types";
+import { SPEND_CATEGORIES, type SpendItem, type TripDay } from "@/lib/types";
 
 type Tab = "timeline" | "category" | "top";
 type DisplayCurrency = "MYR" | "YEN";
+type CategoryFilter = "all" | (typeof SPEND_CATEGORIES)[number];
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: "timeline", label: "Timeline" },
-  { id: "category", label: "Category" },
-  { id: "top", label: "TOP 10" },
-];
+const TAB_IDS: Tab[] = ["timeline", "category", "top"];
+const TAB_KEY: Record<Tab, string> = {
+  timeline: "budget.tabTimeline",
+  category: "budget.tabCategory",
+  top: "budget.tabTop",
+};
 
 export function BudgetBoard({
   actuals,
@@ -25,7 +29,7 @@ export function BudgetBoard({
   spentRm,
   estimateRm,
   jpyPerRm,
-  tenMyrInYen,
+  tenMyrInYen: _tenMyrInYen,
   fxLive,
   fxAsOf,
 }: {
@@ -38,88 +42,153 @@ export function BudgetBoard({
   fxLive: boolean;
   fxAsOf: string | null;
 }) {
+  void _tenMyrInYen;
+  const { t, locale } = useT();
+  const { pendingSpend } = useOutbox();
   const [tab, setTab] = useState<Tab>("timeline");
   const [display, setDisplay] = useState<DisplayCurrency>("MYR");
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
   const yen = display === "YEN";
+  const mergedActuals = useMemo(() => {
+    const pending = pendingSpend.filter(
+      (item) => !item.kind || item.kind === "Actual",
+    );
+    return [...pending, ...actuals];
+  }, [actuals, pendingSpend]);
+  const filteredActuals = useMemo(() => {
+    if (categoryFilter === "all") return mergedActuals;
+    return mergedActuals.filter((item) => item.category === categoryFilter);
+  }, [categoryFilter, mergedActuals]);
   const usedPct =
-    estimateRm > 0 ? Math.min(100, Math.round((spentRm / estimateRm) * 100)) : null;
-  const categories = categoryBreakdown(actuals, jpyPerRm);
-  const topItems = topSpend(actuals, 10, jpyPerRm);
+    estimateRm > 0 ? Math.round((spentRm / estimateRm) * 100) : null;
+  const remainingRm = estimateRm - spentRm;
+  const over = usedPct != null && spentRm > estimateRm;
+  const categories = categoryBreakdown(mergedActuals, jpyPerRm);
+  const topItems = topSpend(mergedActuals, 10, jpyPerRm);
+  const yen100InRm = jpyPerRm > 0 ? 100 / jpyPerRm : 0;
+  const fxTitle = fxLive
+    ? fxAsOf
+      ? t("budget.fxAsOf", { rate: jpyPerRm.toFixed(2), asOf: fxAsOf })
+      : t("budget.fxLine", { rate: jpyPerRm.toFixed(2) })
+    : t("budget.fxFallback");
+  const barPct =
+    usedPct == null ? 0 : Math.min(100, Math.max(0, usedPct));
+  const barColor = over
+    ? "var(--accent)"
+    : usedPct != null && usedPct >= 90
+      ? "var(--maybe)"
+      : "var(--ok)";
 
   return (
     <>
-      <div>
-        <p className={eyebrowClass}>Trip spend</p>
-        <div className="mt-1 flex flex-wrap items-center gap-2">
-          <h1 className="text-3xl font-semibold tracking-tight">Expenses</h1>
-          <button
-            type="button"
-            aria-pressed={yen}
-            aria-label={
-              yen ? "Showing yen. Switch to MYR" : "Showing MYR. Switch to yen"
-            }
-            onClick={() => setDisplay(yen ? "MYR" : "YEN")}
-            className="rounded-full bg-hanko px-3 py-0.5 text-xs font-semibold tracking-wide text-white"
-          >
-            {display}
-          </button>
+      <div className="flex items-center gap-2">
+        <h1 className="text-xl font-semibold tracking-tight">{t("budget.title")}</h1>
+        <button
+          type="button"
+          aria-pressed={yen}
+          aria-label={yen ? t("budget.showYen") : t("budget.showMyr")}
+          onClick={() => setDisplay(yen ? "MYR" : "YEN")}
+          className="rounded-full bg-ink px-2.5 py-0.5 text-[11px] font-semibold text-surface"
+        >
+          {display}
+        </button>
+        <div className="ml-auto">
+          <EditorLockButton />
         </div>
       </div>
 
-      <section className="flex items-end gap-4 md:max-w-xl">
-        <BudgetGauge
-          pct={usedPct}
-          spentLabel={formatAmount(spentRm, yen, jpyPerRm)}
-        />
-        <div className="min-w-0 pb-2">
-          <p className="text-xs uppercase tracking-wide text-stone-500">
-            Spent
-          </p>
-          <p className="mt-1 text-2xl font-medium">
-            {formatAmount(spentRm, yen, jpyPerRm)}
-          </p>
+      <section className="max-h-[90px] rounded-xl border border-line bg-surface px-3 py-2 md:max-w-xl">
+        <p className="truncate text-[13px] leading-5 text-ink">
+          <span className="font-medium">
+            {t("budget.spentShort", {
+              amount: formatAmount(spentRm, yen, jpyPerRm),
+            })}
+          </span>
           {usedPct != null ? (
-            <p className="mt-1 text-sm text-stone-500">
-              {formatAmount(estimateRm, yen, jpyPerRm)} budget
-            </p>
+            <>
+              <span className="text-ink-muted"> · </span>
+              <span>
+                {t("budget.budgetShort", {
+                  amount: formatAmount(estimateRm, yen, jpyPerRm),
+                })}
+              </span>
+              <span className="text-ink-muted"> · </span>
+              <span className={over ? "font-medium text-accent" : "font-medium text-ok"}>
+                {over
+                  ? t("budget.overBy", {
+                      amount: formatAmount(Math.abs(remainingRm), yen, jpyPerRm),
+                    })
+                  : t("budget.remaining", {
+                      amount: formatAmount(remainingRm, yen, jpyPerRm),
+                    })}
+              </span>
+            </>
           ) : null}
-          <p className="mt-3 text-sm font-medium text-stone-800">
-            10 MYR ~ {formatYen(tenMyrInYen)}
-          </p>
-          <p className="mt-0.5 text-xs text-stone-500">
-            {fxLive
-              ? `1 MYR = ${jpyPerRm.toFixed(2)} JPY${fxAsOf ? ` · ${fxAsOf}` : ""}`
-              : "Live rate unavailable · using fallback"}
-          </p>
+        </p>
+        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-canvas">
+          <div
+            className="h-full rounded-full transition-[width]"
+            style={{ width: `${barPct}%`, backgroundColor: barColor }}
+            aria-hidden
+          />
         </div>
+        <p className="mt-1 truncate text-[11px] text-ink-muted" title={fxTitle}>
+          {t("budget.fxCompact", { rm: yen100InRm.toFixed(2) })}
+        </p>
       </section>
 
-      <div className="flex rounded-full bg-sage/80 p-1 md:max-w-xl">
-        {TABS.map((entry) => {
-          const active = tab === entry.id;
+      <div className="flex h-8 rounded-lg bg-canvas p-0.5 md:max-w-xl">
+        {TAB_IDS.map((id) => {
+          const active = tab === id;
           return (
             <button
-              key={entry.id}
+              key={id}
               type="button"
               aria-pressed={active}
-              onClick={() => setTab(entry.id)}
-              className={`min-w-0 flex-1 rounded-full px-3 py-2 text-sm font-medium transition-colors ${
-                active ? "bg-white text-stone-900 shadow-sm" : "text-stone-500"
+              onClick={() => setTab(id)}
+              className={`min-w-0 flex-1 rounded-md px-2 text-xs font-medium transition-colors ${
+                active ? "bg-surface text-ink shadow-sm" : "text-ink-muted"
               }`}
             >
-              {entry.label}
+              {t(TAB_KEY[id])}
             </button>
           );
         })}
       </div>
 
       {tab === "timeline" ? (
-        <SpendTimeline
-          items={actuals}
-          days={days}
-          jpyPerRm={jpyPerRm}
-          displayYen={yen}
-        />
+        <>
+          <div className="chip-scroll-fade md:max-w-xl">
+            <div
+              role="toolbar"
+              aria-label={t("budget.categoryFilter")}
+              className="scrollbar-none -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5"
+            >
+              <CategoryChip
+                active={categoryFilter === "all"}
+                onClick={() => setCategoryFilter("all")}
+                label={t("budget.filterAll")}
+              />
+              {SPEND_CATEGORIES.map((category) => (
+                <CategoryChip
+                  key={category}
+                  active={categoryFilter === category}
+                  onClick={() => setCategoryFilter(category)}
+                  label={labelCategory(locale, category) ?? category}
+                  color={categoryColor(category)}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="mt-2 md:max-w-xl">
+            <SpendTimeline
+              items={filteredActuals}
+              days={days}
+              jpyPerRm={jpyPerRm}
+              displayYen={yen}
+            />
+          </div>
+        </>
       ) : null}
 
       {tab === "category" ? (
@@ -128,28 +197,31 @@ export function BudgetBoard({
           totalRm={spentRm}
           displayYen={yen}
           jpyPerRm={jpyPerRm}
+          locale={locale}
+          totalLabel={t("budget.total")}
         />
       ) : null}
 
       {tab === "top" ? (
         topItems.length > 0 ? (
-          <ol className="grid gap-2">
+          <ol className="grid gap-0 divide-y divide-line/80 md:max-w-xl">
             {topItems.map((item, index) => (
-              <li key={item.id} className="grid grid-cols-[1.5rem_1fr] items-start gap-2">
-                <span className="pt-4 text-center text-xs font-medium text-stone-400">
+              <li key={item.id} className="grid grid-cols-[1.25rem_1fr] items-center gap-1.5 py-0.5">
+                <span className="text-center text-[11px] font-medium text-ink-muted tabular-nums">
                   {index + 1}
                 </span>
                 <SpendItemCard
                   item={item}
                   jpyPerRm={jpyPerRm}
                   displayYen={yen}
+                  compact
                 />
               </li>
             ))}
           </ol>
         ) : (
-          <EmptyState title="No expenses yet">
-            Expenses appear here once someone logs a spend.
+          <EmptyState title={t("budget.empty")}>
+            {t("budget.timelineEmpty")}
           </EmptyState>
         )
       ) : null}
@@ -157,43 +229,37 @@ export function BudgetBoard({
   );
 }
 
-function BudgetGauge({
-  pct,
-  spentLabel,
+function CategoryChip({
+  active,
+  onClick,
+  label,
+  color,
 }: {
-  pct: number | null;
-  spentLabel: string;
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  color?: string;
 }) {
-  const fill = pct ?? 0;
   return (
-    <div
-      className="relative h-36 w-36 shrink-0 overflow-hidden rounded-full bg-white ring-1 ring-sage"
-      aria-label={
-        pct != null ? `${pct}% of budget used` : `Spent ${spentLabel}`
-      }
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`inline-flex h-7 shrink-0 items-center gap-1 rounded-full px-2.5 text-xs font-medium ${
+        active
+          ? "bg-ink text-surface"
+          : "bg-surface text-ink-muted ring-1 ring-line"
+      }`}
     >
-      <div
-        className="absolute inset-x-0 bottom-0 bg-[#9ec5c3]"
-        style={{ height: `${fill}%` }}
-      />
-      <div className="absolute inset-0 flex flex-col items-center justify-center px-3 text-center">
-        {pct != null ? (
-          <>
-            <span className="text-3xl font-semibold leading-none">{pct}%</span>
-            <span className="mt-1 text-[11px] uppercase tracking-wide text-stone-500">
-              Budget used
-            </span>
-          </>
-        ) : (
-          <>
-            <span className="text-lg font-semibold leading-tight">{spentLabel}</span>
-            <span className="mt-1 text-[11px] uppercase tracking-wide text-stone-500">
-              Spent
-            </span>
-          </>
-        )}
-      </div>
-    </div>
+      {color ? (
+        <span
+          className="h-1.5 w-1.5 rounded-full"
+          style={{ backgroundColor: active ? "currentColor" : color }}
+          aria-hidden
+        />
+      ) : null}
+      {label}
+    </button>
   );
 }
 
@@ -202,30 +268,38 @@ function CategorySummary({
   totalRm,
   displayYen,
   jpyPerRm,
+  locale,
+  totalLabel,
 }: {
   rows: ReturnType<typeof categoryBreakdown>;
   totalRm: number;
   displayYen: boolean;
   jpyPerRm: number;
+  locale: ReturnType<typeof useT>["locale"];
+  totalLabel: string;
 }) {
   return (
-    <ul className="notebook-card divide-y divide-stone-100 p-4 md:max-w-xl">
+    <ul className="divide-y divide-line/80 md:max-w-xl">
       {rows.map((row) => (
-        <li key={row.category} className="py-3 first:pt-0 last:pb-0">
-          <div className="flex items-baseline justify-between gap-3 text-sm">
-            <span className="flex min-w-0 items-center gap-2">
+        <li key={row.category} className="py-1.5">
+          <div className="flex items-center justify-between gap-2 text-[13px]">
+            <span className="flex min-w-0 items-center gap-1.5">
               <span
-                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                className="h-2 w-2 shrink-0 rounded-full"
                 style={{ backgroundColor: categoryColor(row.category) }}
               />
-              <span className="font-medium">{row.category}</span>
-              <span className="text-stone-400">{row.percent}%</span>
+              <span className="truncate font-medium">
+                {labelCategory(locale, row.category)}
+              </span>
+              <span className="text-[11px] text-ink-muted tabular-nums">
+                {row.percent}%
+              </span>
             </span>
-            <span className="shrink-0 font-medium">
+            <span className="shrink-0 font-medium tabular-nums">
               {formatAmount(row.amountRm, displayYen, jpyPerRm)}
             </span>
           </div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-sage/80">
+          <div className="mt-1 h-1 overflow-hidden rounded-full bg-canvas">
             <div
               className="h-full rounded-full"
               style={{
@@ -236,19 +310,16 @@ function CategorySummary({
           </div>
         </li>
       ))}
-      <li className="py-3 last:pb-0">
-        <div className="flex items-baseline justify-between gap-3 text-sm">
-          <span className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#0f766e]" />
-            <span className="font-medium">Total</span>
-            <span className="text-stone-400">100%</span>
+      <li className="py-1.5">
+        <div className="flex items-center justify-between gap-2 text-[13px]">
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 shrink-0 rounded-full bg-ink" />
+            <span className="font-medium">{totalLabel}</span>
+            <span className="text-[11px] text-ink-muted tabular-nums">100%</span>
           </span>
-          <span className="font-medium">
+          <span className="font-medium tabular-nums">
             {formatAmount(totalRm, displayYen, jpyPerRm)}
           </span>
-        </div>
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-sage/80">
-          <div className="h-full w-full rounded-full bg-[#0f766e]" />
         </div>
       </li>
     </ul>

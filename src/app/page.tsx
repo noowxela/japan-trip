@@ -1,63 +1,84 @@
-import { CountdownWidget } from "@/components/countdown-widget";
+import Link from "next/link";
+import { OverviewExpenseFab } from "@/components/add-spend-form";
+import { EditorLockButton } from "@/components/editor-lock-button";
 import { EmptyState } from "@/components/empty-state";
 import { FlightInfoList } from "@/components/flight-info-list";
+import { NotionNotReady } from "@/components/notion-not-ready";
 import {
-  NextStopCard,
-  TodaySpendCard,
-  TonightStayCard,
+  NextStopBanner,
+  TodaySpendRow,
+  TonightStayRows,
+  TripCompleteRow,
 } from "@/components/overview-cards";
+import { PageHeader, SummaryStrip } from "@/components/compact";
+import { QuickExpenseTripSync } from "@/components/quick-expense-provider";
 import { TripCacheSync } from "@/components/trip-cache-sync";
-import { eyebrowClass, PageShell } from "@/components/page-shell";
+import { PageShell } from "@/components/page-shell";
 import { getMyrToJpy } from "@/lib/exchange";
-import { dateKey, formatTripSpan, tokyoToday } from "@/lib/format";
-import { hasToken, isConfigured } from "@/lib/notion";
+import { dateKey, tokyoToday } from "@/lib/format";
+import { labelCity, t } from "@/lib/i18n/dictionaries";
+import { getLocale } from "@/lib/i18n/server";
+import { notionReady } from "@/lib/notion";
+import { formatOverviewSummaryLine } from "@/lib/overview-summary";
 import { byDay, moneySummary } from "@/lib/spend";
+import type { AgendaItem } from "@/lib/types";
+import { makeTripSnapshot } from "@/lib/trip-cache";
 import {
   buildAgenda,
   getDays,
+  getEditorNames,
   getPlaces,
+  getPrep,
   getSpend,
   getStays,
   getTransit,
+  nextAgendaItem,
   pickFocusDay,
   staysForDate,
   tripFlow,
+  tripPhase,
 } from "@/lib/trip";
 
 export const dynamic = "force-dynamic";
 
 export default async function OverviewPage() {
-  if (!hasToken() || !isConfigured()) {
-    return (
-      <>
-        <PageShell>
-          <EmptyState title="Notion is not ready">
-            Add NOTION_TOKEN and run <code>npm run setup:notion</code> then{" "}
-            <code>npm run migrate:v2</code>.
-          </EmptyState>
-        </PageShell>
-      </>
-    );
+  if (!notionReady()) {
+    return <NotionNotReady />;
   }
 
+  const locale = await getLocale();
   const today = tokyoToday();
-  const [days, places, transit, stays, spend, fx] = await Promise.all([
-    getDays(),
-    getPlaces(),
-    getTransit(),
-    getStays(),
-    getSpend(),
-    getMyrToJpy(),
-  ]);
+  const now = new Date();
+  const [days, places, transit, stays, spend, prep, fx, people] =
+    await Promise.all([
+      getDays(),
+      getPlaces(),
+      getTransit(),
+      getStays(),
+      getSpend(),
+      getPrep(),
+      getMyrToJpy(),
+      getEditorNames(),
+    ]);
   const dated = days.filter((day) => day.date);
   const tripStart = dated[0]?.date ?? null;
   const tripEnd = dated[dated.length - 1]?.date ?? null;
   const hops = tripFlow(days);
-  const cityFlow = hops.length > 0 ? hops.join(" → ") : "";
-  const span =
-    dated.length > 0 ? formatTripSpan(tripStart, tripEnd) : "Dates TBD";
+  const cityFlow =
+    hops.length > 0
+      ? hops.map((city) => labelCity(locale, city) ?? city).join(" → ")
+      : "";
+  const summary = formatOverviewSummaryLine({
+    today,
+    tripStart,
+    tripEnd,
+    cityFlow,
+    locale,
+    dayCount: dated.length,
+  });
   const flights = transit.filter((item) => item.mode === "Flight");
   const dayNames = new Map(days.map((day) => [day.id, day.name]));
+  const phase = tripPhase(days, today);
   const focus = pickFocusDay(days, today);
   const dayPlaces = focus
     ? places.filter((place) => place.dayIds.includes(focus.id))
@@ -66,61 +87,113 @@ export default async function OverviewPage() {
     ? transit.filter((item) => item.dayIds.includes(focus.id))
     : [];
   const agenda = buildAgenda(dayPlaces, dayTransit);
-  const nextStop =
-    agenda.find((item) => item.kind !== "place" || !item.visited) ?? null;
+  const isFocusToday = Boolean(focus && dateKey(focus.date) === today);
+  const next = nextAgendaItem(agenda, { now, isToday: isFocusToday });
   const lodging = focus ? staysForDate(stays, focus.date) : [];
   const dayMoney = focus
     ? moneySummary(byDay(spend, focus.id), fx.jpyPerRm)
     : { actual: 0, estimate: 0, remaining: 0 };
   const isTonight = Boolean(focus && dateKey(focus.date) === today);
 
+  let nextDayItem: AgendaItem | null = null;
+  let nextDayName: string | undefined;
+  let nextDayHref: string | undefined;
+  if (isFocusToday && !next && focus) {
+    const focusIdx = dated.findIndex((day) => day.id === focus.id);
+    const following = focusIdx >= 0 ? dated[focusIdx + 1] : null;
+    if (following) {
+      const followingAgenda = buildAgenda(
+        places.filter((place) => place.dayIds.includes(following.id)),
+        transit.filter((item) => item.dayIds.includes(following.id)),
+      );
+      const followingNext = nextAgendaItem(followingAgenda, {
+        now,
+        isToday: false,
+      });
+      if (followingNext) {
+        nextDayItem = followingNext.item;
+        nextDayName = following.name;
+        nextDayHref = `/schedule?day=${encodeURIComponent(following.id)}`;
+      }
+    }
+  }
+
   return (
     <>
       <TripCacheSync
-        snapshot={{
-          v: 1,
-          savedAt: new Date().toISOString(),
+        snapshot={makeTripSnapshot({
           days,
           places,
           transit,
           stays,
-        }}
+          spend,
+          prep,
+        })}
       />
+      <QuickExpenseTripSync days={days} people={people} />
       <PageShell>
-        <CountdownWidget start={tripStart} end={tripEnd} today={today} />
+        <PageHeader
+          eyebrow={t(locale, "overview.eyebrow")}
+          title={t(locale, "overview.title")}
+          action={<EditorLockButton />}
+        />
 
-        <div>
-          <p className={eyebrowClass}>Trip overview</p>
-          <h1 className="text-3xl font-semibold tracking-tight">Overview</h1>
-          <p className="mt-1 text-sm text-stone-500">{span}</p>
-          {cityFlow ? (
-            <p className="mt-2 text-base font-medium">{cityFlow}</p>
-          ) : null}
-        </div>
+        <SummaryStrip>{summary}</SummaryStrip>
 
-        {focus ? (
-          <div className="grid gap-3">
-            <NextStopCard
-              item={nextStop}
+        {phase === "after" ? (
+          <div className="grid gap-2">
+            <TripCompleteRow dayCount={dated.length} href="/budget" />
+            <TodaySpendRow
+              actual={dayMoney.actual}
+              estimate={dayMoney.estimate}
+              href="/budget"
+            />
+          </div>
+        ) : focus ? (
+          <div className="grid gap-2">
+            <NextStopBanner
+              item={next?.item ?? null}
+              status={next?.status ?? "next"}
+              done={isFocusToday && !next}
               href={`/schedule?day=${encodeURIComponent(focus.id)}`}
               dayName={focus.name}
               dayDate={focus.date}
+              nextDayItem={nextDayItem}
+              nextDayName={nextDayName}
+              nextDayHref={nextDayHref}
             />
-            <TonightStayCard stays={lodging} isTonight={isTonight} />
-            <TodaySpendCard
+            <TonightStayRows stays={lodging} isTonight={isTonight} />
+            <TodaySpendRow
               actual={dayMoney.actual}
               estimate={dayMoney.estimate}
               href="/budget"
             />
           </div>
         ) : (
-          <EmptyState title="No trip days yet">
-            Add days in Settings to see the next stop and tonight’s stay.
+          <EmptyState title={t(locale, "overview.noDaysTitle")}>
+            {t(locale, "overview.noDaysBody")}
           </EmptyState>
         )}
 
         <FlightInfoList flights={flights} dayNames={dayNames} />
+
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[12px]">
+          <Link href="/schedule" className="font-medium text-ink-muted no-underline">
+            {t(locale, "common.openSchedule")}
+          </Link>
+          <Link href="/lists" className="font-medium text-ink-muted no-underline">
+            {t(locale, "lists.title")}
+          </Link>
+          <Link href="/prep" className="font-medium text-ink-muted no-underline">
+            {t(locale, "prep.title")}
+          </Link>
+        </div>
       </PageShell>
+      <OverviewExpenseFab
+        days={days}
+        people={people}
+        defaultDayId={focus?.id ?? ""}
+      />
     </>
   );
 }

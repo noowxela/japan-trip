@@ -2,9 +2,10 @@
 
 import { useEffect } from "react";
 import L from "leaflet";
-import { MapContainer, Marker, TileLayer, ZoomControl, useMap } from "react-leaflet";
+import { MapContainer, Marker, ZoomControl, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { MapStyleSwitch, useMapStyle } from "@/components/map-style-switch";
+import { MapTiles } from "@/components/map-tiles";
 
 function InvalidateSize() {
   const map = useMap();
@@ -26,7 +27,7 @@ export function PlacePreviewMap({ lat, lng }: { lat: number; lng: number }) {
   }, []);
 
   return (
-    <div className="relative h-72 w-full overflow-hidden rounded-xl border border-sage">
+    <div className="relative h-72 w-full overflow-hidden rounded-xl border border-line">
       <MapContainer
         key={`${lat}-${lng}`}
         center={[lat, lng]}
@@ -38,11 +39,7 @@ export function PlacePreviewMap({ lat, lng }: { lat: number; lng: number }) {
       >
         <ZoomControl position="bottomright" />
         <InvalidateSize />
-        <TileLayer
-          key={styleId}
-          attribution={tiles.attribution}
-          url={tiles.url}
-        />
+        <MapTiles styleId={styleId} tiles={tiles} />
         <Marker position={[lat, lng]} />
       </MapContainer>
       <MapStyleSwitch id={styleId} onChange={pick} />

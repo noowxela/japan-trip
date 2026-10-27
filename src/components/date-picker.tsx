@@ -1,21 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type TouchEvent,
+} from "react";
 import { createPortal } from "react-dom";
 import { fieldClass } from "@/components/page-shell";
+import { useT } from "@/components/i18n-provider";
 import { formatDay, tokyoToday } from "@/lib/format";
 
-const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
 const SWIPE_PX = 48;
 const ANIM_MS = 220;
 const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
 const PANEL_ESTIMATE = 360;
 const GAP = 8;
-
-const monthTitle = new Intl.DateTimeFormat("en-GB", {
-  month: "long",
-  year: "numeric",
-});
 
 function ymd(year: number, month: number, day: number) {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -92,12 +94,17 @@ export function DatePicker({
   value,
   onChange,
   tripDates,
+  label,
+  compact = false,
 }: {
   name: string;
   value: string;
   onChange: (value: string) => void;
   tripDates?: ReadonlySet<string>;
+  label?: string | null;
+  compact?: boolean;
 }) {
+  const { t, locale } = useT();
   const selected = value || tokyoToday();
   const [mounted, setMounted] = useState(false);
   const [shown, setShown] = useState(false);
@@ -109,6 +116,20 @@ export function DatePicker({
   const startXRef = useRef<number | null>(null);
   const startYRef = useRef(0);
   const cells = useMemo(() => monthCells(year, month), [year, month]);
+  const weekdays = useMemo(() => {
+    const fmt = new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-GB", {
+      weekday: "narrow",
+    });
+    return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(2024, 0, 7 + i)));
+  }, [locale]);
+  const monthLabel = useMemo(
+    () =>
+      new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-GB", {
+        month: "long",
+        year: "numeric",
+      }).format(new Date(year, month - 1, 1)),
+    [locale, year, month],
+  );
   const today = tokyoToday();
 
   useEffect(() => {
@@ -139,24 +160,7 @@ export function DatePicker({
     };
   }, [mounted, year, month]);
 
-  useEffect(() => {
-    if (!mounted) return;
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") closePicker();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [mounted]);
-
-  function openPicker() {
-    closingRef.current = false;
-    setView(monthParts(selected));
-    const button = buttonRef.current;
-    if (button) setAnchor(anchorFromButton(button));
-    setMounted(true);
-  }
-
-  function closePicker() {
+  const closePicker = useCallback(() => {
     if (closingRef.current || !mounted) return;
     closingRef.current = true;
     setShown(false);
@@ -164,6 +168,23 @@ export function DatePicker({
       setMounted(false);
       closingRef.current = false;
     }, ANIM_MS);
+  }, [mounted]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") closePicker();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mounted, closePicker]);
+
+  function openPicker() {
+    closingRef.current = false;
+    setView(monthParts(selected));
+    const button = buttonRef.current;
+    if (button) setAnchor(anchorFromButton(button));
+    setMounted(true);
   }
 
   function go(delta: number) {
@@ -200,9 +221,9 @@ export function DatePicker({
           <div className="fixed inset-0 z-50">
             <button
               type="button"
-              aria-label="Close date picker"
+              aria-label={t("date.close")}
               onClick={closePicker}
-              className="absolute inset-0 bg-stone-900/25"
+              className="absolute inset-0 bg-ink/25"
               style={{
                 opacity: shown ? 1 : 0,
                 transition: `opacity ${ANIM_MS}ms ${EASE}`,
@@ -211,8 +232,8 @@ export function DatePicker({
             <div
               ref={panelRef}
               role="dialog"
-              aria-label="Choose date"
-              className="absolute rounded-2xl border border-sage bg-paper p-3 shadow-xl will-change-transform"
+              aria-label={t("date.choose")}
+              className="absolute rounded-2xl border border-line bg-surface p-3 shadow-xl will-change-transform"
               style={{
                 top: anchor.top,
                 left: anchor.left,
@@ -231,29 +252,29 @@ export function DatePicker({
               <div className="mb-1 flex items-center justify-between gap-2">
                 <button
                   type="button"
-                  aria-label="Previous month"
+                  aria-label={t("date.prevMonth")}
                   onClick={() => go(-1)}
-                  className="flex h-11 w-11 items-center justify-center rounded-full text-hanko"
+                  className="flex h-11 w-11 items-center justify-center rounded-full text-ink-muted"
                 >
                   <MonthChevron />
                 </button>
                 <p className="min-w-0 text-center text-base font-semibold">
-                  {monthTitle.format(new Date(year, month - 1, 1))}
+                  {monthLabel}
                 </p>
                 <button
                   type="button"
-                  aria-label="Next month"
+                  aria-label={t("date.nextMonth")}
                   onClick={() => go(1)}
-                  className="flex h-11 w-11 items-center justify-center rounded-full text-hanko"
+                  className="flex h-11 w-11 items-center justify-center rounded-full text-ink-muted"
                 >
                   <MonthChevron right />
                 </button>
               </div>
               <div className="grid grid-cols-7">
-                {WEEKDAYS.map((label, index) => (
+                {weekdays.map((label, index) => (
                   <div
                     key={`${label}-${index}`}
-                    className="py-1 text-center text-[11px] font-medium text-stone-400"
+                    className="py-1 text-center text-[11px] font-medium text-ink-muted"
                   >
                     {label}
                   </div>
@@ -267,17 +288,17 @@ export function DatePicker({
                       key={cell.key}
                       type="button"
                       onClick={() => pick(cell.key, cell.inMonth)}
-                      className={`relative flex h-10 items-center justify-center rounded-full text-sm ${
+                      className={`relative flex h-10 items-center justify-center rounded-full text-sm tabular-nums ${
                         isSelected
-                          ? "bg-hanko font-semibold text-white"
+                          ? "bg-accent font-semibold text-white"
                           : cell.inMonth
-                            ? "text-stone-800"
-                            : "text-stone-300"
-                      } ${isToday && !isSelected ? "ring-1 ring-moss/40" : ""}`}
+                            ? "text-ink"
+                            : "text-ink-muted/45"
+                      } ${isToday && !isSelected ? "ring-1 ring-ink-muted/40" : ""}`}
                     >
                       {cell.day}
                       {isTrip && !isSelected ? (
-                        <span className="absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-hanko" />
+                        <span className="absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-ink-muted" />
                       ) : null}
                     </button>
                   );
@@ -289,9 +310,13 @@ export function DatePicker({
         )
       : null;
 
+  const shownLabel = label === null ? null : (label ?? t("form.day"));
+
   return (
-    <div className="grid gap-1">
-      <span className="text-xs font-medium text-stone-500">Day</span>
+    <div className={compact ? "inline-flex" : "grid gap-1"}>
+      {shownLabel ? (
+        <span className="text-xs font-medium text-ink-muted">{shownLabel}</span>
+      ) : null}
       <input type="hidden" name={name} value={selected} />
       <button
         ref={buttonRef}
@@ -299,10 +324,14 @@ export function DatePicker({
         aria-haspopup="dialog"
         aria-expanded={mounted}
         onClick={() => (mounted ? closePicker() : openPicker())}
-        className={`${fieldClass} flex items-center justify-between gap-2 text-left`}
+        className={
+          compact
+            ? "notebook-btn inline-flex min-h-11 items-center gap-1.5 border border-line bg-surface px-3 text-sm font-medium text-ink"
+            : `${fieldClass} flex items-center justify-between gap-2 text-left`
+        }
       >
-        <span>{formatDay(selected)}</span>
-        <CalendarIcon />
+        <span className="tabular-nums">{formatDay(selected, locale)}</span>
+        {compact ? null : <CalendarIcon />}
       </button>
       {popover}
     </div>
@@ -314,7 +343,7 @@ function CalendarIcon() {
     <svg
       aria-hidden
       viewBox="0 0 24 24"
-      className="h-5 w-5 shrink-0 text-stone-400"
+      className="h-5 w-5 shrink-0 text-ink-muted"
       fill="none"
       stroke="currentColor"
       strokeWidth={1.75}

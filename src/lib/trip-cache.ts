@@ -1,8 +1,10 @@
-import type { Place, Stay, Transit, TripDay } from "@/lib/types";
+import type { Place, PrepItem, SpendItem, Stay, Transit, TripDay } from "@/lib/types";
 
 export const TRIP_CACHE_STORAGE_KEY = "japan-trip-itinerary-v1";
+/** Same-tab signal for useSyncExternalStore subscribers. */
+export const TRIP_CACHE_CHANGE_EVENT = "japan-trip-cache-change";
 
-export type TripSnapshot = {
+export type TripSnapshotV1 = {
   v: 1;
   savedAt: string;
   days: TripDay[];
@@ -11,32 +13,141 @@ export type TripSnapshot = {
   stays: Stay[];
 };
 
-export function isTripSnapshot(value: unknown): value is TripSnapshot {
-  if (!value || typeof value !== "object") return false;
-  const snap = value as TripSnapshot;
+export type TripSnapshot = {
+  v: 2;
+  savedAt: string;
+  days: TripDay[];
+  places: Place[];
+  transit: Transit[];
+  stays: Stay[];
+  spend: SpendItem[];
+  prep: PrepItem[];
+};
+
+/** Module memo so getSnapshot returns a stable reference (React #185). */
+let memoryRaw: string | null | undefined = undefined;
+let memorySnapshot: TripSnapshot | null = null;
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object";
+}
+
+function isTripSnapshotV1(value: unknown): value is TripSnapshotV1 {
+  if (!isObject(value)) return false;
   return (
-    snap.v === 1 &&
-    typeof snap.savedAt === "string" &&
-    Array.isArray(snap.days) &&
-    Array.isArray(snap.places) &&
-    Array.isArray(snap.transit) &&
-    Array.isArray(snap.stays)
+    value.v === 1 &&
+    typeof value.savedAt === "string" &&
+    Array.isArray(value.days) &&
+    Array.isArray(value.places) &&
+    Array.isArray(value.transit) &&
+    Array.isArray(value.stays)
   );
+}
+
+export function isTripSnapshot(value: unknown): value is TripSnapshot {
+  if (!isObject(value)) return false;
+  return (
+    value.v === 2 &&
+    typeof value.savedAt === "string" &&
+    Array.isArray(value.days) &&
+    Array.isArray(value.places) &&
+    Array.isArray(value.transit) &&
+    Array.isArray(value.stays) &&
+    Array.isArray(value.spend) &&
+    Array.isArray(value.prep)
+  );
+}
+
+/** Upgrade a v1 snapshot (or ignore unknown shapes). */
+export function migrateTripSnapshot(value: unknown): TripSnapshot | null {
+  if (isTripSnapshot(value)) return value;
+  if (!isTripSnapshotV1(value)) return null;
+  return {
+    v: 2,
+    savedAt: value.savedAt,
+    days: value.days,
+    places: value.places,
+    transit: value.transit,
+    stays: value.stays,
+    spend: [],
+    prep: [],
+  };
+}
+
+/** Invalidate memo (tests / cross-tab storage). */
+export function invalidateTripCacheMemory() {
+  memoryRaw = undefined;
+  memorySnapshot = null;
 }
 
 export function readTripCache(): TripSnapshot | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(TRIP_CACHE_STORAGE_KEY);
-    if (!raw) return null;
+    if (raw === memoryRaw) return memorySnapshot;
+    if (!raw) {
+      memoryRaw = null;
+      memorySnapshot = null;
+      return null;
+    }
     const parsed = JSON.parse(raw) as unknown;
-    return isTripSnapshot(parsed) ? parsed : null;
+    const migrated = migrateTripSnapshot(parsed);
+    if (migrated && !isTripSnapshot(parsed)) {
+      writeTripCache(migrated);
+      return memorySnapshot;
+    }
+    memoryRaw = raw;
+    memorySnapshot = migrated;
+    return memorySnapshot;
   } catch {
+    memoryRaw = null;
+    memorySnapshot = null;
     return null;
   }
 }
 
 export function writeTripCache(snapshot: TripSnapshot) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(TRIP_CACHE_STORAGE_KEY, JSON.stringify(snapshot));
+  const raw = JSON.stringify(snapshot);
+  localStorage.setItem(TRIP_CACHE_STORAGE_KEY, raw);
+  memoryRaw = raw;
+  memorySnapshot = snapshot;
+  window.dispatchEvent(new Event(TRIP_CACHE_CHANGE_EVENT));
+}
+
+export function subscribeTripCache(onStoreChange: () => void) {
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === null || event.key === TRIP_CACHE_STORAGE_KEY) {
+      invalidateTripCacheMemory();
+      onStoreChange();
+    }
+  };
+  const onLocal = () => onStoreChange();
+  window.addEventListener("storage", onStorage);
+  window.addEventListener(TRIP_CACHE_CHANGE_EVENT, onLocal);
+  return () => {
+    window.removeEventListener("storage", onStorage);
+    window.removeEventListener(TRIP_CACHE_CHANGE_EVENT, onLocal);
+  };
+}
+
+export function makeTripSnapshot(input: {
+  days: TripDay[];
+  places: Place[];
+  transit: Transit[];
+  stays: Stay[];
+  spend?: SpendItem[];
+  prep?: PrepItem[];
+  savedAt?: string;
+}): TripSnapshot {
+  return {
+    v: 2,
+    savedAt: input.savedAt ?? new Date().toISOString(),
+    days: input.days,
+    places: input.places,
+    transit: input.transit,
+    stays: input.stays,
+    spend: input.spend ?? [],
+    prep: input.prep ?? [],
+  };
 }

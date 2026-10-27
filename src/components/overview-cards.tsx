@@ -1,34 +1,75 @@
 import Link from "next/link";
+import { DirectionsLink } from "@/components/directions-link";
 import { MapsPinLink } from "@/components/maps-pin-link";
-import { cardClass } from "@/components/page-shell";
-import { formatDay, formatRm, formatTime } from "@/lib/format";
+import {
+  CompactRow,
+  CompactRowList,
+} from "@/components/compact";
+import { formatRm, formatTime } from "@/lib/format";
 import { coordsOfPlace, coordsOfStay } from "@/lib/geocode";
+import { labelMode, labelType, t } from "@/lib/i18n/dictionaries";
+import { getLocale } from "@/lib/i18n/server";
 import type { AgendaItem, Stay } from "@/lib/types";
 
-export function NextStopCard({
+export async function NextStopBanner({
   item,
   href,
   dayName,
   dayDate,
+  status = "next",
+  done = false,
+  nextDayItem = null,
+  nextDayName,
+  nextDayHref,
 }: {
   item: AgendaItem | null;
   href: string;
   dayName: string;
   dayDate: string | null;
+  status?: "now" | "next";
+  done?: boolean;
+  nextDayItem?: AgendaItem | null;
+  nextDayName?: string;
+  nextDayHref?: string;
 }) {
-  if (!item) {
+  const locale = await getLocale();
+  const label =
+    status === "now" ? t(locale, "overview.now") : t(locale, "overview.nextStop");
+
+  if (done || !item) {
+    const secondary = [
+      dayName,
+      dayDate ? null : null,
+      done && nextDayItem && nextDayName
+        ? `${t(locale, "overview.upNext")} ${nextDayItem.name} · ${nextDayName}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+
     return (
-      <section className={cardClass}>
-        <p className="text-xs uppercase tracking-wide text-moss">Next stop</p>
-        <p className="mt-1 text-lg font-medium">Nothing scheduled</p>
-        <p className="mt-1 text-sm text-stone-500">
-          {dayName}
-          {dayDate ? ` · ${formatDay(dayDate)}` : ""}
-        </p>
-        <Link href={href} className="mt-3 inline-block text-sm font-medium text-hanko">
-          Open schedule →
-        </Link>
-      </section>
+      <Link
+        href={done && nextDayHref ? nextDayHref : href}
+        className="flex min-h-12 items-center gap-2 rounded-xl border border-line border-l-[3px] border-l-accent bg-surface px-3 py-2 text-inherit no-underline"
+      >
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[14px] font-medium leading-5 text-ink">
+            <span className="text-accent">{label}</span>
+            <span className="text-ink-muted"> · </span>
+            {done
+              ? t(locale, "overview.allDone")
+              : t(locale, "overview.nothingScheduled")}
+          </p>
+          {secondary ? (
+            <p className="mt-0.5 truncate text-[12px] text-ink-muted">
+              {secondary}
+            </p>
+          ) : null}
+        </div>
+        <span className="shrink-0 text-[12px] text-ink-muted" aria-hidden>
+          ›
+        </span>
+      </Link>
     );
   }
 
@@ -37,18 +78,35 @@ export function NextStopCard({
     lat: item.lat,
     lng: item.lng,
   });
+  const chipLabel =
+    item.kind === "place"
+      ? labelType(locale, item.chip)
+      : labelMode(locale, item.chip);
+  const time = formatTime(item.start) ?? t(locale, "common.anytime");
 
   return (
-    <section className={`${cardClass} border-hanko/30`}>
-      <p className="text-xs uppercase tracking-wide text-hanko">Next stop</p>
-      <p className="mt-1 text-xs text-stone-500">
-        {[formatTime(item.start) ?? "Anytime", item.chip, dayName]
-          .filter(Boolean)
-          .join(" · ")}
-      </p>
-      <p className="mt-1 flex items-start gap-1 text-lg font-medium">
-        <span className="min-w-0 break-words">{item.name}</span>
-        {item.kind === "place" ? (
+    <div className="flex min-h-12 items-center gap-1 rounded-xl border border-line border-l-[3px] border-l-accent bg-surface py-1 pl-3 pr-1">
+      <Link href={href} className="min-w-0 flex-1 text-inherit no-underline">
+        <p className="truncate text-[14px] font-medium leading-5 text-ink">
+          <span className="text-accent">{label}</span>
+          <span className="text-ink-muted"> · </span>
+          <span className="tabular-nums">{time}</span>
+          <span className="text-ink-muted"> · </span>
+          {item.name}
+          {chipLabel ? (
+            <span className="font-normal text-ink-muted"> · {chipLabel}</span>
+          ) : null}
+        </p>
+        {item.detail ? (
+          <p className="mt-0.5 truncate text-[12px] text-ink-muted">
+            {item.detail}
+          </p>
+        ) : (
+          <p className="mt-0.5 truncate text-[12px] text-ink-muted">{dayName}</p>
+        )}
+      </Link>
+      {item.kind === "place" ? (
+        <div className="flex shrink-0 items-center">
           <MapsPinLink
             name={item.name}
             lat={coords?.lat}
@@ -56,66 +114,114 @@ export function NextStopCard({
             mapsUrl={item.mapsUrl}
             tone={item.chip === "Food" || item.chip === "Cafe" ? "food" : "sight"}
           />
-        ) : null}
-      </p>
-      {item.detail ? (
-        <p className="mt-1 text-sm text-stone-600">{item.detail}</p>
+          <DirectionsLink
+            name={item.name}
+            lat={coords?.lat}
+            lng={coords?.lng}
+            mapsUrl={item.mapsUrl}
+          />
+        </div>
       ) : null}
-      <Link href={href} className="mt-3 inline-block text-sm font-medium text-hanko">
-        Open schedule →
-      </Link>
-    </section>
+    </div>
   );
 }
 
-export function TonightStayCard({
+/** @deprecated Prefer NextStopBanner — kept name alias for any leftover imports. */
+export const NextStopCard = NextStopBanner;
+
+export async function TripCompleteRow({
+  dayCount,
+  href = "/budget",
+}: {
+  dayCount: number;
+  href?: string;
+}) {
+  const locale = await getLocale();
+  return (
+    <CompactRowList>
+      <li>
+        <CompactRow
+          href={href}
+          title={t(locale, "overview.tripComplete")}
+          secondary={t(locale, "overview.tripCompleteBody", { n: dayCount })}
+          trailing={
+            <span className="pr-2 text-[12px] text-ink-muted" aria-hidden>
+              ›
+            </span>
+          }
+        />
+      </li>
+    </CompactRowList>
+  );
+}
+
+export const TripCompleteCard = TripCompleteRow;
+
+export async function TonightStayRows({
   stays,
   isTonight,
 }: {
   stays: Stay[];
   isTonight: boolean;
 }) {
-  const label = isTonight ? "Tonight" : "Lodging";
+  const locale = await getLocale();
+  const label = isTonight
+    ? t(locale, "overview.tonight")
+    : t(locale, "overview.stay");
+
   if (stays.length === 0) {
     return (
-      <section className={cardClass}>
-        <p className="text-xs uppercase tracking-wide text-moss">{label}</p>
-        <p className="mt-1 text-lg font-medium">No stay booked</p>
-        <Link href="/stays" className="mt-3 inline-block text-sm font-medium text-hanko">
-          Stays →
-        </Link>
-      </section>
+      <CompactRowList>
+        <li>
+          <CompactRow
+            href="/stays"
+            title={label}
+            meta={t(locale, "overview.noStay")}
+            trailing={
+              <span className="pr-2 text-[12px] text-ink-muted" aria-hidden>
+                ›
+              </span>
+            }
+          />
+        </li>
+      </CompactRowList>
     );
   }
 
   return (
-    <section className={cardClass}>
-      <p className="text-xs uppercase tracking-wide text-moss">{label}</p>
-      <ul className="mt-1 grid gap-3">
-        {stays.map((stay) => {
-          const coords = coordsOfStay(stay);
-          return (
-            <li key={stay.id}>
-              <p className="flex items-start gap-1 text-lg font-medium">
-                <span className="min-w-0 break-words">{stay.name}</span>
-                <MapsPinLink
-                  name={stay.address || stay.name}
-                  lat={coords?.lat}
-                  lng={coords?.lng}
-                />
-              </p>
-              {stay.address ? (
-                <p className="mt-0.5 text-sm text-stone-600">{stay.address}</p>
-              ) : null}
-            </li>
-          );
-        })}
-      </ul>
-    </section>
+    <CompactRowList>
+      {stays.map((stay) => {
+        const coords = coordsOfStay(stay);
+        return (
+          <li key={stay.id} className="flex items-center">
+            <div className="min-w-0 flex-1">
+              <CompactRow
+                href="/stays"
+                title={
+                  <>
+                    {label}
+                    <span className="font-normal text-ink-muted"> · </span>
+                    {stay.name}
+                  </>
+                }
+                secondary={stay.address || undefined}
+              />
+            </div>
+            <MapsPinLink
+              name={stay.address || stay.name}
+              lat={coords?.lat}
+              lng={coords?.lng}
+            />
+          </li>
+        );
+      })}
+    </CompactRowList>
   );
 }
 
-export function TodaySpendCard({
+export const TonightStayCard = TonightStayRows;
+
+export async function TodaySpendRow({
   actual,
   estimate,
   href,
@@ -124,18 +230,32 @@ export function TodaySpendCard({
   estimate: number;
   href: string;
 }) {
+  const locale = await getLocale();
   return (
-    <section className={cardClass}>
-      <p className="text-xs uppercase tracking-wide text-moss">Today spend</p>
-      <p className="mt-1 text-2xl font-medium">{formatRm(actual)}</p>
-      <p className="mt-1 text-sm text-stone-500">
-        {estimate > 0
-          ? `${formatRm(estimate)} estimated`
-          : "No estimate for this day"}
-      </p>
-      <Link href={href} className="mt-3 inline-block text-sm font-medium text-hanko">
-        Expenses →
-      </Link>
-    </section>
+    <CompactRowList>
+      <li>
+        <CompactRow
+          href={href}
+          title={t(locale, "overview.spendToday")}
+          meta={
+            <span className="tabular-nums font-medium text-ink">
+              {formatRm(actual)}
+            </span>
+          }
+          secondary={
+            estimate > 0
+              ? t(locale, "overview.estimatedLine", { amount: formatRm(estimate) })
+              : t(locale, "overview.noEstimate")
+          }
+          trailing={
+            <span className="pr-2 text-[12px] text-ink-muted" aria-hidden>
+              ›
+            </span>
+          }
+        />
+      </li>
+    </CompactRowList>
   );
 }
+
+export const TodaySpendCard = TodaySpendRow;

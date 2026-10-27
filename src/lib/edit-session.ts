@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { actionErr, type ActionResult } from "@/lib/action-result";
+import { actionT } from "@/lib/i18n/action";
 import {
   ds,
   hasEditorsDs,
@@ -78,7 +79,7 @@ export async function getEditorSession(): Promise<EditorSession> {
 export async function requireEditor(): Promise<ActionResult | null> {
   const session = await getEditorSession();
   if (session.canEdit) return null;
-  return actionErr("Unlock editing in Settings");
+  return actionErr(await actionT("action.unlockRequired"), "editor_required");
 }
 
 export async function setEditorCookie(name: string) {
@@ -107,7 +108,7 @@ export async function verifyEditorPin(
   }
   const pages = await queryAll(ds("EDITORS"));
   if (pages.length === 0) {
-    return { ok: false, error: "Add an editor row in Notion first" };
+    return { ok: false, error: await actionT("action.addEditorFirst") };
   }
   const wantPin = pinDigest(pin);
   for (const page of pages) {
@@ -119,5 +120,5 @@ export async function verifyEditorPin(
       return { ok: true, name: rowName };
     }
   }
-  return { ok: false, error: "Name or PIN is wrong" };
+  return { ok: false, error: await actionT("action.wrongPin") };
 }

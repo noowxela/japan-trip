@@ -1,6 +1,7 @@
 "use client";
 
 import { useAppUpdate } from "@/components/app-update-provider";
+import { useT } from "@/components/i18n-provider";
 import {
   btnGhostClass,
   btnPrimaryClass,
@@ -9,6 +10,7 @@ import {
 } from "@/components/page-shell";
 
 export function AppVersionCard() {
+  const { t } = useT();
   const {
     runningVersion,
     runningCommit,
@@ -21,20 +23,22 @@ export function AppVersionCard() {
 
   return (
     <div className={settingsGroupClass}>
-      <div className={`${settingsRowClass} border-b border-stone-100`}>
+      <div className={`${settingsRowClass} border-b border-line`}>
         <div className="min-w-0">
-          <p className="text-[17px] text-stone-900">Version</p>
-          <p className="text-sm text-stone-500">{runningCommit}</p>
+          <p className="text-[14px] text-ink">{t("version.label")}</p>
+          <p className="text-[12px] text-ink-muted">{runningCommit}</p>
         </div>
-        <p className="shrink-0 text-sm tabular-nums text-stone-500">
-          {`v${runningVersion}`}
+        <p className="shrink-0 text-[12px] tabular-nums text-ink-muted">
+          {t("version.current", { version: runningVersion })}
         </p>
       </div>
       <div className={settingsRowClass}>
         <div className="min-w-0">
-          <p className="text-[17px] text-stone-900">App update</p>
-          <p className="text-sm text-stone-500">
-            {updateAvailable ? "New version available" : "Up to date"}
+          <p className="text-[14px] text-ink">{t("version.appUpdate")}</p>
+          <p className="text-[12px] text-ink-muted">
+            {updateAvailable
+              ? t("version.updateAvailable")
+              : t("version.upToDate")}
           </p>
         </div>
         {updateAvailable ? (
@@ -44,7 +48,7 @@ export function AppVersionCard() {
             disabled={reloading}
             className={`${btnPrimaryClass} shrink-0`}
           >
-            {reloading ? "Reloading…" : "Reload"}
+            {reloading ? t("version.reloading") : t("version.reload")}
           </button>
         ) : (
           <button
@@ -53,7 +57,7 @@ export function AppVersionCard() {
             disabled={checking}
             className={`${btnGhostClass} shrink-0`}
           >
-            {checking ? "Checking…" : "Check now"}
+            {checking ? t("version.checking") : t("version.checkNow")}
           </button>
         )}
       </div>

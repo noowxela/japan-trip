@@ -1,12 +1,26 @@
 import type { ReactNode } from "react";
 import { SPEND_CATEGORIES } from "@/lib/types";
 
+/** Soft tint backgrounds; icons use ink. */
+export const CATEGORY_TINT: Record<
+  (typeof SPEND_CATEGORIES)[number],
+  { bg: string; fg: string }
+> = {
+  Food: { bg: "var(--maybe-soft)", fg: "var(--ink)" },
+  Transit: { bg: "var(--transit-soft)", fg: "var(--ink)" },
+  Stay: { bg: "var(--ok-soft)", fg: "var(--ink)" },
+  Ticket: { bg: "var(--transit-soft)", fg: "var(--ink)" },
+  Shop: { bg: "var(--maybe-soft)", fg: "var(--ink)" },
+  Other: { bg: "var(--line)", fg: "var(--ink)" },
+};
+
+/** Legacy hex for charts that still need a stroke color (muted). */
 export const CATEGORY_COLOR: Record<(typeof SPEND_CATEGORIES)[number], string> = {
-  Food: "#ea580c",
-  Transit: "#3b82f6",
-  Stay: "#16a34a",
-  Ticket: "#9333ea",
-  Shop: "#ca8a04",
+  Food: "#a86b0c",
+  Transit: "#55697a",
+  Stay: "#3f7d4e",
+  Ticket: "#6b7280",
+  Shop: "#92700f",
   Other: "#78716c",
 };
 
@@ -17,21 +31,38 @@ export function categoryColor(category: string | null): string {
   return CATEGORY_COLOR.Other;
 }
 
+export function categoryTint(category: string | null): {
+  bg: string;
+  fg: string;
+} {
+  if (category && category in CATEGORY_TINT) {
+    return CATEGORY_TINT[category as keyof typeof CATEGORY_TINT];
+  }
+  return CATEGORY_TINT.Other;
+}
+
 export function SpendCategoryIcon({
   category,
-  className = "h-5 w-5",
+  className,
+  size = "md",
 }: {
   category: string | null;
   className?: string;
+  size?: "sm" | "md";
 }) {
-  const color = categoryColor(category);
+  const tint = categoryTint(category);
+  const box =
+    size === "sm"
+      ? "h-6 w-6 rounded-md"
+      : "h-10 w-10 rounded-xl";
+  const iconClass = className ?? (size === "sm" ? "h-3.5 w-3.5" : "h-5 w-5");
   return (
     <span
-      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white"
-      style={{ backgroundColor: color }}
+      className={`flex shrink-0 items-center justify-center ${box}`}
+      style={{ backgroundColor: tint.bg, color: tint.fg }}
       aria-hidden
     >
-      {iconFor(category, className)}
+      {iconFor(category, iconClass)}
     </span>
   );
 }

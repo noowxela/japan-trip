@@ -16,6 +16,7 @@ import {
   shortCommit,
   type AppVersionPayload,
 } from "@/lib/app-version";
+import { useT } from "@/components/i18n-provider";
 
 const CHECK_INTERVAL_MS = 10 * 60 * 1000;
 const VERSION_QUERY = "_v";
@@ -50,20 +51,43 @@ async function fetchLatestVersion(): Promise<AppVersionPayload | null> {
   }
 }
 
-async function clearClientCaches() {
-  if ("serviceWorker" in navigator) {
-    const registrations = await navigator.serviceWorker.getRegistrations();
-    await Promise.all(registrations.map((registration) => registration.unregister()));
+async function activateWaitingServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  const registration = await navigator.serviceWorker.getRegistration();
+  if (!registration) return;
+
+  try {
+    await registration.update();
+  } catch {
+    // Continue — reload still picks up a new deploy when online.
   }
-  if ("caches" in window) {
-    const keys = await caches.keys();
-    await Promise.all(keys.map((key) => caches.delete(key)));
+
+  if (registration.waiting) {
+    registration.waiting.postMessage({ type: "SKIP_WAITING" });
   }
+
+  await new Promise<void>((resolve) => {
+    const onController = () => {
+      navigator.serviceWorker.removeEventListener(
+        "controllerchange",
+        onController,
+      );
+      resolve();
+    };
+    navigator.serviceWorker.addEventListener("controllerchange", onController);
+    window.setTimeout(() => {
+      navigator.serviceWorker.removeEventListener(
+        "controllerchange",
+        onController,
+      );
+      resolve();
+    }, 1500);
+  });
 }
 
 async function reloadToLatest() {
   try {
-    await clearClientCaches();
+    await activateWaitingServiceWorker();
   } catch {
     // Reload anyway — iOS PWAs still need a hard navigation.
   }
@@ -156,28 +180,29 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
 
 function AppUpdateBanner() {
   const { reloadToLatest: reload, dismissBanner, reloading } = useAppUpdate();
+  const { t } = useT();
 
   return (
     <div className="pointer-events-none fixed inset-x-0 top-0 z-40 pt-[env(safe-area-inset-top,0px)]">
       <div
         role="status"
         aria-live="polite"
-        className="pointer-events-auto mx-auto flex max-w-xl items-center justify-between gap-3 bg-hanko px-4 py-2 text-sm text-white shadow-md md:max-w-5xl md:rounded-b-xl"
+        className="pointer-events-auto mx-auto flex max-w-xl items-center justify-between gap-3 bg-accent px-4 py-2 text-sm text-white shadow-md md:max-w-5xl md:rounded-b-xl"
       >
-        <p className="min-w-0 font-medium">New version available</p>
+        <p className="min-w-0 font-medium">{t("version.banner")}</p>
         <div className="flex shrink-0 items-center gap-1">
           <button
             type="button"
             onClick={() => void reload()}
             disabled={reloading}
-            className="rounded-full bg-white px-3 py-1 text-xs font-medium text-hanko disabled:opacity-60"
+            className="rounded-full bg-surface px-3 py-1 text-xs font-medium text-accent disabled:opacity-60"
           >
-            {reloading ? "Reloading…" : "Reload"}
+            {reloading ? t("version.reloading") : t("version.reload")}
           </button>
           <button
             type="button"
             onClick={dismissBanner}
-            aria-label="Dismiss update banner"
+            aria-label={t("version.dismiss")}
             className="flex h-7 w-7 items-center justify-center rounded-full text-white/80 hover:bg-white/15 hover:text-white"
           >
             <span aria-hidden className="text-lg leading-none">

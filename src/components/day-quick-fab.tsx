@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { AddAgendaForm } from "@/components/add-agenda-form";
-import { AddExpenseSheet } from "@/components/add-spend-form";
 import { AddPlaceForm } from "@/components/add-place-form";
+import { useEditOrUnlock } from "@/components/unlock-provider";
+import { useQuickExpense } from "@/components/quick-expense-provider";
+import { Modal } from "@/components/modal";
+import { useT } from "@/components/i18n-provider";
 import type { TripDay } from "@/lib/types";
 
 export function DayQuickFab({
@@ -18,20 +20,22 @@ export function DayQuickFab({
   days: TripDay[];
   people?: string[];
 }) {
-  const router = useRouter();
-  const [open, setOpen] = useState<null | "menu" | "place" | "agenda" | "spend">(
-    null,
-  );
+  const { t } = useT();
+  const editOrUnlock = useEditOrUnlock();
+  const { openQuickExpense } = useQuickExpense();
+  const [open, setOpen] = useState<null | "menu" | "place" | "agenda">(null);
 
   return (
     <>
       <div className="tab-bar-follow fixed inset-x-0 bottom-0 z-20 flex justify-end px-4 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] lg:hidden">
         <button
           type="button"
-          onClick={() => setOpen(open === "menu" ? null : "menu")}
-          className="notebook-btn bg-hanko px-5 py-3 text-sm font-medium text-white"
+          onClick={() =>
+            editOrUnlock(() => setOpen(open === "menu" ? null : "menu"))
+          }
+          className="notebook-btn bg-accent px-5 py-3 text-sm font-medium text-white"
         >
-          {open === "menu" ? "Close" : "Quick add"}
+          {open === "menu" ? t("fab.close") : t("fab.quickAdd")}
         </button>
       </div>
 
@@ -41,74 +45,51 @@ export function DayQuickFab({
             <button
               type="button"
               onClick={() => setOpen("place")}
-              className="notebook-press rounded-xl bg-sage/50 px-4 py-3 text-left text-sm font-medium"
+              className="notebook-press rounded-xl bg-canvas px-4 py-3 text-left text-sm font-medium"
             >
-              Add place
+              {t("fab.addPlace")}
             </button>
             <button
               type="button"
               onClick={() => setOpen("agenda")}
-              className="notebook-press rounded-xl bg-sage/50 px-4 py-3 text-left text-sm font-medium"
+              className="notebook-press rounded-xl bg-canvas px-4 py-3 text-left text-sm font-medium"
             >
-              Add agenda item
+              {t("fab.addAgenda")}
             </button>
             <button
               type="button"
-              onClick={() => setOpen("spend")}
-              className="notebook-press rounded-xl bg-sage/50 px-4 py-3 text-left text-sm font-medium"
+              onClick={() => {
+                setOpen(null);
+                openQuickExpense({ days, people, dayId });
+              }}
+              className="notebook-press rounded-xl bg-canvas px-4 py-3 text-left text-sm font-medium"
             >
-              Log spend
+              {t("fab.addSpend")}
             </button>
           </div>
         </div>
       ) : null}
 
-      {open === "place" ? (
-        <div className="fixed inset-0 z-30 overflow-y-auto bg-paper/95 p-4 pb-[calc(env(safe-area-inset-bottom,0px)+5rem)] lg:hidden">
-          <div className="mx-auto max-w-xl">
-            <button
-              type="button"
-              onClick={() => setOpen("menu")}
-              className="mb-3 text-sm font-medium text-stone-600"
-            >
-              Back
-            </button>
-            <AddPlaceForm
-              days={days}
-              defaultDayId={dayId}
-              compact
-              onSuccess={() => setOpen(null)}
-            />
-          </div>
-        </div>
-      ) : null}
-
-      {open === "agenda" ? (
-        <div className="fixed inset-0 z-30 overflow-y-auto bg-paper/95 p-4 pb-[calc(env(safe-area-inset-bottom,0px)+5rem)] lg:hidden">
-          <div className="mx-auto max-w-xl">
-            <button
-              type="button"
-              onClick={() => setOpen("menu")}
-              className="mb-3 text-sm font-medium text-stone-600"
-            >
-              Back
-            </button>
-            <AddAgendaForm days={days} defaultDayId={dayId} dayDate={dayDate} />
-          </div>
-        </div>
-      ) : null}
-
-      {open === "spend" ? (
-        <AddExpenseSheet
+      <Modal
+        open={open === "place"}
+        onClose={() => setOpen(null)}
+        title={t("form.addPlace")}
+      >
+        <AddPlaceForm
           days={days}
-          people={people}
           defaultDayId={dayId}
-          onClose={() => {
-            setOpen(null);
-            router.refresh();
-          }}
+          embedded
+          onSuccess={() => setOpen(null)}
         />
-      ) : null}
+      </Modal>
+
+      <Modal
+        open={open === "agenda"}
+        onClose={() => setOpen(null)}
+        title={t("fab.addAgenda")}
+      >
+        <AddAgendaForm days={days} defaultDayId={dayId} dayDate={dayDate} />
+      </Modal>
     </>
   );
 }

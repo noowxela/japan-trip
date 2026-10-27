@@ -3,9 +3,12 @@
 import { useMemo, useState, useTransition } from "react";
 import { addPlace, addTransit, searchPlaces } from "@/app/actions";
 import { ActionForm } from "@/components/action-form";
-import { btnPrimaryClass, fieldClass, formShellClass } from "@/components/page-shell";
+import { ChipGroup } from "@/components/chip-group";
+import { useT } from "@/components/i18n-provider";
+import { btnPrimaryClass, fieldClass } from "@/components/page-shell";
 import { dateKey } from "@/lib/format";
 import type { PlaceSearchHit } from "@/lib/geocode";
+import { labelMode, labelType } from "@/lib/i18n/dictionaries";
 import {
   PLACE_TYPES,
   TRANSIT_MODES,
@@ -23,11 +26,14 @@ export function AddAgendaForm({
   defaultDayId: string;
   dayDate: string | null;
 }) {
+  const { t, locale } = useT();
   const [kind, setKind] = useState<Kind>("place");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PlaceSearchHit[]>([]);
   const [picked, setPicked] = useState<PlaceSearchHit | null>(null);
   const [name, setName] = useState("");
+  const [type, setType] = useState<(typeof PLACE_TYPES)[number]>("Sight");
+  const [mode, setMode] = useState<(typeof TRANSIT_MODES)[number]>("Metro");
   const [error, setError] = useState("");
   const [pending, startSearch] = useTransition();
   const city = useMemo(
@@ -42,7 +48,7 @@ export function AddAgendaForm({
       const hits = await searchPlaces(query, city);
       setResults(hits);
       if (hits.length === 0) {
-        setError("No map results. Try a Japanese or English name.");
+        setError(t("form.noMapResults"));
       }
     });
   }
@@ -59,27 +65,15 @@ export function AddAgendaForm({
       className="grid min-w-0 gap-3 notebook-card p-4"
     >
       <div className="flex items-center justify-between gap-3">
-        <p className="font-medium text-stone-900">Add to agenda</p>
-        <div className="flex gap-1">
-          {(["place", "transit"] as const).map((option) => {
-            const selected = kind === option;
-            return (
-              <button
-                key={option}
-                type="button"
-                aria-pressed={selected}
-                onClick={() => setKind(option)}
-                className={`notebook-btn px-3 py-1 text-xs font-medium capitalize ${
-                  selected
-                    ? "bg-moss text-white"
-                    : "bg-sage/70 text-stone-600"
-                }`}
-              >
-                {option}
-              </button>
-            );
-          })}
-        </div>
+        <p className="font-medium text-ink">{t("fab.addAgenda")}</p>
+        <ChipGroup
+          value={kind}
+          onChange={setKind}
+          options={[
+            { value: "place", label: t("form.kindPlace") },
+            { value: "transit", label: t("form.kindTransit") },
+          ]}
+        />
       </div>
 
       <input type="hidden" name="dayId" value={defaultDayId} />
@@ -91,40 +85,45 @@ export function AddAgendaForm({
 
       {kind === "place" ? (
         <>
-          <div className="flex gap-2">
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  onSearch();
-                }
-              }}
-              placeholder="Search map"
-              className={`min-w-0 flex-1 ${fieldClass}`}
-            />
-            <button
-              type="button"
-              onClick={onSearch}
-              disabled={pending || query.trim().length < 2}
-              className="notebook-btn shrink-0 bg-moss px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-            >
-              {pending ? "…" : "Search"}
-            </button>
+          <div className="grid gap-1">
+            <span className="text-xs font-medium text-ink-muted">
+              {t("form.searchPlaces")}
+            </span>
+            <div className="flex gap-2">
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    onSearch();
+                  }
+                }}
+                placeholder={t("form.searchMap")}
+                className={`min-w-0 flex-1 ${fieldClass}`}
+              />
+              <button
+                type="button"
+                onClick={onSearch}
+                disabled={pending || query.trim().length < 2}
+                className="notebook-btn shrink-0 bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              >
+                {pending ? "…" : t("form.search")}
+              </button>
+            </div>
           </div>
-          {error ? <p className="text-xs text-stone-500">{error}</p> : null}
+          {error ? <p className="text-xs text-ink-muted">{error}</p> : null}
           {results.length > 0 ? (
-            <ul className="divide-y divide-sage overflow-hidden rounded-xl border border-sage">
+            <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line">
               {results.map((hit) => (
                 <li key={`${hit.lat}-${hit.lng}-${hit.displayName}`}>
                   <button
                     type="button"
                     onClick={() => pick(hit)}
-                    className="w-full px-3 py-2 text-left hover:bg-stone-50"
+                    className="w-full px-3 py-2 text-left hover:bg-canvas"
                   >
                     <p className="text-sm font-medium">{hit.name}</p>
-                    <p className="text-xs text-stone-500">{hit.displayName}</p>
+                    <p className="text-xs text-ink-muted">{hit.displayName}</p>
                   </button>
                 </li>
               ))}
@@ -133,56 +132,82 @@ export function AddAgendaForm({
         </>
       ) : null}
 
-      <input
-        name="name"
-        required
-        value={name}
-        onChange={(event) => setName(event.target.value)}
-        placeholder={kind === "place" ? "Place name" : "Train / flight name"}
-        className={fieldClass}
-      />
+      <label className="grid gap-1">
+        <span className="text-xs font-medium text-ink-muted">{t("form.name")}</span>
+        <input
+          name="name"
+          required
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          placeholder={
+            kind === "place" ? t("form.placeName") : t("form.transitName")
+          }
+          className={fieldClass}
+        />
+      </label>
 
       {kind === "place" ? (
-        <select name="type" defaultValue="Sight" className={fieldClass}>
-          {PLACE_TYPES.map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </select>
+        <ChipGroup
+          name="type"
+          label={t("form.type")}
+          value={type}
+          onChange={setType}
+          options={PLACE_TYPES.map((value) => ({
+            value,
+            label: labelType(locale, value) ?? value,
+          }))}
+        />
       ) : (
         <>
-          <select name="mode" defaultValue="Metro" className={fieldClass}>
-            {TRANSIT_MODES.map((mode) => (
-              <option key={mode} value={mode}>
-                {mode}
-              </option>
-            ))}
-          </select>
+          <ChipGroup
+            name="mode"
+            label={t("form.mode")}
+            value={mode}
+            onChange={setMode}
+            options={TRANSIT_MODES.map((value) => ({
+              value,
+              label: labelMode(locale, value) ?? value,
+            }))}
+          />
           <div className="grid grid-cols-2 gap-3">
-            <input name="from" placeholder="From" className={fieldClass} />
-            <input name="to" placeholder="To" className={fieldClass} />
+            <label className="grid gap-1">
+              <span className="text-xs font-medium text-ink-muted">
+                {t("form.from")}
+              </span>
+              <input name="from" className={fieldClass} />
+            </label>
+            <label className="grid gap-1">
+              <span className="text-xs font-medium text-ink-muted">
+                {t("form.to")}
+              </span>
+              <input name="to" className={fieldClass} />
+            </label>
           </div>
         </>
       )}
 
       <div className={kind === "transit" ? "grid grid-cols-2 gap-3" : ""}>
-        <input
-          name="time"
-          type="time"
-          step="60"
-          className={`${fieldClass} cursor-pointer`}
-        />
+        <label className="grid gap-1">
+          <span className="text-xs font-medium text-ink-muted">{t("form.time")}</span>
+          <input
+            name="time"
+            type="time"
+            step="60"
+            className={`${fieldClass} cursor-pointer`}
+          />
+        </label>
         {kind === "transit" ? (
-          <input name="order" type="number" placeholder="Order" className={fieldClass} />
+          <label className="grid gap-1">
+            <span className="text-xs font-medium text-ink-muted">
+              {t("form.order")}
+            </span>
+            <input name="order" type="number" className={fieldClass} />
+          </label>
         ) : null}
       </div>
 
-      <button
-        type="submit"
-        className={btnPrimaryClass}
-      >
-        {kind === "place" ? "Add place" : "Add transit"}
+      <button type="submit" className={btnPrimaryClass}>
+        {kind === "place" ? t("form.addPlace") : t("form.addTransit")}
       </button>
     </ActionForm>
   );

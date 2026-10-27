@@ -1,19 +1,21 @@
-import { getDays, getPlaces, getStays, getTransit } from "@/lib/trip";
-import type { TripSnapshot } from "@/lib/trip-cache";
+import { makeTripSnapshot, type TripSnapshot } from "@/lib/trip-cache";
+import {
+  getDays,
+  getPlaces,
+  getPrep,
+  getSpend,
+  getStays,
+  getTransit,
+} from "@/lib/trip";
 
 export async function loadTripSnapshot(): Promise<TripSnapshot> {
-  const [days, places, transit, stays] = await Promise.all([
+  const [days, places, transit, stays, spend, prep] = await Promise.all([
     getDays(),
     getPlaces(),
     getTransit(),
     getStays(),
+    getSpend(),
+    getPrep(),
   ]);
-  return {
-    v: 1,
-    savedAt: new Date().toISOString(),
-    days,
-    places,
-    transit,
-    stays,
-  };
+  return makeTripSnapshot({ days, places, transit, stays, spend, prep });
 }

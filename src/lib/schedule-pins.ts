@@ -1,6 +1,11 @@
-import { tokyoToday } from "@/lib/format";
+import { dateKey, tokyoToday } from "@/lib/format";
 import { coordsOfPlace, coordsOfStay } from "@/lib/geocode";
-import { buildAgenda, pickFocusDay, staysForDate } from "@/lib/trip-core";
+import {
+  buildAgenda,
+  pickFocusDay,
+  staysForDate,
+  tripPhase,
+} from "@/lib/trip-core";
 import type { TripSnapshot } from "@/lib/trip-cache";
 import type { AgendaItem, Place, Stay, Transit, TripDay } from "@/lib/types";
 
@@ -18,6 +23,8 @@ export type DayScheduleSlice = {
   pending: Place[];
   mapPins: SchedulePin[];
   stays: Stay[];
+  transit: Transit[];
+  places: Place[];
 };
 
 export function pinKind(type: string | null): SchedulePin["kind"] {
@@ -155,27 +162,65 @@ export function buildScheduleSlices(
       pending,
       mapPins: mapPinsForDay(agenda, pending, stays, day.date),
       stays: staysForDate(stays, day.date),
+      transit: dayTransit,
+      places: dayPlaces,
     };
   }
   return slices;
 }
 
+/** Resolve `day=today` (or implicit today): before→first, during→today, after→last. */
+export function resolveTodayDayId(days: TripDay[], today = tokyoToday()) {
+  const dated = days.filter((day) => day.date);
+  if (dated.length === 0) return days[0]?.id ?? null;
+  const phase = tripPhase(days, today);
+  if (phase === "before") return dated[0].id;
+  if (phase === "after") return dated[dated.length - 1].id;
+  const match = dated.find((day) => dateKey(day.date) === today);
+  return match?.id ?? pickFocusDay(days, today)?.id ?? dated[0].id;
+}
+
 export function schedulePropsFromSnapshot(
   snapshot: TripSnapshot,
   dayParam?: string,
+  opts?: { preferTodayDuringTrip?: boolean },
 ) {
   const { days, places, transit, stays } = snapshot;
   if (days.length === 0) return null;
-  const focusDay = pickFocusDay(days, tokyoToday()) ?? days[0];
-  const initialDayId =
-    dayParam === "all" || days.some((day) => day.id === dayParam)
-      ? (dayParam as string)
-      : focusDay.id;
+  const today = tokyoToday();
+  const phase = tripPhase(days, today);
+  const focusDay = pickFocusDay(days, today) ?? days[0];
+
+  let initialDayId: string;
+  if (dayParam === "all") {
+    initialDayId = "all";
+  } else if (dayParam === "today") {
+    initialDayId = resolveTodayDayId(days, today) ?? focusDay.id;
+  } else if (dayParam && days.some((day) => day.id === dayParam)) {
+    initialDayId = dayParam;
+  } else if (!dayParam && opts?.preferTodayDuringTrip && phase === "during") {
+    initialDayId = resolveTodayDayId(days, today) ?? focusDay.id;
+  } else {
+    initialDayId = focusDay.id;
+  }
+
+  const selectedDay =
+    initialDayId === "all"
+      ? null
+      : (days.find((day) => day.id === initialDayId) ?? null);
+  const isSelectedToday = Boolean(
+    selectedDay && dateKey(selectedDay.date) === today,
+  );
+  const nowModeAllowed = phase === "during" && isSelectedToday;
+
   return {
     days,
     places,
     byDay: buildScheduleSlices(days, places, transit, stays),
     allPins: pinsForAllDays(days, places),
     initialDayId,
+    phase,
+    nowModeAllowed,
+    today,
   };
 }

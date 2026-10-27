@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useT } from "@/components/i18n-provider";
 import {
   DEFAULT_SPEND_CURRENCY,
   SPEND_CURRENCIES,
@@ -14,10 +15,11 @@ export function SpendAmountField({
   defaultCurrency?: SpendCurrency;
   defaultAmount?: number;
 } = {}) {
+  const { t } = useT();
   const [currency, setCurrency] = useState<SpendCurrency>(defaultCurrency);
 
   return (
-    <div className="flex overflow-hidden rounded-xl border border-sage focus-within:border-moss">
+    <div className="flex overflow-hidden rounded-xl border border-line focus-within:border-accent">
       <input
         name="amount"
         type="number"
@@ -26,7 +28,7 @@ export function SpendAmountField({
         step={currency === "Yen" ? "1" : "0.01"}
         inputMode="decimal"
         defaultValue={defaultAmount ?? undefined}
-        placeholder={currency === "Yen" ? "Amount (Yen)" : "Amount (RM)"}
+        placeholder={currency === "Yen" ? t("form.amountYen") : t("form.amountRm")}
         className="min-w-0 flex-1 bg-transparent px-3 py-2 text-base outline-none"
       />
       <input type="hidden" name="currency" value={currency} />
@@ -41,8 +43,8 @@ export function SpendAmountField({
               onClick={() => setCurrency(option)}
               className={`notebook-btn px-3 py-1 text-xs font-medium ${
                 selected
-                  ? "bg-moss text-white"
-                  : "bg-sage/70 text-stone-600"
+                  ? "bg-accent text-white"
+                  : "bg-canvas text-ink-muted"
               }`}
             >
               {option}

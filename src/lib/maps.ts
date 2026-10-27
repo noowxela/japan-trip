@@ -17,3 +17,20 @@ export function googleMapsHref({
   }
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`;
 }
+
+export function googleDirectionsHref({
+  name,
+  lat,
+  lng,
+}: {
+  name: string;
+  lat?: number | null;
+  lng?: number | null;
+  mapsUrl?: string | null;
+}) {
+  const destination =
+    lat != null && lng != null
+      ? `${lat},${lng}`
+      : encodeURIComponent(name);
+  return `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=transit`;
+}

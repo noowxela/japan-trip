@@ -1,9 +1,11 @@
 "use client";
 
-import { useTransition } from "react";
-import { toggleVisited } from "@/app/actions";
-import { useActionToast } from "@/components/action-form";
+import { useState, useTransition } from "react";
 import { useCanEdit } from "@/components/edit-session";
+import { HankoStamp } from "@/components/hanko-stamp";
+import { useT } from "@/components/i18n-provider";
+import { useOutbox } from "@/components/outbox-provider";
+import { useToast } from "@/components/toast-provider";
 
 export function VisitedToggle({
   id,
@@ -13,17 +15,22 @@ export function VisitedToggle({
   visited: boolean;
 }) {
   const [pending, startTransition] = useTransition();
-  const notify = useActionToast();
+  const [pop, setPop] = useState(false);
   const canEdit = useCanEdit();
+  const { t } = useT();
+  const { toast } = useToast();
+  const { markVisited, visitedOverlay } = useOutbox();
+  const effective = visitedOverlay[id] ?? visited;
 
   if (!canEdit) {
-    return visited ? (
-      <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-800">
-        Visited
+    return effective ? (
+      <span className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-ok-soft px-3 text-xs font-medium text-ok">
+        <HankoStamp variant="ok">{t("theme.stampVisited")}</HankoStamp>
+        ✓ {t("places.filterVisited")}
       </span>
     ) : (
-      <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500">
-        Not visited
+      <span className="inline-flex min-h-11 items-center rounded-full bg-canvas px-3 text-xs font-medium text-ink-muted">
+        {t("places.notVisited")}
       </span>
     );
   }
@@ -33,18 +40,40 @@ export function VisitedToggle({
       type="button"
       disabled={pending}
       onClick={() => {
-        const formData = new FormData();
-        formData.set("id", id);
-        formData.set("visited", visited ? "false" : "true");
-        startTransition(async () => notify(await toggleVisited(formData)));
+        const next = !effective;
+        if (next) {
+          setPop(true);
+          window.setTimeout(() => setPop(false), 450);
+        }
+        startTransition(async () => {
+          await markVisited(id, next);
+          toast(
+            next ? t("action.markedVisited") : t("action.markedUnvisited"),
+            {
+              actionLabel: t("common.undo"),
+              onAction: () => {
+                void markVisited(id, !next);
+              },
+            },
+          );
+        });
       }}
-      className={`rounded-full px-3 py-1 text-xs font-medium disabled:opacity-60 ${
-        visited
-          ? "bg-emerald-100 text-emerald-800"
-          : "bg-stone-200 text-stone-700"
+      className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs font-medium disabled:opacity-60 ${
+        effective ? "bg-ok-soft text-ok" : "bg-canvas text-ink"
       }`}
     >
-      {pending ? "…" : visited ? "Visited" : "Mark visited"}
+      {pending ? (
+        "…"
+      ) : effective ? (
+        <>
+          <HankoStamp variant="ok" pop={pop}>
+            {t("theme.stampVisited")}
+          </HankoStamp>
+          ✓ {t("places.filterVisited")}
+        </>
+      ) : (
+        t("agenda.markVisited")
+      )}
     </button>
   );
 }

@@ -1,10 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { formatTabDate, tokyoToday } from "@/lib/format";
+import { useT } from "@/components/i18n-provider";
+import {
+  formatTabDayNumber,
+  formatTabWeekday,
+  tokyoToday,
+} from "@/lib/format";
 import type { TripDay } from "@/lib/types";
 
-const TAB_WIDTH_PX = 56;
+const TAB_WIDTH_PX = 52;
 
 type TabMotion = {
   scale: number;
@@ -21,6 +26,7 @@ export function ScheduleDayTabs({
   selectedId: string;
   onSelect: (id: string) => void;
 }) {
+  const { t, locale } = useT();
   const today = tokyoToday();
   const scrollerRef = useRef<HTMLDivElement>(null);
   const itemEls = useRef<(HTMLButtonElement | null)[]>([]);
@@ -34,15 +40,20 @@ export function ScheduleDayTabs({
 
   const items = useMemo(
     () => [
-      { id: "all", dateLabel: "All", dayLabel: "Days" },
-      ...days.map((day, index) => ({
+      {
+        id: "all",
+        weekday: t("schedule.tabTrip"),
+        dayNum: t("schedule.tabAll"),
+        isToday: false,
+      },
+      ...days.map((day) => ({
         id: day.id,
-        dateLabel: formatTabDate(day.date),
-        dayLabel:
-          day.date?.slice(0, 10) === today ? "Today" : `Day ${index + 1}`,
+        weekday: formatTabWeekday(day.date, locale),
+        dayNum: formatTabDayNumber(day.date),
+        isToday: day.date?.slice(0, 10) === today,
       })),
     ],
-    [days, today],
+    [days, locale, t, today],
   );
 
   const [visualId, setVisualId] = useState(selectedId);
@@ -79,7 +90,7 @@ export function ScheduleDayTabs({
       byId[id] = {
         scale: 1.08 - t * 0.22,
         opacity: 1 - t * 0.48,
-        color: `rgb(${Math.round(180 + (168 - 180) * t)} ${Math.round(35 + (162 - 35) * t)} ${Math.round(24 + (158 - 24) * t)})`,
+        color: `color-mix(in srgb, var(--ink-muted) ${Math.round(t * 100)}%, var(--ink))`,
       };
       if (dist < bestDist) {
         bestDist = dist;
@@ -142,11 +153,11 @@ export function ScheduleDayTabs({
   }
 
   return (
-    <div className="relative z-10 shrink-0 bg-white shadow-[0_8px_18px_rgba(28,25,23,0.08)]">
+    <div className="relative z-10 shrink-0 border-b border-line bg-surface">
       <div
         ref={scrollerRef}
         role="tablist"
-        aria-label="Trip days"
+        aria-label={t("days.title")}
         onPointerDown={() => {
           movedRef.current = false;
         }}
@@ -175,7 +186,7 @@ export function ScheduleDayTabs({
                 if (movedRef.current) return;
                 onSelect(item.id);
               }}
-              className="flex h-12 w-14 origin-center shrink-0 snap-center touch-pan-x flex-col items-center justify-center text-center text-stone-400"
+              className="relative flex h-9 min-w-[3.25rem] origin-center shrink-0 snap-center touch-pan-x items-center justify-center gap-1 px-1.5 text-center text-ink-muted"
               style={
                 tab
                   ? {
@@ -186,17 +197,25 @@ export function ScheduleDayTabs({
                   : undefined
               }
             >
-              <span className="text-[13px] font-medium leading-none">
-                {item.dateLabel}
+              <span className="text-[11px] font-medium leading-none">
+                {item.weekday}
               </span>
-              <span className="mt-1 text-[11px] leading-none">{item.dayLabel}</span>
+              <span className="text-[13px] font-semibold tabular-nums leading-none">
+                {item.dayNum}
+              </span>
+              {item.isToday ? (
+                <span
+                  aria-hidden
+                  className="absolute bottom-0.5 h-1 w-1 rounded-full bg-accent"
+                />
+              ) : null}
             </button>
           );
         })}
       </div>
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 mx-auto h-0.5 w-7 rounded-full bg-hanko"
+        className="pointer-events-none absolute inset-x-0 bottom-0 mx-auto h-0.5 w-7 rounded-full bg-accent"
       />
     </div>
   );

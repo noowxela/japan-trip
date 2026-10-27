@@ -1,10 +1,5 @@
-import { FlightLoading } from "@/components/flight-loading";
-import { PageShell } from "@/components/page-shell";
+import { TimelineSkeletonPage } from "@/components/timeline-skeleton";
 
 export default function LoadingHome() {
-  return (
-    <PageShell>
-      <FlightLoading />
-    </PageShell>
-  );
+  return <TimelineSkeletonPage rows={5} />;
 }

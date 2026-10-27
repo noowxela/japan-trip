@@ -1,31 +1,25 @@
-import Link from "next/link";
+"use client";
+
+import { ChipLinkRow } from "@/components/compact";
+import { useT } from "@/components/i18n-provider";
 
 const links = [
-  { href: "/lists", label: "Overview" },
-  { href: "/places", label: "Places" },
-  { href: "/stays", label: "Stays" },
-  { href: "/transit", label: "Transit" },
-];
+  { href: "/lists", key: "common.overview" },
+  { href: "/places", key: "places.title" },
+  { href: "/stays", key: "stays.title" },
+  { href: "/transit", key: "transit.title" },
+] as const;
 
 export function ListsSubNav({ current }: { current: string }) {
+  const { t } = useT();
+
   return (
-    <nav className="notebook-card flex flex-wrap gap-1 p-1">
-      {links.map((link) => {
-        const active = current === link.href;
-        return (
-          <Link
-            key={link.href}
-            href={link.href}
-            className={`notebook-btn px-3 py-1.5 text-sm font-medium ${
-              active
-                ? "bg-moss text-white"
-                : "text-stone-600 hover:bg-sage/70"
-            }`}
-          >
-            {link.label}
-          </Link>
-        );
-      })}
-    </nav>
+    <ChipLinkRow
+      current={current}
+      items={links.map((link) => ({
+        href: link.href,
+        label: t(link.key),
+      }))}
+    />
   );
 }

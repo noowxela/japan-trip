@@ -1,42 +1,49 @@
 import { AddStayForm } from "@/components/add-stay-form";
 import { EmptyState } from "@/components/empty-state";
-import { EditOnly } from "@/components/edit-session";
+import { ListAddSheet } from "@/components/list-add-sheet";
 import { ListsSubNav } from "@/components/lists-sub-nav";
+import {
+  CompactRowList,
+  PageHeader,
+} from "@/components/compact";
 import { PageShell } from "@/components/page-shell";
 import { StayCard } from "@/components/stay-card";
+import { t } from "@/lib/i18n/dictionaries";
+import { getLocale } from "@/lib/i18n/server";
 import { getStays } from "@/lib/trip";
 
 export const dynamic = "force-dynamic";
 
 export default async function StaysPage() {
+  const locale = await getLocale();
   const stays = await getStays();
 
   return (
     <>
       <PageShell>
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-moss">
-            Lodging
-          </p>
-          <h1 className="text-3xl font-semibold tracking-tight">Stays</h1>
-        </div>
+        <PageHeader
+          eyebrow={t(locale, "stays.eyebrow")}
+          title={t(locale, "stays.title")}
+          action={
+            <ListAddSheet title={t(locale, "form.addStay")}>
+              <AddStayForm embedded />
+            </ListAddSheet>
+          }
+        />
         <ListsSubNav current="/stays" />
         {stays.length === 0 ? (
-          <EmptyState title="No stays yet">
-            Add a hotel below, or in the Stays database in Notion.
+          <EmptyState title={t(locale, "stays.empty")}>
+            {t(locale, "stays.emptyBody")}
           </EmptyState>
         ) : (
-          <ul className="grid gap-3 sm:grid-cols-2">
+          <CompactRowList>
             {stays.map((stay) => (
               <li key={stay.id}>
                 <StayCard stay={stay} />
               </li>
             ))}
-          </ul>
+          </CompactRowList>
         )}
-        <EditOnly>
-          <AddStayForm />
-        </EditOnly>
       </PageShell>
     </>
   );
