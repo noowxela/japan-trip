@@ -1,3 +1,8 @@
+export type PushPrefs = {
+  reminders: boolean;
+  countdown: boolean;
+};
+
 export type PushSubscriptionJSON = {
   endpoint: string;
   expirationTime?: number | null;
@@ -5,9 +10,15 @@ export type PushSubscriptionJSON = {
     p256dh: string;
     auth: string;
   };
+  /** Absent on legacy rows — treat as everything on via normalizePrefs. */
+  prefs?: PushPrefs;
 };
 
+export type PrefKey = keyof PushPrefs;
+
 const SUBS_KEY = "japan-trip:push-subscriptions";
+
+const DEFAULT_PREFS: PushPrefs = { reminders: true, countdown: true };
 
 function kvEnv(): { url: string; token: string } | null {
   const url =
@@ -30,6 +41,45 @@ export function isPushStoreWritable(): boolean {
 /** True when any subscription source exists (KV or env fallback). */
 export function isPushStoreConfigured(): boolean {
   return isPushStoreWritable() || Boolean(process.env.PUSH_SUBSCRIPTIONS?.trim());
+}
+
+/** Missing / partial prefs → both channels on (backward compatible). */
+export function normalizePrefs(value: unknown): PushPrefs {
+  if (!value || typeof value !== "object") {
+    return { ...DEFAULT_PREFS };
+  }
+  const record = value as Record<string, unknown>;
+  return {
+    reminders:
+      typeof record.reminders === "boolean"
+        ? record.reminders
+        : DEFAULT_PREFS.reminders,
+    countdown:
+      typeof record.countdown === "boolean"
+        ? record.countdown
+        : DEFAULT_PREFS.countdown,
+  };
+}
+
+export function mergePrefs(
+  current: PushPrefs | undefined,
+  partial: Partial<PushPrefs>,
+): PushPrefs {
+  const base = normalizePrefs(current);
+  return {
+    reminders:
+      typeof partial.reminders === "boolean" ? partial.reminders : base.reminders,
+    countdown:
+      typeof partial.countdown === "boolean" ? partial.countdown : base.countdown,
+  };
+}
+
+/** Keep subscribers whose pref is not explicitly false (missing = on). */
+export function filterByPref(
+  subs: PushSubscriptionJSON[],
+  key: PrefKey,
+): PushSubscriptionJSON[] {
+  return subs.filter((sub) => normalizePrefs(sub.prefs)[key] !== false);
 }
 
 export function parseSubscriptionsJson(
@@ -70,11 +120,15 @@ export function normalizeSubscription(
     record.expirationTime === null || typeof record.expirationTime === "number"
       ? record.expirationTime
       : null;
-  return {
+  const prefs =
+    "prefs" in record ? normalizePrefs(record.prefs) : undefined;
+  const sub: PushSubscriptionJSON = {
     endpoint,
     expirationTime: expirationTime ?? null,
     keys: { p256dh, auth },
   };
+  if (prefs) sub.prefs = prefs;
+  return sub;
 }
 
 function dedupeByEndpoint(subs: PushSubscriptionJSON[]): PushSubscriptionJSON[] {
@@ -143,9 +197,22 @@ export async function addSubscription(
     };
   }
   const current = await readFromKv();
-  const next = dedupeByEndpoint([...current.filter((s) => s.endpoint !== sub.endpoint), sub]);
+  const existing = current.find((s) => s.endpoint === sub.endpoint);
+  // Re-subscribe keeps existing prefs; new payload prefs only apply when no prior row.
+  const merged: PushSubscriptionJSON = {
+    ...sub,
+    prefs: existing?.prefs
+      ? normalizePrefs(existing.prefs)
+      : sub.prefs
+        ? normalizePrefs(sub.prefs)
+        : undefined,
+  };
+  const next = dedupeByEndpoint([
+    ...current.filter((s) => s.endpoint !== merged.endpoint),
+    merged,
+  ]);
   await writeToKv(next);
-  return { ok: true, subscription: sub };
+  return { ok: true, subscription: merged };
 }
 
 export async function removeSubscription(
@@ -180,4 +247,54 @@ export async function removeSubscriptionsByEndpoints(
   const removed = current.length - next.length;
   if (removed > 0) await writeToKv(next);
   return removed;
+}
+
+export async function getPrefs(
+  endpoint: string,
+): Promise<
+  | { ok: true; prefs: PushPrefs }
+  | { ok: false; error: string; status: number }
+> {
+  const trimmed = endpoint?.trim() ?? "";
+  if (!trimmed) {
+    return { ok: false, error: "Missing endpoint", status: 400 };
+  }
+  const subs = await listSubscriptions();
+  const match = subs.find((s) => s.endpoint === trimmed);
+  if (!match) {
+    return { ok: false, error: "Unknown endpoint", status: 404 };
+  }
+  return { ok: true, prefs: normalizePrefs(match.prefs) };
+}
+
+export async function updatePrefs(
+  endpoint: string,
+  partialPrefs: Partial<PushPrefs>,
+): Promise<
+  | { ok: true; prefs: PushPrefs }
+  | { ok: false; error: string; status: number }
+> {
+  const trimmed = endpoint?.trim() ?? "";
+  if (!trimmed) {
+    return { ok: false, error: "Missing endpoint", status: 400 };
+  }
+  if (!isPushStoreWritable()) {
+    return {
+      ok: false,
+      error:
+        "Cannot update prefs on read-only PUSH_SUBSCRIPTIONS env. Configure Upstash Redis to change prefs.",
+      status: 503,
+    };
+  }
+  const current = await readFromKv();
+  const index = current.findIndex((s) => s.endpoint === trimmed);
+  if (index < 0) {
+    return { ok: false, error: "Unknown endpoint", status: 404 };
+  }
+  const existing = current[index]!;
+  const prefs = mergePrefs(existing.prefs, partialPrefs);
+  const next = [...current];
+  next[index] = { ...existing, prefs };
+  await writeToKv(next);
+  return { ok: true, prefs };
 }

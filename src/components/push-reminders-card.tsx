@@ -9,6 +9,7 @@ import {
   btnPrimaryClass,
   cardClass,
 } from "@/components/page-shell";
+import type { PushPrefs } from "@/lib/push-store";
 
 type SupportState =
   | "loading"
@@ -44,6 +45,46 @@ function isIos(): boolean {
   return /iPad|iPhone|iPod/.test(navigator.userAgent);
 }
 
+function PrefSwitch({
+  label,
+  detail,
+  checked,
+  disabled,
+  onToggle,
+}: {
+  label: string;
+  detail: string;
+  checked: boolean;
+  disabled: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="flex min-h-11 items-center justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-[13px] font-medium text-ink">{label}</p>
+        <p className="mt-0.5 text-[11px] text-ink-muted">{detail}</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        disabled={disabled}
+        onClick={onToggle}
+        className={`notebook-btn relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-50 motion-reduce:transition-none ${
+          checked ? "bg-accent" : "bg-ink-muted/35"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-surface shadow transition-transform motion-reduce:transition-none ${
+            checked ? "translate-x-5" : "translate-x-0"
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
 export function PushRemindersCard({
   vapidPublicKey,
   storeWritable,
@@ -57,8 +98,45 @@ export function PushRemindersCard({
   const [state, setState] = useState<SupportState>("loading");
   const [busy, setBusy] = useState(false);
   const [subscriptionJson, setSubscriptionJson] = useState<string | null>(null);
+  const [endpoint, setEndpoint] = useState<string | null>(null);
+  const [prefs, setPrefs] = useState<PushPrefs>({
+    reminders: true,
+    countdown: true,
+  });
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
 
   const configured = Boolean(vapidPublicKey.trim());
+
+  const loadPrefs = useCallback(
+    async (ep: string) => {
+      if (!storeWritable || !canEdit) {
+        setPrefs({ reminders: true, countdown: true });
+        setPrefsLoaded(true);
+        return;
+      }
+      try {
+        const res = await fetch(
+          `/api/push/prefs?endpoint=${encodeURIComponent(ep)}`,
+        );
+        const data = (await res.json().catch(() => null)) as {
+          prefs?: PushPrefs;
+        } | null;
+        if (res.ok && data?.prefs) {
+          setPrefs({
+            reminders: data.prefs.reminders !== false,
+            countdown: data.prefs.countdown !== false,
+          });
+        } else {
+          setPrefs({ reminders: true, countdown: true });
+        }
+      } catch {
+        setPrefs({ reminders: true, countdown: true });
+      } finally {
+        setPrefsLoaded(true);
+      }
+    },
+    [canEdit, storeWritable],
+  );
 
   const refresh = useCallback(async () => {
     if (typeof window === "undefined") return;
@@ -82,16 +160,21 @@ export function PushRemindersCard({
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
       if (sub) {
-        setSubscriptionJson(JSON.stringify(sub.toJSON(), null, 2));
+        const json = sub.toJSON();
+        setSubscriptionJson(JSON.stringify(json, null, 2));
+        setEndpoint(sub.endpoint);
         setState("subscribed");
+        void loadPrefs(sub.endpoint);
         return;
       }
       setSubscriptionJson(null);
+      setEndpoint(null);
+      setPrefsLoaded(false);
       setState("ready");
     } catch {
       setState("ready");
     }
-  }, []);
+  }, [loadPrefs]);
 
   useEffect(() => {
     const id = window.setTimeout(() => {
@@ -138,6 +221,7 @@ export function PushRemindersCard({
       });
       const json = sub.toJSON();
       setSubscriptionJson(JSON.stringify(json, null, 2));
+      setEndpoint(sub.endpoint);
 
       if (storeWritable) {
         const res = await fetch("/api/push/subscribe", {
@@ -151,11 +235,14 @@ export function PushRemindersCard({
           } | null;
           toast(data?.error ?? t("push.subscribeFailed"), "error");
           setState("subscribed");
+          void loadPrefs(sub.endpoint);
           return;
         }
         toast(t("push.enabled"), "success");
+        void loadPrefs(sub.endpoint);
       } else {
         toast(t("push.enabledCopyHint"), "success");
+        setPrefsLoaded(true);
       }
       setState("subscribed");
     } catch (error) {
@@ -174,13 +261,13 @@ export function PushRemindersCard({
     try {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
-      const endpoint = sub?.endpoint;
+      const ep = sub?.endpoint;
       if (sub) await sub.unsubscribe();
-      if (endpoint && storeWritable) {
+      if (ep && storeWritable) {
         const res = await fetch("/api/push/subscribe", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ endpoint }),
+          body: JSON.stringify({ endpoint: ep }),
         });
         if (!res.ok) {
           const data = (await res.json().catch(() => null)) as {
@@ -194,6 +281,8 @@ export function PushRemindersCard({
         toast(t("push.disabled"), "success");
       }
       setSubscriptionJson(null);
+      setEndpoint(null);
+      setPrefsLoaded(false);
       setState("ready");
     } catch (error) {
       const message =
@@ -253,6 +342,41 @@ export function PushRemindersCard({
     toast(t("push.copied"), "success");
   }
 
+  async function togglePref(key: keyof PushPrefs) {
+    if (!endpoint || busy || !storeWritable || !canEdit) return;
+    const previous = prefs;
+    const next = { ...prefs, [key]: !prefs[key] };
+    setPrefs(next);
+    setBusy(true);
+    try {
+      const res = await fetch("/api/push/prefs", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint, prefs: { [key]: next[key] } }),
+      });
+      const data = (await res.json().catch(() => null)) as {
+        error?: string;
+        prefs?: PushPrefs;
+      } | null;
+      if (!res.ok) {
+        setPrefs(previous);
+        toast(data?.error ?? t("push.prefsFailed"), "error");
+        return;
+      }
+      if (data?.prefs) {
+        setPrefs({
+          reminders: data.prefs.reminders !== false,
+          countdown: data.prefs.countdown !== false,
+        });
+      }
+    } catch {
+      setPrefs(previous);
+      toast(t("push.prefsFailed"), "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (!configured) {
     return (
       <div className={`${cardClass} !rounded-xl !p-3`}>
@@ -271,6 +395,8 @@ export function PushRemindersCard({
     );
   }
 
+  const prefsDisabled = busy || !storeWritable || !prefsLoaded;
+
   return (
     <div className={`${cardClass} space-y-3 !rounded-xl !p-3`}>
       <div>
@@ -288,6 +414,28 @@ export function PushRemindersCard({
           <li>{t("push.iosStep3")}</li>
           <li>{t("push.iosStep4")}</li>
         </ol>
+      ) : null}
+
+      {state === "subscribed" ? (
+        <div className="space-y-2 border-t border-rule/60 pt-2">
+          <PrefSwitch
+            label={t("push.prefReminders")}
+            detail={t("push.prefRemindersDetail")}
+            checked={prefs.reminders}
+            disabled={prefsDisabled}
+            onToggle={() => void togglePref("reminders")}
+          />
+          <PrefSwitch
+            label={t("push.prefCountdown")}
+            detail={t("push.prefCountdownDetail")}
+            checked={prefs.countdown}
+            disabled={prefsDisabled}
+            onToggle={() => void togglePref("countdown")}
+          />
+          {!storeWritable ? (
+            <p className="text-[11px] text-ink-muted">{t("push.prefsReadOnlyHint")}</p>
+          ) : null}
+        </div>
       ) : null}
 
       <div className="flex flex-wrap gap-2">

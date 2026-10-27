@@ -1,7 +1,8 @@
-import { timingSafeEqual } from "node:crypto";
+import { authorizeCron } from "@/lib/cron-auth";
 import { notionReady } from "@/lib/notion";
 import { isPushConfigured, sendPushToAll } from "@/lib/push";
 import {
+  filterByPref,
   isPushStoreConfigured,
   listSubscriptions,
   removeSubscriptionsByEndpoints,
@@ -11,17 +12,6 @@ import { getDays, getPrep, getStays, getTransit } from "@/lib/trip";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function authorizeCron(request: Request): boolean {
-  const secret = process.env.CRON_SECRET?.trim();
-  if (!secret) return false;
-  const header = request.headers.get("authorization") ?? "";
-  const expected = `Bearer ${secret}`;
-  const a = Buffer.from(header);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(a, b);
-}
 
 export async function GET(request: Request) {
   if (!authorizeCron(request)) {
@@ -96,7 +86,8 @@ export async function GET(request: Request) {
     );
   }
 
-  const subscriptions = await listSubscriptions();
+  const all = await listSubscriptions();
+  const subscriptions = filterByPref(all, "reminders");
   if (subscriptions.length === 0) {
     return Response.json({
       ok: true,
@@ -106,7 +97,8 @@ export async function GET(request: Request) {
       sent: 0,
       failed: 0,
       subscribers: 0,
-      message: "No subscribers.",
+      totalSubscribers: all.length,
+      message: "No subscribers with reminders enabled.",
     });
   }
 
@@ -134,6 +126,7 @@ export async function GET(request: Request) {
     count: reminders.length,
     reminders: reminders.map((r) => ({ id: r.id, title: r.title, tag: r.tag })),
     subscribers: subscriptions.length,
+    totalSubscribers: all.length,
     sent,
     failed,
     removed,

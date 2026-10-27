@@ -11,3 +11,5 @@
 | Map style sticky after dark auto | low | First explicit pick persists forever; no reset-to-auto control yet (005) |
 | Esri Canvas maxZoom 16 | low | Light/Dark Canvas layers stop at z16; Soft/Streets/Sat go higher (007) |
 | Delete Undo window | low | Toast ~6s; restore needs editor cookie; navigating away mid-toast still works if toast mounted in root |
+| Hobby cron hour precision | low | Countdown `0 1 * * *` may fire 01:00–01:59 UTC (09:00–09:59 MYT); documented in README + SDD 013 |
+| Env-fallback push prefs | low | `PUSH_SUBSCRIPTIONS` cannot PATCH prefs; Settings disables switches with hint |

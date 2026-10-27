@@ -17,3 +17,4 @@ Living specs for this repo. Change specs stay `draft` until approved. Do not tre
 | [010](010-swipe-haptics-push-phrases.md) | Swipe + haptics + Web Push + phrases | implemented | Schedule swipe; haptics; Web Push reminders; `/phrases`; run 4 review fixes |
 | [011](011-phrases-uses-snapshot-stability.md) | /phrases USES snapshot stability (#185) | implemented | Cache custom phrases + EMPTY stays; fix hydrate max-update-depth |
 | [012](012-silent-mark-visited-toast.md) | Silent markVisited toast | implemented | Optional `{ silent }` so Undo callers show one toast |
+| [013](013-daily-countdown-push.md) | Daily countdown push | implemented | Morning MYT countdown cron + per-sub prefs; departureTransitBody skips duplicate route in name |

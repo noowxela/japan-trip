@@ -259,7 +259,8 @@ const en = {
   "haptic.detail": "Light tap feedback on buttons",
 
   "push.title": "Trip reminders",
-  "push.detail": "Evening-before alerts for transit, hotel check-in, and prep",
+  "push.detail":
+    "Evening-before trip alerts and a daily morning countdown (≈09:00 MYT)",
   "push.notConfigured": "Push is not configured on this deploy (missing VAPID keys).",
   "push.unlockFirst": "Unlock editing below to manage push reminders.",
   "push.statusLoading": "Checking support…",
@@ -291,6 +292,13 @@ const en = {
   "push.copied": "Subscription JSON copied",
   "push.copyFailed": "Could not copy subscription JSON",
   "push.noSubscription": "No local subscription yet — enable reminders first",
+  "push.prefReminders": "Evening reminders",
+  "push.prefRemindersDetail": "Transit, hotel, and prep the evening before",
+  "push.prefCountdown": "Daily countdown",
+  "push.prefCountdownDetail": "Morning push ≈09:00 MYT with days left",
+  "push.prefsFailed": "Could not save notification preferences",
+  "push.prefsReadOnlyHint":
+    "Prefs need a writable Redis store — env fallback subscriptions cannot toggle channels.",
 
   "editor.unlock": "Unlock editing",
   "editor.name": "Name",
@@ -902,7 +910,7 @@ const zh: Record<DictKey, string> = {
   "haptic.detail": "按钮轻触反馈",
 
   "push.title": "行前提醒",
-  "push.detail": "出发前晚提醒：交通、酒店入住与 Prep 清单",
+  "push.detail": "出发前晚提醒，以及每日早上倒数（约 09:00 MYT）",
   "push.notConfigured": "当前部署未配置推送（缺少 VAPID 密钥）。",
   "push.unlockFirst": "请先在下方解锁编辑，再管理推送提醒。",
   "push.statusLoading": "正在检查支持…",
@@ -934,6 +942,13 @@ const zh: Record<DictKey, string> = {
   "push.copied": "已复制订阅 JSON",
   "push.copyFailed": "无法复制订阅 JSON",
   "push.noSubscription": "本地尚无订阅 — 请先开启提醒",
+  "push.prefReminders": "行前提醒",
+  "push.prefRemindersDetail": "出发前晚：交通、酒店与 Prep",
+  "push.prefCountdown": "每日倒数",
+  "push.prefCountdownDetail": "每天约 09:00 MYT 推送剩余天数",
+  "push.prefsFailed": "无法保存通知偏好",
+  "push.prefsReadOnlyHint":
+    "偏好需要可写的 Redis 存储 — 环境变量回退订阅无法开关频道。",
 
   "editor.unlock": "解锁编辑",
   "editor.name": "姓名",

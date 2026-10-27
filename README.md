@@ -53,7 +53,16 @@ That number changes when the computer rejoins Wi-Fi. Stop the server and run `np
 
 ## Push reminders setup
 
-Evening-before Web Push for tomorrow’s transit, hotel check-in, unchecked Prep (3 and 1 days before departure), and optional “departure tomorrow”. Single daily Vercel Cron at **11:00 UTC** (= 20:00 JST). Subscriptions are **not** stored in Notion.
+Two daily Web Push channels (Subscriptions are **not** stored in Notion):
+
+| Cron | Schedule | Intent |
+| --- | --- | --- |
+| `/api/cron/reminders` | `0 11 * * *` (**11:00 UTC** = 20:00 JST) | Evening-before: tomorrow’s transit, hotel check-in, unchecked Prep (3 and 1 days before), optional “departure tomorrow” |
+| `/api/cron/countdown` | `0 1 * * *` (**01:00 UTC** ≈ **09:00 MYT** / 10:00 JST) | Morning countdown: days left / departure day / on-trip day N |
+
+**Vercel Hobby** (checked 2026-10-28): up to 100 cron jobs/project; each at most once per day; **hour** precision — `0 1 * * *` may fire any time **01:00–01:59 UTC** (= **09:00–09:59 MYT**).
+
+Per-subscription prefs (`reminders` / `countdown`, both default **on** when missing) live on the Upstash row. Legacy production subscriptions without `prefs` keep receiving both. Env-fallback `PUSH_SUBSCRIPTIONS` may include `prefs` but is read-only (Settings switches disabled).
 
 1. Generate VAPID keys:
 
@@ -73,16 +82,16 @@ npx web-push generate-vapid-keys
 | `KV_REST_API_TOKEN` | Upstash Redis REST token |
 | `UPSTASH_REDIS_REST_URL` | Alt name for the same URL (either pair works) |
 | `UPSTASH_REDIS_REST_TOKEN` | Alt name for the same token |
-| `PUSH_SUBSCRIPTIONS` | Fallback when no Redis: JSON **array** of PushSubscription JSON objects |
+| `PUSH_SUBSCRIPTIONS` | Fallback when no Redis: JSON **array** of PushSubscription JSON objects (optional `prefs`) |
 
 3. Subscription storage (pick one):
 
 - **Preferred:** add **Upstash Redis** from the Vercel Marketplace (`KV_REST_API_URL` + `KV_REST_API_TOKEN`, or the `UPSTASH_REDIS_REST_*` aliases).
 - **Fallback:** no Redis — enable reminders on a device, tap **Copy subscription JSON** in Settings, paste into `PUSH_SUBSCRIPTIONS` as a JSON **array**, redeploy.
 
-4. Redeploy. On iPhone: Safari → Share → **Add to Home Screen**, open from the icon, unlock editing in Settings, tap **Enable**, then **Send test**.
+4. Redeploy. On iPhone: Safari → Share → **Add to Home Screen**, open from the icon, unlock editing in Settings, tap **Enable**, then **Send test**. When subscribed, toggle **Evening reminders** / **Daily countdown** (writable store only).
 
-5. Dry-run the cron (no sends). Optional `now` (ISO string) is honored **only** with `dry=1` so you can preview reminders for a given instant; real sends always use wall-clock time.
+5. Dry-run the crons (no sends). Optional `now` (ISO string) is honored **only** with `dry=1`; real sends always use wall-clock time.
 
 ```bash
 curl -H "Authorization: Bearer $CRON_SECRET" \
@@ -90,6 +99,12 @@ curl -H "Authorization: Bearer $CRON_SECRET" \
 
 curl -H "Authorization: Bearer $CRON_SECRET" \
   "https://<your-app>/api/cron/reminders?dry=1&now=2026-10-27T11:00:00.000Z"
+
+curl -H "Authorization: Bearer $CRON_SECRET" \
+  "https://<your-app>/api/cron/countdown?dry=1"
+
+curl -H "Authorization: Bearer $CRON_SECRET" \
+  "https://<your-app>/api/cron/countdown?dry=1&now=2026-10-24T01:00:00.000Z"
 ```
 
-Architecture notes: [docs/architecture.md](docs/architecture.md). Full change spec: [docs/sdd/010-swipe-haptics-push-phrases.md](docs/sdd/010-swipe-haptics-push-phrases.md).
+Architecture notes: [docs/architecture.md](docs/architecture.md). Specs: [010](docs/sdd/010-swipe-haptics-push-phrases.md), [013](docs/sdd/013-daily-countdown-push.md).

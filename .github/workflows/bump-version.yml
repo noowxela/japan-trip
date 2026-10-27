@@ -34,5 +34,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           VERSION="$(npm version patch -m 'chore: v%s [skip version]')"
+          PREV="$(git describe --tags --abbrev=0 "${VERSION}^" 2>/dev/null || true)"
+          bash scripts/release-notes.sh "${VERSION}" "${PREV}" > notes.md
           git push origin HEAD:main --follow-tags
-          gh release create "${VERSION}" --title "${VERSION}" --generate-notes
+          gh release create "${VERSION}" --title "${VERSION}" --notes-file notes.md

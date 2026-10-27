@@ -15,6 +15,8 @@ Follow-ups from SDDs. Not a backlog of every idea — only deferred scope from a
 | [005](sdd/005-visual-tokens-dark-mode.md) | Clear map style → auto | No UI to reset explicit map style to auto; revisit if users need it |
 | [007](sdd/007-map-feedback-a11y.md) / [009](sdd/009-compact-all-pages.md) | Unify list screens into the Schedule row style (design review item 3) | Done 2026-10-27 — SDD 009 |
 | [008](sdd/008-compact-schedule-budget-map.md) | Device verify dense schedule/budget + map sheet | Agent cannot browser-check; confirm ≥8–9 stops / ≥9–10 expenses at 390×844 and map zoom/sheet/desktop panel |
+| [013](sdd/013-daily-countdown-push.md) | Device verify morning countdown + prefs toggles | After deploy: dry-run `/api/cron/countdown?dry=1`; toggle prefs on phone; confirm tag replaces prior countdown |
+| [013](sdd/013-daily-countdown-push.md) | Confirm next bump-version release notes | First post-013 tag should show grouped notes via `scripts/release-notes.sh` (not empty `--generate-notes`) |
 
 ## Unify list screens into the Schedule row style (design review item 3)
 

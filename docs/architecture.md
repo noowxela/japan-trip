@@ -2,7 +2,7 @@
 
 - **Repo:** `o000o_active/japan_trip_app` (GitHub: `noowxela/japan-trip`)
 - **Status:** current
-- **Date:** 2026-10-27
+- **Date:** 2026-10-28
 - **Not this document:** workspace `spec001.md` is a backlog idea (Firebase, journal, boarding-pass bookings). Live source of truth is **Notion**.
 
 ## What it is
@@ -20,7 +20,7 @@ Mobile-first itinerary companion PWA. Notion holds trip data; this Next.js app i
 | FX | Live MYR→JPY with static fallback `JPY_PER_RM` (39.3) |
 | Test | Vitest 3 (`npm test`); pure-logic unit tests under `src/lib/*.test.ts` |
 | CI | `.github/workflows/ci.yml` — lint, typecheck, test on push/PR (Node 22, no Notion secrets) |
-| PWA | `src/app/manifest.ts` (`start_url: /`, standalone). Serwist (`@serwist/turbopack`) SW at `/serwist/sw.js` (production only; disabled in `next dev`). Offline: navigation/runtime caches + localStorage itinerary snapshot v2 + IndexedDB outbox. Web Push: `web-push` + SW `push`/`notificationclick` (same-origin focus + navigate try/catch); daily cron `/api/cron/reminders` (11:00 UTC; dry-run `?dry=1&now=`); subs in Upstash Redis REST or `PUSH_SUBSCRIPTIONS` env (not Notion). Env vars listed in README — do not rely on `.env.example` for push keys |
+| PWA | `src/app/manifest.ts` (`start_url: /`, standalone). Serwist (`@serwist/turbopack`) SW at `/serwist/sw.js` (production only; disabled in `next dev`). Offline: navigation/runtime caches + localStorage itinerary snapshot v2 + IndexedDB outbox. Web Push: `web-push` + SW `push`/`notificationclick` (same-origin focus + navigate try/catch); crons `/api/cron/reminders` (11:00 UTC evening-before JST) and `/api/cron/countdown` (01:00 UTC ≈ 09:00 MYT; Hobby hour precision); dry-run `?dry=1&now=`; per-sub `prefs` (`reminders`/`countdown`, missing = on); subs in Upstash Redis REST or `PUSH_SUBSCRIPTIONS` env (not Notion). Env vars listed in README — do not rely on `.env.example` for push keys |
 
 Setup: `npm run setup:notion` then `npm run migrate:v2`. IDs land in `.env.local` (`NOTION_*_DS`).
 
@@ -35,7 +35,8 @@ flowchart LR
   outbox[(IndexedDB outbox)]
   sw[Serwist SW]
   pushStore[Upstash Redis or PUSH_SUBSCRIPTIONS]
-  cron[Vercel Cron daily]
+  cronReminders[Cron reminders 11:00 UTC]
+  cronCountdown[Cron countdown 01:00 UTC]
   browser --> next
   next --> notion
   next --> browser
@@ -44,9 +45,10 @@ flowchart LR
   outbox -->|replay when online| next
   browser --> sw
   sw --> browser
-  browser -->|subscribe| next
+  browser -->|subscribe / prefs| next
   next --> pushStore
-  cron --> next
+  cronReminders --> next
+  cronCountdown --> next
   next -->|web-push| sw
 ```
 
@@ -100,8 +102,11 @@ Viewers: no login; anyone with the deployed URL can **read**. Editors: PIN in No
 | `src/lib/outbox-core.ts` / `outbox.ts` | Outbox pure logic + IndexedDB I/O |
 | `src/app/sw.ts` | Serwist service worker (+ push / notificationclick) |
 | `src/lib/reminders.ts` | Pure evening-before reminder planner (Tokyo) |
-| `src/lib/push-store.ts` / `push.ts` | Subscription store + `web-push` send |
-| `src/app/api/push/*` / `api/cron/reminders` | Subscribe / test / daily cron |
+| `src/lib/countdown.ts` | Pure morning countdown planner (MYT calendar) |
+| `src/lib/cron-auth.ts` | Shared `CRON_SECRET` Bearer check |
+| `src/lib/push-store.ts` / `push.ts` | Subscription store (+ prefs) + `web-push` send |
+| `src/app/api/push/*` / `api/cron/reminders` / `api/cron/countdown` | Subscribe / prefs / test / dual daily crons |
+| `scripts/release-notes.sh` | Conventional-commit release notes for bump-version workflow |
 | `src/lib/spend.ts` / `exchange.ts` | Budget math and FX |
 | `src/lib/geocode.ts` | Nominatim + landmarks |
 | `src/lib/theme.ts` / `theme-server.ts` | Appearance cookie + boot script |
