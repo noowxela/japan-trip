@@ -289,13 +289,13 @@ fieldset:disabled [data-haptic-overlay],
   top: env(safe-area-inset-top, 0px);
 }
 
-/* Trip map: keep scale/attribution above the place carousel */
+/* Trip map: custom corner stack owns zoom; keep scale/attribution above the sheet / clear of left panel */
 .trip-map .leaflet-bottom {
-  bottom: calc(var(--trip-carousel-h, 0px) + 6px);
+  bottom: calc(var(--trip-sheet-h, 0px) + 6px);
 }
 
 .trip-map .leaflet-left {
-  left: 8px;
+  left: calc(var(--trip-panel-w, 0px) + 8px);
 }
 
 /* Hide native scrollbars on chip / tab strips */

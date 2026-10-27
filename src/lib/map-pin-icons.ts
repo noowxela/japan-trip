@@ -25,19 +25,15 @@ export function foodPinIcon(visited = false) {
   });
 }
 
-export function stayPinIcon(visited = false, selected = false) {
+export function stayPinIcon(visited = false) {
   const fill = visited ? "var(--ok)" : "var(--ok)";
   const opacity = visited ? "0.72" : "1";
-  const size = selected ? 30 : 26;
-  const ring = selected
-    ? "filter:drop-shadow(0 0 0 2px var(--accent));"
-    : "";
   return L.divIcon({
     className: "day-map-pin",
-    html: `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true" style="opacity:${opacity};${ring}"><path fill="${fill}" stroke="#fff" stroke-width="1.4" d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-8.5z"/></svg>`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size],
-    popupAnchor: [0, -size + 2],
+    html: `<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" style="opacity:${opacity}"><path fill="${fill}" stroke="#fff" stroke-width="1.4" d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-8.5z"/></svg>`,
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
+    popupAnchor: [0, -24],
   });
 }
 
@@ -87,15 +83,12 @@ export function dayDotIcon(
   selected = false,
 ) {
   const color = visited ? "var(--ok)" : dayPinColor(dayIndex);
-  const size = selected ? 22 : 14;
+  const size = selected ? 18 : 14;
   const border = selected ? "3px solid #fff" : "2px solid #fff";
   const opacity = visited ? "0.75" : "1";
-  const ring = selected
-    ? "box-shadow:0 0 0 2px var(--accent),0 1px 4px rgba(0,0,0,.28);"
-    : "box-shadow:0 1px 4px rgba(0,0,0,.28);";
   return L.divIcon({
     className: "day-map-pin",
-    html: `<span style="display:block;width:${size}px;height:${size}px;border-radius:9999px;background:${color};opacity:${opacity};border:${border};${ring}"></span>`,
+    html: `<span style="display:block;width:${size}px;height:${size}px;border-radius:9999px;background:${color};opacity:${opacity};border:${border};box-shadow:0 1px 4px rgba(0,0,0,.28)"></span>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
     popupAnchor: [0, -size / 2 - 4],
@@ -109,20 +102,14 @@ export function dayBadgeIcon(
 ) {
   const color = visited ? "var(--ok)" : dayPinColor(dayIndex);
   const label = `D${dayIndex + 1}`;
-  const minW = selected ? 32 : 26;
-  const height = selected ? 26 : 22;
-  const fontSize = selected ? 11 : 10;
-  const ring = selected
-    ? "box-shadow:0 0 0 2px var(--accent),0 1px 4px rgba(0,0,0,.28);"
-    : "box-shadow:0 1px 4px rgba(0,0,0,.28);";
+  const ring = selected ? "box-shadow:0 0 0 2px var(--accent),0 1px 4px rgba(0,0,0,.28);" : "box-shadow:0 1px 4px rgba(0,0,0,.28);";
   const opacity = visited ? "0.75" : "1";
-  const iconW = selected ? 36 : 30;
   return L.divIcon({
     className: "day-map-pin",
-    html: `<span style="display:flex;align-items:center;justify-content:center;min-width:${minW}px;height:${height}px;padding:0 5px;border-radius:9999px;background:${color};color:#fff;font-size:${fontSize}px;font-weight:700;letter-spacing:0.02em;opacity:${opacity};${ring}">${label}</span>`,
-    iconSize: [iconW, height],
-    iconAnchor: [iconW / 2, height / 2],
-    popupAnchor: [0, -height / 2 - 4],
+    html: `<span style="display:flex;align-items:center;justify-content:center;min-width:26px;height:22px;padding:0 5px;border-radius:9999px;background:${color};color:#fff;font-size:10px;font-weight:700;letter-spacing:0.02em;opacity:${opacity};${ring}">${label}</span>`,
+    iconSize: [30, 22],
+    iconAnchor: [15, 11],
+    popupAnchor: [0, -14],
   });
 }
 

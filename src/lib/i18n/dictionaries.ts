@@ -274,10 +274,6 @@ const en = {
 
   "map.title": "Map",
   "map.allPins": "All pins",
-  "map.allCities": "All",
-  "map.cityFilter": "Filter by city",
-  "map.carousel": "Places on map",
-  "map.carouselEmpty": "No places with coordinates yet",
   "prep.title": "Prep",
   "prep.empty": "No prep tasks yet",
   "prep.add": "Add task",
@@ -845,10 +841,6 @@ const zh: Record<DictKey, string> = {
 
   "map.title": "地图",
   "map.allPins": "全部标记",
-  "map.allCities": "全部",
-  "map.cityFilter": "按城市筛选",
-  "map.carousel": "地图上的地点",
-  "map.carouselEmpty": "还没有带坐标的地点",
   "prep.title": "准备",
   "prep.empty": "还没有准备事项",
   "prep.add": "添加事项",

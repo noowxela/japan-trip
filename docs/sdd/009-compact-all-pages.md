@@ -55,7 +55,7 @@ Reference layouts live in `schedule-view.tsx` / `day-agenda-board.tsx` (… acti
 | `/budget` | Reference (SDD 008) — no density change |
 | `/budget/[id]` | Slim header; ~36px key-value rows / compact form |
 | `/schedule` | Reference — unchanged |
-| `/map` | Reference densified in SDD 008; **carousel append (§7)** replaces bottom sheet |
+| `/map` | Reference densified in SDD 008; §7 carousel was **REVERTED** 2026-10-27 — drawer (SDD 008) is current |
 | `/~offline` | Compact + fix #185 snapshot loop |
 | Sheets/forms (place/stay/transit/day/agenda/spend/prep/unlock/confirm/quick-expense/list-add) | Compact controls, tighter gaps, sticky footers where sheets already have them |
 | Bottom nav | Unchanged (≥44px) |
@@ -136,8 +136,11 @@ flowchart LR
 | 2026-10-27 | approved | Owner Round 2: stays date column, PageHeader add centering, map chrome padding |
 | 2026-10-27 | implemented | Round 2: stays/transit date cleanup; PageHeader h-8 action; measured map pads + visible-band fly |
 | 2026-10-27 | implemented | Round 2 gates: `tsc --noEmit` clean · eslint 0/0 · Vitest 13 files / 69 tests · `next build` ok |
+| 2026-10-27 | reverted (map) | Owner (Alex): “i like the last version map, revert back to the drawer version.” Map restored to SDD 008 drawer; §7 carousel + Round 2 map chrome undone; unused carousel i18n keys removed; `map-carousel.ts` + test removed |
 
 ## 7. Map carousel (append — owner 2026-10-27 10:01 MYT)
+
+> **REVERTED 2026-10-27** at Alex’s request. `/map` is back to the **SDD 008 drawer**: snapping sheet ~120px / 45% / 85%, zoom top-right under 图层, D1–D8 badges + merging, popups kept on-screen, desktop 360px left panel, 全部标记 pill, dark-mode fixes. `src/lib/map-carousel.ts` + its test removed. Section text below kept for history only — do not treat as current.
 
 **Owner approval:** Alex asked today to replace the `/map` snapping city/day bottom sheet with a top city chip bar + bottom place carousel. Implement immediately (no draft wait).
 
@@ -185,6 +188,8 @@ flowchart LR
 
 ### Acceptance (map carousel)
 
+> **REVERTED 2026-10-27** — criteria below were met for the carousel, then undone; drawer (SDD 008) is current.
+
 - [x] Bottom sheet / left panel removed
 - [x] Top city chips + bottom place carousel (mobile + desktop)
 - [x] Chip ↔ fitBounds; card ↔ marker sync without feedback loops
@@ -200,7 +205,7 @@ flowchart LR
 
 1. **Stays date column:** leading = compact `M/D` + nights (`{n}晚` / `{n} nights`, tabular-nums 12px), or `M/D–D` when nights unknown. Remove duplicated range from primary (`meta`); primary = hotel name only; secondary = address · 确认码 (copy icon stays). Transit: leading date uses `formatTabDate` when no time; do not repeat that date in secondary. Days unchanged (date is intentional primary, not duplicated).
 2. **PageHeader action:** shared slot forces `h-8 px-3 inline-flex items-center justify-center leading-none` on nested buttons; header row `items-center` (fixes top-aligned「添加」pill).
-3. **Map chrome padding:** measure chip-bar bottom and carousel height; `fitBounds` / city fly / pin fly / single-pin setView use top = chipBottom+16 and bottom = carouselH+16; fly/setView centres offset into the visible band between chips and carousel.
+3. **Map chrome padding:** ~~measure chip-bar bottom and carousel height; `fitBounds` / city fly / pin fly / single-pin setView use top = chipBottom+16 and bottom = carouselH+16; fly/setView centres offset into the visible band between chips and carousel.~~ **REVERTED 2026-10-27** with §7 — map chrome is again the SDD 008 drawer (sheet padding / zoom under 图层 / left panel). Stays + PageHeader Round 2 items remain.
 
 Hard rules unchanged (no git / `.env*` / notion / new deps / no restart of `:3000` / keep README LAN + `allowedDevOrigins` / zh·en sync).
 
@@ -208,5 +213,5 @@ Hard rules unchanged (no git / `.env*` / notion / new deps / no restart of `:300
 
 - [x] Stays primary shows full hotel name; date column compact; no date dup on transit when leading shows date
 - [x] PageHeader add button vertically centred (h-8)
-- [x] Map city-chip / card fly clears chip bar + carousel
+- [x] ~~Map city-chip / card fly clears chip bar + carousel~~ **REVERTED 2026-10-27** — N/A; drawer map is current
 - [x] Gates: `tsc` · lint · test · `next build`

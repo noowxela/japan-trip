@@ -13,4 +13,4 @@ Living specs for this repo. Change specs stay `draft` until approved. Do not tre
 | [006](006-quick-expense-forms.md) | Quick expense + expenses hero + form UX | implemented | Bottom-sheet quick spend, uncapped budget hero, labeled chip forms, PIN unlock sheet |
 | [007](007-map-feedback-a11y.md) | Map page + feedback & a11y | implemented | Full-bleed map, Esri tiles, layers menu, sheet; toasts/Undo/restore; skeletons; SyncBadge banner; a11y |
 | [008](008-compact-schedule-budget-map.md) | Compact schedule/budget + map fixes | implemented | Denser schedule/budget rows; map sheet anchor, zoom, fitBounds, day dots, desktop panel |
-| [009](009-compact-all-pages.md) | Compact all pages (Schedule row language) | implemented | Shared compact primitives; densify overview/lists/places/stays/transit/days/prep/settings/offline/detail; fix /~offline #185 |
+| [009](009-compact-all-pages.md) | Compact all pages (Schedule row language) | implemented | Shared compact primitives; densify overview/lists/places/stays/transit/days/prep/settings/offline/detail; fix /~offline #185. Map carousel (§7) **REVERTED** 2026-10-27 — drawer (SDD 008) is current |

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   useCallback,
   useEffect,
@@ -7,33 +8,25 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
 import {
   MapContainer,
   Marker,
+  Popup,
   Polyline,
   ScaleControl,
   useMap,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { ChipRow } from "@/components/compact/chip-row";
-import { DirectionsLink } from "@/components/directions-link";
+import { CityKanji } from "@/components/city-kanji";
 import { useVisibleMapPins } from "@/components/hide-map-pin-button";
 import { useT } from "@/components/i18n-provider";
 import { MapStyleSwitch, useMapStyle } from "@/components/map-style-switch";
 import { MapTiles } from "@/components/map-tiles";
 import { MapZoomButtons } from "@/components/map-zoom-buttons";
-import { MapsPinLink } from "@/components/maps-pin-link";
-import { formatTime } from "@/lib/format";
-import { labelType } from "@/lib/i18n/dictionaries";
-import {
-  ALL_CITIES_KEY,
-  carouselPinsForCity,
-  citiesInTripOrder,
-  cityChipLabel,
-  filterPinsByCity,
-  normalizeCityKey,
-} from "@/lib/map-carousel";
+import { formatDay } from "@/lib/format";
+import { labelCity } from "@/lib/i18n/dictionaries";
 import {
   clusterByPixelDistance,
   formatDayGroupLabel,
@@ -43,33 +36,13 @@ import {
   dayBadgeIcon,
   dayDotIcon,
   dayGroupBadgeIcon,
-  dayPinColor,
   stayPinIcon,
 } from "@/lib/map-pin-icons";
 import { CITY_COORDS } from "@/lib/types";
 
 const DAY_BADGE_CLUSTER_PX = 28;
-const CHIP_BAR_H = 44;
-const CAROUSEL_H = 104;
-const CITY_ZOOM = 13;
-const CHROME_PAD = 16;
+const POPUP_MAX_WIDTH = 260;
 
-/** Shift fly/setView centre so the marker sits in the band between chips and carousel. */
-function centerForVisibleBand(
-  map: { getSize: () => { x: number; y: number }; project: (ll: [number, number], z: number) => { x: number; y: number }; unproject: (p: [number, number], z: number) => { lat: number; lng: number } },
-  latlng: [number, number],
-  zoom: number,
-  padTop: number,
-  padBottom: number,
-): [number, number] {
-  const size = map.getSize();
-  const visibleMid = padTop + Math.max(0, size.y - padTop - padBottom) / 2;
-  const offsetY = size.y / 2 - visibleMid;
-  if (Math.abs(offsetY) < 1) return latlng;
-  const point = map.project(latlng, zoom);
-  const center = map.unproject([point.x, point.y + offsetY], zoom);
-  return [center.lat, center.lng];
-}
 export type TripMapPin = {
   id: string;
   name: string;
@@ -80,10 +53,6 @@ export type TripMapPin = {
   kind: "sight" | "food" | "other" | "stay";
   visited: boolean;
   sightNumber: number | null;
-  start: string | null;
-  type: string | null;
-  city: string | null;
-  mapsUrl: string | null;
 };
 
 export type TripMapDay = {
@@ -101,14 +70,26 @@ type Props = {
   days: TripMapDay[];
 };
 
-type PlacedPin = TripMapPin & {
-  displayLat: number;
-  displayLng: number;
-  dayIndex: number;
-};
+const SHEET_COLLAPSED = 120;
+const SHEET_MID_RATIO = 0.45;
+const SHEET_MAX_RATIO = 0.85;
+const DESKTOP_PANEL_W = 360;
+const DESKTOP_MQ = "(min-width: 1024px)";
 
 function pinBoundsKey(positions: [number, number][]) {
   return positions.map(([lat, lng]) => `${lat},${lng}`).join("|");
+}
+
+function useIsDesktop() {
+  const [desktop, setDesktop] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(DESKTOP_MQ);
+    const sync = () => setDesktop(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+  return desktop;
 }
 
 function FitPins({
@@ -148,14 +129,7 @@ function FitPins({
           maxZoom: 14,
         });
       } else if (pts.length === 1) {
-        const center = centerForVisibleBand(
-          map,
-          pts[0],
-          CITY_ZOOM,
-          pty,
-          pby,
-        );
-        map.setView(center, CITY_ZOOM);
+        map.setView(pts[0], 13);
       } else {
         map.setView(origin, 6);
       }
@@ -177,29 +151,20 @@ function FitPins({
   return null;
 }
 
-function FlyToCity({
+function FlyToDay({
   target,
   padTopLeft,
   padBottomRight,
-  revision,
 }: {
   target: [number, number][] | null;
   padTopLeft: [number, number];
   padBottomRight: [number, number];
-  revision: string;
 }) {
   const map = useMap();
   useEffect(() => {
-    if (!target || target.length === 0 || !revision) return;
+    if (!target || target.length === 0) return;
     if (target.length === 1) {
-      const center = centerForVisibleBand(
-        map,
-        target[0],
-        CITY_ZOOM,
-        padTopLeft[1],
-        padBottomRight[1],
-      );
-      map.flyTo(center, CITY_ZOOM, { duration: 0.75 });
+      map.flyTo(target[0], 13, { duration: 0.75 });
       return;
     }
     map.flyToBounds(target, {
@@ -208,35 +173,7 @@ function FlyToCity({
       maxZoom: 14,
       duration: 0.75,
     });
-  }, [map, target, padTopLeft, padBottomRight, revision]);
-  return null;
-}
-
-function FlyToPin({
-  target,
-  enabled,
-  padTop,
-  padBottom,
-}: {
-  target: [number, number] | null;
-  enabled: boolean;
-  padTop: number;
-  padBottom: number;
-}) {
-  const map = useMap();
-  const lastKey = useRef<string | null>(null);
-  useEffect(() => {
-    if (!enabled || !target) return;
-    const key = `${target[0].toFixed(5)},${target[1].toFixed(5)}|${padTop}|${padBottom}`;
-    if (lastKey.current === key) return;
-    lastKey.current = key;
-    const zoom = Math.max(map.getZoom(), CITY_ZOOM);
-    const center = centerForVisibleBand(map, target, zoom, padTop, padBottom);
-    map.flyTo(center, zoom, { duration: 0.55 });
-  }, [map, target, enabled, padTop, padBottom]);
-  useEffect(() => {
-    if (!enabled) lastKey.current = null;
-  }, [enabled]);
+  }, [map, target, padTopLeft, padBottomRight]);
   return null;
 }
 
@@ -256,7 +193,7 @@ function TripMapCornerStack({
           compact
           className="relative"
         />
-        <MapZoomButtons className="map-zoom-fine-only" />
+        <MapZoomButtons />
       </div>
     </div>
   );
@@ -264,18 +201,21 @@ function TripMapCornerStack({
 
 function ClusteredDayMarkers({
   pins,
-  selectedPinId,
-  onSelectPin,
+  selectedDayId,
+  onSelectDay,
   padTopLeft,
   padBottomRight,
+  popupMaxWidth,
 }: {
   pins: PlacedPin[];
-  selectedPinId: string | null;
-  onSelectPin: (pinId: string) => void;
+  selectedDayId: string | null;
+  onSelectDay: (dayId: string | null) => void;
   padTopLeft: [number, number];
   padBottomRight: [number, number];
+  popupMaxWidth: number;
 }) {
   const map = useMap();
+  const { t } = useT();
   const [clusters, setClusters] = useState<DayCluster[]>([]);
   const pinById = useMemo(() => {
     const m = new Map<string, PlacedPin>();
@@ -327,12 +267,12 @@ function ClusteredDayMarkers({
 
         if (members.length === 1) {
           const pin = members[0];
-          const selected = pin.id === selectedPinId;
+          const selected = pin.dayId != null && pin.dayId === selectedDayId;
           const icon = pin.dayId
             ? dayBadgeIcon(pin.dayIndex, pin.visited, selected)
             : dayDotIcon(pin.dayIndex, pin.visited, selected);
           const zIndexOffset = selected
-            ? 1000
+            ? 800
             : pin.visited
               ? 400
               : 200 + pin.dayIndex;
@@ -343,9 +283,36 @@ function ClusteredDayMarkers({
               icon={icon}
               zIndexOffset={zIndexOffset}
               eventHandlers={{
-                click: () => onSelectPin(pin.id),
+                click: () => {
+                  if (pin.dayId) onSelectDay(pin.dayId);
+                },
               }}
-            />
+            >
+              <Popup
+                autoPan
+                keepInView
+                maxWidth={popupMaxWidth}
+                autoPanPaddingTopLeft={padTopLeft}
+                autoPanPaddingBottomRight={padBottomRight}
+              >
+                <div className="max-w-[240px] text-sm">
+                  <p className="font-medium">{pin.name}</p>
+                  {pin.visited ? (
+                    <p className="text-xs text-ok">
+                      ✓ {t("places.filterVisited")}
+                    </p>
+                  ) : null}
+                  {pin.dayId ? (
+                    <Link
+                      href={`/schedule?day=${encodeURIComponent(pin.dayId)}`}
+                      className="inline-flex min-h-11 items-center text-ink-muted no-underline"
+                    >
+                      {pin.dayName ?? t("map.openDay")}
+                    </Link>
+                  ) : null}
+                </div>
+              </Popup>
+            </Marker>
           );
         }
 
@@ -362,15 +329,9 @@ function ClusteredDayMarkers({
             eventHandlers={{
               click: () => {
                 if (bounds.length === 1) {
-                  const zoom = Math.min(map.getZoom() + 2, 14);
-                  const center = centerForVisibleBand(
-                    map,
-                    bounds[0],
-                    zoom,
-                    padTopLeft[1],
-                    padBottomRight[1],
-                  );
-                  map.flyTo(center, zoom, { duration: 0.55 });
+                  map.flyTo(bounds[0], Math.min(map.getZoom() + 2, 14), {
+                    duration: 0.55,
+                  });
                   return;
                 }
                 map.flyToBounds(bounds, {
@@ -387,6 +348,12 @@ function ClusteredDayMarkers({
     </>
   );
 }
+
+type PlacedPin = TripMapPin & {
+  displayLat: number;
+  displayLng: number;
+  dayIndex: number;
+};
 
 function placePinsWithOffset(
   pins: TripMapPin[],
@@ -423,215 +390,49 @@ function placePinsWithOffset(
   return placed;
 }
 
-function PlaceCarousel({
-  items,
-  selectedPinId,
-  onSnapPin,
-  programmaticPinId,
-  onProgrammaticDone,
-}: {
-  items: PlacedPin[];
-  selectedPinId: string | null;
-  onSnapPin: (pinId: string) => void;
-  programmaticPinId: string | null;
-  onProgrammaticDone: () => void;
-}) {
-  const { t, locale } = useT();
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  const cardRefs = useRef(new Map<string, HTMLElement>());
-  const ignoreSnapUntil = useRef(0);
-  const lastSnapped = useRef<string | null>(null);
-
-  const setCardRef = useCallback((id: string, node: HTMLElement | null) => {
-    if (node) cardRefs.current.set(id, node);
-    else cardRefs.current.delete(id);
-  }, []);
-
-  useEffect(() => {
-    if (!programmaticPinId) return;
-    const node = cardRefs.current.get(programmaticPinId);
-    if (!node) return;
-    ignoreSnapUntil.current = Date.now() + 600;
-    lastSnapped.current = programmaticPinId;
-    node.scrollIntoView({
-      behavior: "smooth",
-      inline: "center",
-      block: "nearest",
-    });
-    const timer = window.setTimeout(onProgrammaticDone, 450);
-    return () => window.clearTimeout(timer);
-  }, [programmaticPinId, items, onProgrammaticDone]);
-
-  useEffect(() => {
-    const root = scrollerRef.current;
-    if (!root || items.length === 0) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (Date.now() < ignoreSnapUntil.current) return;
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-        const top = visible[0];
-        if (!top) return;
-        const id = (top.target as HTMLElement).dataset.pinId;
-        if (!id || id === lastSnapped.current) return;
-        lastSnapped.current = id;
-        onSnapPin(id);
-      },
-      { root, threshold: [0.55, 0.7, 0.85] },
-    );
-
-    for (const item of items) {
-      const node = cardRefs.current.get(item.id);
-      if (node) observer.observe(node);
-    }
-    return () => observer.disconnect();
-  }, [items, onSnapPin]);
-
-  if (items.length === 0) {
-    return (
-      <p className="px-4 py-3 text-center text-xs text-ink-muted">
-        {t("map.carouselEmpty")}
-      </p>
-    );
-  }
-
-  return (
-    <div
-      ref={scrollerRef}
-      role="list"
-      aria-label={t("map.carousel")}
-      className="scrollbar-none flex snap-x snap-mandatory gap-2 overflow-x-auto px-[10vw] pb-1 pt-1 lg:px-6"
-    >
-      {items.map((item) => {
-        const active = item.id === selectedPinId;
-        const time = formatTime(item.start) ?? "—";
-        const typeLabel = labelType(locale, item.type) ?? item.type ?? "—";
-        const cityLabel =
-          item.city != null
-            ? cityChipLabel(item.city, locale === "en" ? "en" : "zh")
-            : null;
-        const dayColor = dayPinColor(item.dayIndex);
-        return (
-          <article
-            key={item.id}
-            role="listitem"
-            data-pin-id={item.id}
-            ref={(node) => setCardRef(item.id, node)}
-            className={`flex h-20 w-[80vw] shrink-0 snap-center items-center gap-1 rounded-xl border bg-surface/95 px-3 shadow-sm backdrop-blur lg:w-[320px] ${
-              active
-                ? "border-accent ring-1 ring-accent/40"
-                : "border-line"
-            }`}
-          >
-            <div className="min-w-0 flex-1">
-              <div className="flex min-w-0 items-center gap-1.5">
-                <span
-                  className="inline-flex h-5 shrink-0 items-center rounded-full px-1.5 text-[10px] font-bold text-white"
-                  style={{ backgroundColor: dayColor }}
-                >
-                  D{item.dayIndex + 1}
-                </span>
-                <span className="shrink-0 text-xs tabular-nums text-ink-muted">
-                  {time}
-                </span>
-                <span className="min-w-0 truncate text-sm font-semibold text-ink">
-                  {item.name}
-                </span>
-              </div>
-              <p className="mt-0.5 truncate text-xs text-ink-muted">
-                {[typeLabel, cityLabel].filter(Boolean).join(" · ")}
-              </p>
-            </div>
-            <div className="flex shrink-0 items-center">
-              <MapsPinLink
-                name={item.name}
-                lat={item.lat}
-                lng={item.lng}
-                mapsUrl={item.mapsUrl}
-              />
-              <DirectionsLink
-                name={item.name}
-                lat={item.lat}
-                lng={item.lng}
-                mapsUrl={item.mapsUrl}
-              />
-            </div>
-          </article>
-        );
-      })}
-    </div>
-  );
-}
-
 export default function TripMap({ hops, hopPoints, pins, days }: Props) {
   const { t, locale } = useT();
+  const desktop = useIsDesktop();
   const [scrollWheelZoom, setScrollWheelZoom] = useState(() => {
     if (typeof window === "undefined") return false;
     return !window.matchMedia("(max-width: 768px)").matches;
   });
-  const [cityKey, setCityKey] = useState<string>(ALL_CITIES_KEY);
-  const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
-  const [fitRevision, setFitRevision] = useState("init");
-  const [cityFlyRevision, setCityFlyRevision] = useState("");
-  const [programmaticPinId, setProgrammaticPinId] = useState<string | null>(
-    null,
+  const midSheet = useCallback(() => {
+    if (typeof window === "undefined") return 240;
+    return Math.round(window.innerHeight * SHEET_MID_RATIO);
+  }, []);
+  const maxSheet = useCallback(() => {
+    if (typeof window === "undefined") return 360;
+    return Math.round(window.innerHeight * SHEET_MAX_RATIO);
+  }, []);
+  const [sheetH, setSheetH] = useState(() =>
+    typeof window === "undefined"
+      ? 240
+      : Math.round(window.innerHeight * SHEET_MID_RATIO),
   );
-  /** When true, FlyToPin runs (carousel snap). Marker→carousel skips fly. */
-  const [flyFromCarousel, setFlyFromCarousel] = useState(false);
-  const syncSourceRef = useRef<"carousel" | "map" | "chip" | null>(null);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const chipBarRef = useRef<HTMLDivElement>(null);
-  const carouselRef = useRef<HTMLDivElement>(null);
-  const [padTop, setPadTop] = useState(CHIP_BAR_H + CHROME_PAD);
-  const [padBottom, setPadBottom] = useState(CAROUSEL_H + CHROME_PAD);
+  const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
+  const [fitRevision, setFitRevision] = useState("init");
+  const dragRef = useRef<{ startY: number; startH: number } | null>(null);
 
   useEffect(() => {
     const mobile = window.matchMedia("(max-width: 768px)");
     const onChange = () => setScrollWheelZoom(!mobile.matches);
     mobile.addEventListener("change", onChange);
-    return () => mobile.removeEventListener("change", onChange);
-  }, []);
-
-  useEffect(() => {
-    const root = rootRef.current;
-    const chip = chipBarRef.current;
-    const carousel = carouselRef.current;
-    if (!root) return;
-
-    function measure() {
-      const rootEl = rootRef.current;
-      if (!rootEl) return;
-      const rootRect = rootEl.getBoundingClientRect();
-      const chipEl = chipBarRef.current;
-      const carEl = carouselRef.current;
-      const nextTop = chipEl
-        ? Math.round(chipEl.getBoundingClientRect().bottom - rootRect.top) +
-          CHROME_PAD
-        : CHIP_BAR_H + CHROME_PAD;
-      const nextBottom = carEl
-        ? Math.round(rootRect.bottom - carEl.getBoundingClientRect().top) +
-          CHROME_PAD
-        : CAROUSEL_H + CHROME_PAD;
-      setPadTop((prev) => (prev === nextTop ? prev : nextTop));
-      setPadBottom((prev) => (prev === nextBottom ? prev : nextBottom));
-    }
-
-    measure();
-    const ro =
-      typeof ResizeObserver !== "undefined"
-        ? new ResizeObserver(() => measure())
-        : null;
-    ro?.observe(root);
-    if (chip) ro?.observe(chip);
-    if (carousel) ro?.observe(carousel);
-    window.addEventListener("resize", measure);
-    return () => {
-      ro?.disconnect();
-      window.removeEventListener("resize", measure);
+    const onResize = () => {
+      setSheetH((current) => {
+        const mid = midSheet();
+        const max = maxSheet();
+        if (current <= SHEET_COLLAPSED + 8) return SHEET_COLLAPSED;
+        if (current >= max - 8) return max;
+        return mid;
+      });
     };
-  }, []);
+    window.addEventListener("resize", onResize);
+    return () => {
+      mobile.removeEventListener("change", onChange);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [midSheet, maxSheet]);
 
   const visiblePins = useVisibleMapPins(pins);
   const dayIndexById = useMemo(() => {
@@ -656,31 +457,6 @@ export default function TripMap({ hops, hopPoints, pins, days }: Props) {
     (firstPin ? [firstPin.lat, firstPin.lng] : [35.6812, 139.7671]);
   const { id: styleId, pick, tiles } = useMapStyle();
 
-  const tripCities = useMemo(() => citiesInTripOrder(days), [days]);
-
-  const chipOptions = useMemo(
-    () => [
-      { value: ALL_CITIES_KEY, label: t("map.allCities") },
-      ...tripCities.map((city) => ({
-        value: normalizeCityKey(city) ?? city,
-        label: cityChipLabel(city, locale === "en" ? "en" : "zh"),
-      })),
-    ],
-    [tripCities, t, locale],
-  );
-
-  const carouselItems = useMemo(
-    () => carouselPinsForCity(placedPins, cityKey),
-    [placedPins, cityKey],
-  );
-
-  const cityFilterPositions = useMemo(() => {
-    const filtered = filterPinsByCity(placedPins, cityKey);
-    return filtered.map(
-      (pin) => [pin.displayLat, pin.displayLng] as [number, number],
-    );
-  }, [placedPins, cityKey]);
-
   const allPositions = useMemo(
     () =>
       placedPins.map(
@@ -689,65 +465,91 @@ export default function TripMap({ hops, hopPoints, pins, days }: Props) {
     [placedPins],
   );
 
-  const fitPositions =
-    cityKey === ALL_CITIES_KEY ? allPositions : cityFilterPositions;
+  const flyTarget = useMemo(() => {
+    if (!selectedDayId) return null;
+    const dayPins = placedPins.filter((pin) => pin.dayId === selectedDayId);
+    return dayPins.map(
+      (pin) => [pin.displayLat, pin.displayLng] as [number, number],
+    );
+  }, [selectedDayId, placedPins]);
 
-  const selectedPin = useMemo(
-    () => placedPins.find((p) => p.id === selectedPinId) ?? null,
-    [placedPins, selectedPinId],
-  );
-
-  const flyTarget = useMemo<[number, number] | null>(() => {
-    if (!selectedPin || !flyFromCarousel) return null;
-    return [selectedPin.displayLat, selectedPin.displayLng];
-  }, [selectedPin, flyFromCarousel]);
-
-  /** Measured chip-bar bottom + 16 / carousel height + 16 so pins clear chrome. */
-  const padTopLeft = useMemo<[number, number]>(() => [20, padTop], [padTop]);
-  const padBottomRight = useMemo<[number, number]>(
-    () => [20, padBottom],
-    [padBottom],
-  );
-
-  const onCityChange = (next: string) => {
-    syncSourceRef.current = "chip";
-    setCityKey(next);
-    setFlyFromCarousel(false);
-    setSelectedPinId(null);
-    setCityFlyRevision(`city-${next}-${Date.now()}`);
-    if (next === ALL_CITIES_KEY) {
-      setFitRevision(`all-${Date.now()}`);
+  const cityGroups = useMemo(() => {
+    const order: string[] = [];
+    const groups = new Map<string, TripMapDay[]>();
+    for (const day of days) {
+      const key = day.city?.trim() || t("map.unknownCity");
+      if (!groups.has(key)) {
+        groups.set(key, []);
+        order.push(key);
+      }
+      groups.get(key)!.push(day);
     }
+    return order.map((city) => ({ city, days: groups.get(city)! }));
+  }, [days, t]);
+
+  /** Top/left clear “全部标记” / Layers (~64px + safe) and left pill. */
+  const padTopLeft = useMemo<[number, number]>(
+    () => (desktop ? [DESKTOP_PANEL_W + 24, 72] : [120, 72]),
+    [desktop],
+  );
+  const padBottomRight = useMemo<[number, number]>(
+    () => (desktop ? [36, 36] : [24, sheetH + 28]),
+    [desktop, sheetH],
+  );
+  const popupMaxWidth = POPUP_MAX_WIDTH;
+
+  const onHandlePointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (desktop) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragRef.current = { startY: event.clientY, startH: sheetH };
   };
 
-  const onSnapPin = useCallback((pinId: string) => {
-    if (syncSourceRef.current === "map") return;
-    syncSourceRef.current = "carousel";
-    setFlyFromCarousel(true);
-    setSelectedPinId(pinId);
-  }, []);
+  const onHandlePointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (desktop || !dragRef.current) return;
+    const delta = dragRef.current.startY - event.clientY;
+    const next = Math.min(
+      maxSheet(),
+      Math.max(SHEET_COLLAPSED, dragRef.current.startH + delta),
+    );
+    setSheetH(next);
+  };
 
-  const onSelectPinFromMap = useCallback((pinId: string) => {
-    syncSourceRef.current = "map";
-    setFlyFromCarousel(false);
-    setSelectedPinId(pinId);
-    setProgrammaticPinId(pinId);
-    // Ensure the card’s city is visible if filtered away.
-    const pin = placedPins.find((p) => p.id === pinId);
-    if (pin?.city && cityKey !== ALL_CITIES_KEY) {
-      const key = normalizeCityKey(pin.city);
-      if (key && key !== cityKey) {
-        setCityKey(key);
+  const onHandlePointerUp = () => {
+    if (desktop || !dragRef.current) return;
+    dragRef.current = null;
+    setSheetH((current) => {
+      const mid = midSheet();
+      const max = maxSheet();
+      let next = mid;
+      if (current < (SHEET_COLLAPSED + mid) / 2) next = SHEET_COLLAPSED;
+      else if (current > (mid + max) / 2) next = max;
+      else next = mid;
+      setFitRevision(`snap-${next}`);
+      return next;
+    });
+  };
+
+  const resetView = () => {
+    setSelectedDayId(null);
+    setFitRevision(`reset-${Date.now()}`);
+  };
+
+  const selectedDay = days.find((day) => day.id === selectedDayId) ?? null;
+  const sheetStyle = desktop
+    ? {
+        left: 0,
+        top: 0,
+        bottom: 0,
+        width: DESKTOP_PANEL_W,
+        height: "100%" as const,
+        borderRadius: 0,
       }
-    }
-  }, [placedPins, cityKey]);
-
-  const onProgrammaticDone = useCallback(() => {
-    setProgrammaticPinId(null);
-    window.setTimeout(() => {
-      if (syncSourceRef.current === "map") syncSourceRef.current = null;
-    }, 50);
-  }, []);
+    : {
+        left: 0,
+        right: 0,
+        bottom: 0,
+        height: sheetH,
+      };
 
   const stayPins = useMemo(
     () => placedPins.filter((pin) => pin.kind === "stay"),
@@ -756,30 +558,22 @@ export default function TripMap({ hops, hopPoints, pins, days }: Props) {
   const dayPins = useMemo(() => {
     const list = placedPins.filter((pin) => pin.kind !== "stay");
     return list.sort((a, b) => {
-      const aSel = a.id === selectedPinId ? 1 : 0;
-      const bSel = b.id === selectedPinId ? 1 : 0;
+      const aSel = a.dayId === selectedDayId ? 1 : 0;
+      const bSel = b.dayId === selectedDayId ? 1 : 0;
       if (aSel !== bSel) return aSel - bSel;
       const aVis = a.visited ? 1 : 0;
       const bVis = b.visited ? 1 : 0;
       return aVis - bVis;
     });
-  }, [placedPins, selectedPinId]);
-
-  const cityFlyTarget =
-    cityKey === ALL_CITIES_KEY
-      ? allPositions
-      : cityFilterPositions.length > 0
-        ? cityFilterPositions
-        : null;
+  }, [placedPins, selectedDayId]);
 
   return (
     <div
-      ref={rootRef}
       className="trip-map relative h-full w-full overflow-hidden bg-canvas"
       style={
         {
-          "--trip-carousel-h": `${CAROUSEL_H}px`,
-          "--trip-chip-h": `${CHIP_BAR_H}px`,
+          "--trip-sheet-h": desktop ? "0px" : `${sheetH}px`,
+          "--trip-panel-w": desktop ? `${DESKTOP_PANEL_W}px` : "0px",
         } as CSSProperties
       }
     >
@@ -793,23 +587,16 @@ export default function TripMap({ hops, hopPoints, pins, days }: Props) {
       >
         <ScaleControl position="bottomleft" imperial={false} maxWidth={80} />
         <FitPins
-          positions={fitPositions}
+          positions={allPositions}
           fallback={mapCenter}
           padTopLeft={padTopLeft}
           padBottomRight={padBottomRight}
           revision={fitRevision}
         />
-        <FlyToCity
-          target={cityFlyTarget}
+        <FlyToDay
+          target={flyTarget}
           padTopLeft={padTopLeft}
           padBottomRight={padBottomRight}
-          revision={cityFlyRevision}
-        />
-        <FlyToPin
-          target={flyTarget}
-          enabled={flyFromCarousel}
-          padTop={padTop}
-          padBottom={padBottom}
         />
         <MapTiles styleId={styleId} tiles={tiles} />
         {hopCoords.length > 1 ? (
@@ -819,68 +606,153 @@ export default function TripMap({ hops, hopPoints, pins, days }: Props) {
           />
         ) : null}
         {stayPins.map((pin) => {
-          const selected = pin.id === selectedPinId;
-          const zIndexOffset = selected ? 1000 : pin.visited ? 400 : 200;
+          const selected = pin.dayId != null && pin.dayId === selectedDayId;
+          const zIndexOffset = selected ? 800 : pin.visited ? 400 : 200;
           return (
             <Marker
               key={pin.id}
               position={[pin.displayLat, pin.displayLng]}
-              icon={stayPinIcon(pin.visited, selected)}
+              icon={stayPinIcon(pin.visited)}
               zIndexOffset={zIndexOffset}
               eventHandlers={{
-                click: () => onSelectPinFromMap(pin.id),
+                click: () => {
+                  if (pin.dayId) setSelectedDayId(pin.dayId);
+                },
               }}
-            />
+            >
+              <Popup
+                autoPan
+                keepInView
+                maxWidth={popupMaxWidth}
+                autoPanPaddingTopLeft={padTopLeft}
+                autoPanPaddingBottomRight={padBottomRight}
+              >
+                <div className="max-w-[240px] text-sm">
+                  <p className="font-medium">{pin.name}</p>
+                  {pin.visited ? (
+                    <p className="text-xs text-ok">
+                      ✓ {t("places.filterVisited")}
+                    </p>
+                  ) : null}
+                  {pin.dayId ? (
+                    <Link
+                      href={`/schedule?day=${encodeURIComponent(pin.dayId)}`}
+                      className="inline-flex min-h-11 items-center text-ink-muted no-underline"
+                    >
+                      {pin.dayName ?? t("map.openDay")}
+                    </Link>
+                  ) : null}
+                </div>
+              </Popup>
+            </Marker>
           );
         })}
         <ClusteredDayMarkers
           pins={dayPins}
-          selectedPinId={selectedPinId}
-          onSelectPin={onSelectPinFromMap}
+          selectedDayId={selectedDayId}
+          onSelectDay={setSelectedDayId}
           padTopLeft={padTopLeft}
           padBottomRight={padBottomRight}
+          popupMaxWidth={popupMaxWidth}
         />
         <TripMapCornerStack styleId={styleId} onStyleChange={pick} />
       </MapContainer>
 
-      <div
-        ref={chipBarRef}
-        className="pointer-events-none absolute inset-x-0 z-[1100] flex items-start gap-2 pl-2 pr-14"
-        style={{
-          top: "max(0.5rem, env(safe-area-inset-top, 0px))",
-        }}
-      >
-        <div className="pointer-events-auto min-w-0 flex-1 rounded-full border border-line bg-surface/95 px-1.5 py-1 shadow-sm backdrop-blur">
-          <ChipRow
-            value={cityKey}
-            options={chipOptions}
-            onChange={onCityChange}
-            label={t("map.cityFilter")}
-          />
-        </div>
+      <div className="pointer-events-none absolute left-3 top-[max(0.5rem,env(safe-area-inset-top,0px))] z-[1000]">
+        <button
+          type="button"
+          onClick={resetView}
+          className="pointer-events-auto inline-flex min-h-11 items-center rounded-full border border-line bg-surface/95 px-3.5 text-sm font-semibold text-ink shadow-sm backdrop-blur"
+        >
+          {t("map.allPins")}
+        </button>
       </div>
 
       <div
-        ref={carouselRef}
-        className="absolute inset-x-0 z-[1100] border-t border-line bg-surface/95 shadow-[0_-6px_20px_rgba(0,0,0,0.1)] backdrop-blur"
-        style={{
-          bottom: 0,
-          paddingBottom: "max(0.25rem, env(safe-area-inset-bottom, 0px))",
-        }}
+        className={`absolute z-[1100] flex flex-col border border-line bg-surface shadow-[0_-8px_24px_rgba(0,0,0,0.12)] transition-[height] duration-200 ease-out motion-reduce:transition-none ${
+          desktop
+            ? "rounded-none border-y-0 border-l-0 shadow-[4px_0_24px_rgba(0,0,0,0.08)]"
+            : "inset-x-0 rounded-t-2xl"
+        }`}
+        style={sheetStyle}
       >
-        {placedPins.length === 0 ? (
-          <p className="px-4 py-3 text-center text-xs text-ink-muted">
-            {t("map.carouselEmpty")}
-          </p>
+        {!desktop ? (
+          <button
+            type="button"
+            aria-label={t("map.sheetHandle")}
+            onPointerDown={onHandlePointerDown}
+            onPointerMove={onHandlePointerMove}
+            onPointerUp={onHandlePointerUp}
+            onPointerCancel={onHandlePointerUp}
+            className="flex min-h-11 w-full shrink-0 cursor-grab touch-none items-center justify-center active:cursor-grabbing"
+          >
+            <span className="block h-1 w-10 rounded-full bg-line" />
+          </button>
         ) : (
-          <PlaceCarousel
-            items={carouselItems}
-            selectedPinId={selectedPinId}
-            onSnapPin={onSnapPin}
-            programmaticPinId={programmaticPinId}
-            onProgrammaticDone={onProgrammaticDone}
-          />
+          <div className="flex h-11 shrink-0 items-center px-4 text-sm font-semibold text-ink">
+            {t("map.title")}
+          </div>
         )}
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]">
+          {cityGroups.length === 0 ? (
+            <p className="type-meta text-ink-muted">{t("map.empty")}</p>
+          ) : (
+            <ul className="space-y-4">
+              {cityGroups.map((group) => (
+                <li key={group.city}>
+                  <p className="mb-1.5 flex items-baseline gap-2 text-[15px] font-semibold text-ink">
+                    <span>{labelCity(locale, group.city) ?? group.city}</span>
+                    <CityKanji city={group.city} className="text-ink-muted" />
+                  </p>
+                  <ul className="space-y-1">
+                    {group.days.map((day) => {
+                      const active = day.id === selectedDayId;
+                      const dateLabel = formatDay(day.date, locale);
+                      return (
+                        <li key={day.id}>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDayId(day.id)}
+                            className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-xl px-3 text-left text-sm ${
+                              active
+                                ? "bg-accent/10 text-accent"
+                                : "text-ink hover:bg-canvas"
+                            }`}
+                          >
+                            <span className="min-w-0">
+                              <span className="block truncate font-medium">
+                                {day.name}
+                              </span>
+                              <span className="type-meta text-ink-muted">
+                                {[
+                                  dateLabel,
+                                  t("map.stopCount", { n: day.stopCount }),
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </span>
+                            </span>
+                            <span aria-hidden className="text-ink-muted">
+                              →
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </li>
+              ))}
+            </ul>
+          )}
+          {selectedDay ? (
+            <Link
+              href={`/schedule?day=${encodeURIComponent(selectedDay.id)}`}
+              className="notebook-btn mt-3 inline-flex min-h-11 w-full items-center justify-center bg-accent px-4 text-[15px] font-medium text-white no-underline"
+            >
+              {t("map.openSchedule")}
+            </Link>
+          ) : null}
+        </div>
       </div>
     </div>
   );

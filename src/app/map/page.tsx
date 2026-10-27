@@ -17,7 +17,6 @@ function buildTripPins(
 ): TripMapPin[] {
   const dayNames = new Map(days.map((day) => [day.id, day.name]));
   const dayOrder = new Map(days.map((day, index) => [day.id, index]));
-  const dayCity = new Map(days.map((day) => [day.id, day.city]));
   const counters = new Map<string, number>();
 
   const withCoords = places
@@ -53,10 +52,6 @@ function buildTripPins(
       kind,
       visited: place.visited,
       sightNumber,
-      start: place.start,
-      type: place.type,
-      city: dayId ? (dayCity.get(dayId) ?? null) : null,
-      mapsUrl: place.mapsUrl,
     };
   });
 }
