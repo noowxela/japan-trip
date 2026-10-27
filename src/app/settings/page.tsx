@@ -7,12 +7,14 @@ import {
   SectionHeader,
 } from "@/components/compact";
 import { HapticToggle } from "@/components/haptic-toggle";
+import { PushRemindersCard } from "@/components/push-reminders-card";
 import { UnlockEditorCard } from "@/components/unlock-editor-card";
 import { PageShell, settingsGroupClass } from "@/components/page-shell";
 import { formatAppVersion } from "@/lib/app-version";
 import { t } from "@/lib/i18n/dictionaries";
 import { getLocale } from "@/lib/i18n/server";
 import { notionReady } from "@/lib/notion";
+import { isPushStoreWritable } from "@/lib/push-store";
 import { getThemePreference } from "@/lib/theme-server";
 import { getDays } from "@/lib/trip";
 
@@ -31,6 +33,11 @@ export default async function SettingsPage() {
   const themePreference = await getThemePreference();
   const ready = notionReady();
   const days = ready ? await getDays() : [];
+  const vapidPublicKey =
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim() ||
+    process.env.VAPID_PUBLIC_KEY?.trim() ||
+    "";
+  const pushStoreWritable = isPushStoreWritable();
 
   const tripLinks = [
     {
@@ -51,6 +58,11 @@ export default async function SettingsPage() {
       href: "/prep",
       label: t(locale, "more.prep"),
       detail: t(locale, "more.prepDetail"),
+    },
+    {
+      href: "/phrases",
+      label: t(locale, "more.phrases"),
+      detail: t(locale, "more.phrasesDetail"),
     },
     {
       href: "/lists",
@@ -198,6 +210,10 @@ export default async function SettingsPage() {
         <section className="space-y-1.5">
           <SectionHeader title={t(locale, "more.device")} />
           <HapticToggle />
+          <PushRemindersCard
+            vapidPublicKey={vapidPublicKey}
+            storeWritable={pushStoreWritable}
+          />
         </section>
 
         <section className="space-y-1.5">

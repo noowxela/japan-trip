@@ -20,7 +20,7 @@ Mobile-first itinerary companion PWA. Notion holds trip data; this Next.js app i
 | FX | Live MYR→JPY with static fallback `JPY_PER_RM` (39.3) |
 | Test | Vitest 3 (`npm test`); pure-logic unit tests under `src/lib/*.test.ts` |
 | CI | `.github/workflows/ci.yml` — lint, typecheck, test on push/PR (Node 22, no Notion secrets) |
-| PWA | `src/app/manifest.ts` (`start_url: /`, standalone). Serwist (`@serwist/turbopack`) SW at `/serwist/sw.js` (production only; disabled in `next dev`). Offline: navigation/runtime caches + localStorage itinerary snapshot v2 + IndexedDB outbox |
+| PWA | `src/app/manifest.ts` (`start_url: /`, standalone). Serwist (`@serwist/turbopack`) SW at `/serwist/sw.js` (production only; disabled in `next dev`). Offline: navigation/runtime caches + localStorage itinerary snapshot v2 + IndexedDB outbox. Web Push: `web-push` + SW `push`/`notificationclick` (same-origin focus + navigate try/catch); daily cron `/api/cron/reminders` (11:00 UTC; dry-run `?dry=1&now=`); subs in Upstash Redis REST or `PUSH_SUBSCRIPTIONS` env (not Notion). Env vars listed in README — do not rely on `.env.example` for push keys |
 
 Setup: `npm run setup:notion` then `npm run migrate:v2`. IDs land in `.env.local` (`NOTION_*_DS`).
 
@@ -34,6 +34,8 @@ flowchart LR
   cache[localStorage itinerary snapshot v2]
   outbox[(IndexedDB outbox)]
   sw[Serwist SW]
+  pushStore[Upstash Redis or PUSH_SUBSCRIPTIONS]
+  cron[Vercel Cron daily]
   browser --> next
   next --> notion
   next --> browser
@@ -42,11 +44,15 @@ flowchart LR
   outbox -->|replay when online| next
   browser --> sw
   sw --> browser
+  browser -->|subscribe| next
+  next --> pushStore
+  cron --> next
+  next -->|web-push| sw
 ```
 
 - **Read:** server components call cached getters in `src/lib/trip.ts` → `src/lib/notion.ts` `queryAll()`.
 - **Write (online):** forms → `src/app/actions.ts` → Notion `pages.create` / `update` → `revalidatePath` / `updateTag`.
-- **Offline read:** Serwist caches visited documents/assets; `TripCacheSync` writes days/places/transit/stays/spend/prep to `japan-trip-itinerary-v1` (content `v: 2`). Schedule and `/~offline` can fall back from the snapshot. Pages that fail to reach Notion while online keep existing fallbacks.
+- **Offline read:** Serwist caches visited documents/assets; `TripCacheSync` writes days/places/transit/stays/spend/prep to `japan-trip-itinerary-v1` (content `v: 2`). Schedule, `/phrases` (stays for hotel cards), and `/~offline` can fall back from the snapshot. Pages that fail to reach Notion while online keep existing fallbacks. Phrase deck data is bundled in `src/lib/phrases.ts` (no Notion). `useSyncExternalStore` readers for trip cache + custom phrases memoize by raw localStorage string (stable snapshot refs; React #185).
 - **Offline write:** client wrappers enqueue `toggleVisited` / `addSpend` / `togglePrep` into IndexedDB (`japan-trip` / `outbox`), apply optimistic UI, replay on `online` / app start / every 30s. Toggles send desired state; spend uses `clientId` + `createdAt` for idempotency.
 
 Pages are `export const dynamic = "force-dynamic"`. No webhooks, no poll, no multi-device conflict UI.
@@ -71,7 +77,7 @@ Bottom nav (`src/components/bottom-nav.tsx`): Overview `/`, Schedule `/schedule`
 
 Primary day UI is unified Schedule: `/schedule?day=<id|today>&mode=<now|edit>`. Redirects: `/today` → `day=today&mode=now`, `/days/:id` → `day=:id`. `/days` list remains under More.
 
-Secondary: `/map`, `/lists`, `/places`, `/stays`, `/transit`, `/days`, `/prep`. `/spend` redirects to `/budget`. Offline shell: `/~offline`.
+Secondary: `/map`, `/lists`, `/places`, `/stays`, `/transit`, `/days`, `/prep`, `/phrases` (bundled Japanese phrase cards + hotel address cards from stays; custom phrases in localStorage). `/spend` redirects to `/budget`. Offline shell: `/~offline`. `/phrases` is also in Serwist `additionalPrecacheEntries`.
 
 i18n: `src/lib/i18n/dictionaries.ts` + `getLocale()` (`lang` cookie) + `I18nProvider` / `useT()`.
 
@@ -92,7 +98,10 @@ Viewers: no login; anyone with the deployed URL can **read**. Editors: PIN in No
 | `src/lib/edit-session.ts` | PIN cookie |
 | `src/lib/trip-cache.ts` | localStorage snapshot v2 |
 | `src/lib/outbox-core.ts` / `outbox.ts` | Outbox pure logic + IndexedDB I/O |
-| `src/app/sw.ts` | Serwist service worker |
+| `src/app/sw.ts` | Serwist service worker (+ push / notificationclick) |
+| `src/lib/reminders.ts` | Pure evening-before reminder planner (Tokyo) |
+| `src/lib/push-store.ts` / `push.ts` | Subscription store + `web-push` send |
+| `src/app/api/push/*` / `api/cron/reminders` | Subscribe / test / daily cron |
 | `src/lib/spend.ts` / `exchange.ts` | Budget math and FX |
 | `src/lib/geocode.ts` | Nominatim + landmarks |
 | `src/lib/theme.ts` / `theme-server.ts` | Appearance cookie + boot script |

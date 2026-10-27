@@ -23,6 +23,7 @@ import { MapsPinLink } from "@/components/maps-pin-link";
 import { useOutbox } from "@/components/outbox-provider";
 import { useToast } from "@/components/toast-provider";
 import { coordsOfPlace } from "@/lib/geocode";
+import { haptic } from "@/lib/haptic";
 import { dateKey, tokyoToday } from "@/lib/format";
 import { labelType } from "@/lib/i18n/dictionaries";
 import type { Place, TripDay } from "@/lib/types";
@@ -182,19 +183,28 @@ export function PlacesList({
             {canEdit ? (
               <ActionSheetItem
                 disabled={busy}
+                data-haptic="manual"
                 onClick={() => {
                   const next = !menuVisited;
                   setMenuId(null);
+                  haptic("success");
                   startTransition(async () => {
-                    await markVisited(menuPlace.id, next);
+                    const result = await markVisited(menuPlace.id, next, {
+                      silent: true,
+                    });
+                    if (!result.ok) return;
                     toast(
-                      next
-                        ? t("action.markedVisited")
-                        : t("action.markedUnvisited"),
+                      result.message == null
+                        ? t("offline.savedQueued")
+                        : next
+                          ? t("action.markedVisited")
+                          : t("action.markedUnvisited"),
                       {
                         actionLabel: t("common.undo"),
                         onAction: () => {
-                          void markVisited(menuPlace.id, !next);
+                          void markVisited(menuPlace.id, !next, {
+                            silent: true,
+                          });
                         },
                       },
                     );

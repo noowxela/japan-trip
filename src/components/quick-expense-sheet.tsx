@@ -11,6 +11,7 @@ import { useOutbox } from "@/components/outbox-provider";
 import { btnPrimaryClass, fieldClass } from "@/components/page-shell";
 import { useToast } from "@/components/toast-provider";
 import { dateKey, formatDay, tokyoNowTime, tokyoToday } from "@/lib/format";
+import { haptic } from "@/lib/haptic";
 import { labelCategory } from "@/lib/i18n/dictionaries";
 import { deleteOutboxEntry, listOutbox } from "@/lib/outbox";
 import {
@@ -177,10 +178,12 @@ function QuickExpenseForm({
       const result = await submitSpend(formData, { silent: true });
       if (!result.ok) {
         setError(result.error);
+        haptic("error");
         toast(result.error, "error");
         return;
       }
 
+      haptic("success");
       onClose();
 
       const undoQueued = async () => {
@@ -364,6 +367,7 @@ function QuickExpenseForm({
         <button
           type="button"
           disabled={pending}
+          data-haptic="manual"
           onClick={onSave}
           className={`${btnPrimaryClass} w-full py-3`}
         >

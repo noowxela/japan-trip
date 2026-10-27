@@ -530,6 +530,14 @@ export function ScheduleView({
                       : null}
                   </div>
                   <div className="flex shrink-0 items-center gap-0.5">
+                    <Link
+                      href="/phrases"
+                      aria-label={t("phrases.navAria")}
+                      className="inline-flex h-10 items-center gap-0.5 px-1.5 text-[12px] font-medium text-ink-muted no-underline"
+                    >
+                      <span aria-hidden>あ</span>
+                      {t("phrases.navShort")}
+                    </Link>
                     <EditorLockButton />
                     <button
                       type="button"

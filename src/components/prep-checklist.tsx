@@ -16,6 +16,7 @@ import { useCanEdit } from "@/components/edit-session";
 import { useT } from "@/components/i18n-provider";
 import { useOutbox } from "@/components/outbox-provider";
 import { useTrashUndo } from "@/components/use-trash-undo";
+import { haptic } from "@/lib/haptic";
 import type { PrepItem } from "@/lib/types";
 
 export function PrepChecklist({ items }: { items: PrepItem[] }) {
@@ -107,8 +108,10 @@ function PrepRow({ item, canEdit }: { item: PrepItem; canEdit: boolean }) {
           <button
             type="button"
             disabled={!canEdit || pending}
+            data-haptic="manual"
             onClick={() => {
               if (!canEdit) return;
+              haptic(item.done ? "tap" : "success");
               startTransition(async () => {
                 await markPrep(item.id, !item.done);
               });

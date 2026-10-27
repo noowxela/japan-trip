@@ -24,3 +24,4 @@ export { CompactRow, CompactRowList } from "@/components/compact/compact-row";
 export { PageHeader } from "@/components/compact/page-header";
 export { SectionHeader } from "@/components/compact/section-header";
 export { SummaryStrip } from "@/components/compact/summary-strip";
+export { SwipeRow } from "@/components/compact/swipe-row";

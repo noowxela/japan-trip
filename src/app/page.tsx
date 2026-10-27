@@ -135,7 +135,21 @@ export default async function OverviewPage() {
         <PageHeader
           eyebrow={t(locale, "overview.eyebrow")}
           title={t(locale, "overview.title")}
-          action={<EditorLockButton />}
+          action={
+            <div className="flex items-center gap-1">
+              <Link
+                href="/phrases"
+                aria-label={t(locale, "phrases.navAria")}
+                className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-[12px] font-medium text-ink-muted no-underline hover:text-ink"
+              >
+                <span aria-hidden className="text-[14px]">
+                  あ
+                </span>
+                {t(locale, "phrases.navShort")}
+              </Link>
+              <EditorLockButton />
+            </div>
+          }
         />
 
         <SummaryStrip>{summary}</SummaryStrip>
@@ -186,6 +200,9 @@ export default async function OverviewPage() {
           </Link>
           <Link href="/prep" className="font-medium text-ink-muted no-underline">
             {t(locale, "prep.title")}
+          </Link>
+          <Link href="/phrases" className="font-medium text-ink-muted no-underline">
+            {t(locale, "phrases.title")}
           </Link>
         </div>
       </PageShell>

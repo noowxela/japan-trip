@@ -6,6 +6,7 @@ import { HankoStamp } from "@/components/hanko-stamp";
 import { useT } from "@/components/i18n-provider";
 import { useOutbox } from "@/components/outbox-provider";
 import { useToast } from "@/components/toast-provider";
+import { haptic } from "@/lib/haptic";
 
 export function VisitedToggle({
   id,
@@ -39,20 +40,27 @@ export function VisitedToggle({
     <button
       type="button"
       disabled={pending}
+      data-haptic="manual"
       onClick={() => {
         const next = !effective;
         if (next) {
           setPop(true);
           window.setTimeout(() => setPop(false), 450);
         }
+        haptic("success");
         startTransition(async () => {
-          await markVisited(id, next);
+          const result = await markVisited(id, next, { silent: true });
+          if (!result.ok) return;
           toast(
-            next ? t("action.markedVisited") : t("action.markedUnvisited"),
+            result.message == null
+              ? t("offline.savedQueued")
+              : next
+                ? t("action.markedVisited")
+                : t("action.markedUnvisited"),
             {
               actionLabel: t("common.undo"),
               onAction: () => {
-                void markVisited(id, !next);
+                void markVisited(id, !next, { silent: true });
               },
             },
           );

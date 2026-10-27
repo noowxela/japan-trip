@@ -33,18 +33,21 @@ export function ActionSheetItem({
   disabled,
   danger = false,
   className = "",
+  "data-haptic": dataHaptic,
 }: {
   children: ReactNode;
   onClick?: () => void;
   disabled?: boolean;
   danger?: boolean;
   className?: string;
+  "data-haptic"?: "manual";
 }) {
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
+      data-haptic={dataHaptic}
       className={`${danger ? compactBtnDangerClass : compactSheetActionClass} ${className}`.trim()}
     >
       {children}

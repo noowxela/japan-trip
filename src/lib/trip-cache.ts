@@ -4,6 +4,10 @@ export const TRIP_CACHE_STORAGE_KEY = "japan-trip-itinerary-v1";
 /** Same-tab signal for useSyncExternalStore subscribers. */
 export const TRIP_CACHE_CHANGE_EVENT = "japan-trip-cache-change";
 
+/** Stable empty stays for useSyncExternalStore snapshots (React #185). */
+export const EMPTY_STAYS: Stay[] = [];
+Object.freeze(EMPTY_STAYS);
+
 export type TripSnapshotV1 = {
   v: 1;
   savedAt: string;
@@ -78,6 +82,39 @@ export function migrateTripSnapshot(value: unknown): TripSnapshot | null {
 export function invalidateTripCacheMemory() {
   memoryRaw = undefined;
   memorySnapshot = null;
+}
+
+/**
+ * Cached trip-snapshot reader. Re-parses only when the raw string changes.
+ * Inject `getRaw` for pure tests (no jsdom / localStorage). Does not write
+ * migrations — callers that need v1→v2 persist should use `readTripCache`.
+ */
+export function readCachedTripSnapshot(
+  getRaw: () => string | null,
+): TripSnapshot | null {
+  const raw = getRaw();
+  if (raw === memoryRaw) return memorySnapshot;
+  if (!raw) {
+    memoryRaw = raw;
+    memorySnapshot = null;
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    const migrated = migrateTripSnapshot(parsed);
+    memoryRaw = raw;
+    memorySnapshot = migrated;
+    return memorySnapshot;
+  } catch {
+    memoryRaw = raw;
+    memorySnapshot = null;
+    return null;
+  }
+}
+
+/** Stays from the memoized trip snapshot (never a fresh `[]`). */
+export function readTripCacheStays(): Stay[] {
+  return readTripCache()?.stays ?? EMPTY_STAYS;
 }
 
 export function readTripCache(): TripSnapshot | null {

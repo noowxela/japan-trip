@@ -391,11 +391,11 @@ fieldset:disabled [data-haptic-overlay],
 
 @keyframes hanko-pop {
   0% {
-    transform: rotate(-6deg) scale(0.55);
+    transform: rotate(-8deg) scale(0.6);
     opacity: 0.35;
   }
-  70% {
-    transform: rotate(-6deg) scale(1.12);
+  65% {
+    transform: rotate(-4deg) scale(1.08);
     opacity: 1;
   }
   100% {
@@ -411,12 +411,33 @@ fieldset:disabled [data-haptic-overlay],
 @keyframes toast-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(14px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes toast-check-draw {
+  from {
+    stroke-dashoffset: 18;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.toast-check-path {
+  stroke-dasharray: 18;
+  stroke-dashoffset: 0;
+  animation: toast-check-draw 320ms ease-out;
+}
+
+/* Full-screen phrase card: flip 180° for across-table reading */
+.phrase-show-flip {
+  transform: rotate(180deg);
+  transition: transform 220ms ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -438,5 +459,14 @@ fieldset:disabled [data-haptic-overlay],
 
   .hanko-pop {
     animation: none !important;
+  }
+
+  .toast-check-path {
+    animation: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+
+  .phrase-show-flip {
+    transition: none;
   }
 }

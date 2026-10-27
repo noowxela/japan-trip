@@ -48,3 +48,28 @@ Roughly medium (1–2 focused sessions): shared row chrome + four list migration
 ### Follow-ups not done tonight
 
 - Prep swipe-to-delete (with Undo)
+
+## Chosen — SDD 010 (2026-10-27)
+
+| Status | Item | Notes |
+| --- | --- | --- |
+| Done | Schedule swipe actions | Right = visited + Undo; left = “…” sheet — [010](sdd/010-swipe-haptics-push-phrases.md) |
+| Done | Haptics + micro-animations | `haptic(kind)` + 済/expense/toast motion — [010](sdd/010-swipe-haptics-push-phrases.md) |
+| Done (run 2) | Web Push pre-trip / day-before | Cron + Settings + SW; Redis or `PUSH_SUBSCRIPTIONS` — [010](sdd/010-swipe-haptics-push-phrases.md) § item 3 |
+| Done (run 3) | Japanese phrase cards `/phrases` | Show-to-staff + hotel cards + custom localStorage — [010](sdd/010-swipe-haptics-push-phrases.md) § item 4 |
+
+### Push follow-ups (optional)
+
+- Device verify iOS PWA Enable + Send test + live cron (agent cannot run Alex’s `next dev`)
+- Multi-device: if several phones, prefer Redis over a single env JSON blob
+
+## Backlog — not chosen (2026-10-27)
+
+- Overview 当天倒数 — countdown to next stop with walk time; amber when late
+- 全局搜索 — global search across places / stays / transit / expenses
+- 大字模式 — temporary large-text mode for on-the-go readability
+- 天气 — weather per day + rain hint on schedule
+- 交通卡和车票 — JR Pass / Suica / shinkansen QR offline wallet
+- 收据拍照 — receipt photo on expense, stored to Notion
+- 分账结算 — settle-up page in RM for shared spend
+- 旅行日记 — daily journal with photos + export recap

@@ -34,6 +34,7 @@ export function HapticToggle() {
         role="switch"
         aria-checked={enabled}
         aria-label={t("haptic.label")}
+        data-haptic="manual"
         onClick={() => {
           const next = !enabled;
           setHapticsEnabled(next);

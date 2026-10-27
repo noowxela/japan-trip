@@ -100,6 +100,7 @@ export function BottomNav() {
       match: (path: string) =>
         path === "/settings" ||
         path === "/prep" ||
+        path === "/phrases" ||
         path === "/lists" ||
         path === "/places" ||
         path === "/stays" ||

@@ -1,16 +1,24 @@
 export const HAPTICS_STORAGE_KEY = "japan-trip-haptics";
 export const HAPTICS_CHANGED_EVENT = "japan-trip-haptics-changed";
 
-const TAP_MS = 15;
+export type HapticKind = "tap" | "success" | "warning" | "error" | "undo";
+
+export const HAPTIC_PATTERNS: Record<HapticKind, number | number[]> = {
+  tap: 15,
+  success: [12, 40, 28],
+  warning: [25, 40, 25],
+  error: [40, 50, 40],
+  undo: [18, 30, 18],
+};
+
 const TAP_SLOP_PX = 10;
 const SCROLL_CANCEL_PX = 5;
-const SUCCESS_PATTERN = [12, 40, 28];
-const ERROR_PATTERN = [40, 50, 40];
 const OVERLAY_ATTR = "data-haptic-overlay";
 const HAPTIC_SELECTOR =
   "button, a[href], [role='button'], .notebook-press, .notebook-btn, input[type='button'], input[type='submit'], input[type='reset']";
 
 let iosSwitch: HTMLInputElement | null = null;
+let iosSwitchLabel: HTMLLabelElement | null = null;
 
 export function hapticsEnabled(): boolean {
   if (typeof window === "undefined") return true;
@@ -41,16 +49,21 @@ export function shouldUseIosOverlays(): boolean {
   );
 }
 
+/** Programmatic haptic; no-ops when disabled, unsupported, or SSR. */
+export function haptic(kind: HapticKind): void {
+  vibrateOrTick(HAPTIC_PATTERNS[kind]);
+}
+
 export function hapticTap(): void {
-  vibrateOrTick(TAP_MS);
+  haptic("tap");
 }
 
 export function hapticSuccess(): void {
-  vibrateOrTick(SUCCESS_PATTERN);
+  haptic("success");
 }
 
 export function hapticError(): void {
-  vibrateOrTick(ERROR_PATTERN);
+  haptic("error");
 }
 
 export function isControlDisabled(el: Element): boolean {
@@ -173,6 +186,8 @@ function isSkipped(el: Element): boolean {
   return (
     el.hasAttribute(OVERLAY_ATTR) ||
     Boolean(el.closest("[data-no-haptic]")) ||
+    // Caller fires haptic() itself (success/undo/etc.) — skip provider tap.
+    Boolean(el.closest('[data-haptic="manual"]')) ||
     el.getAttribute("aria-disabled") === "true"
   );
 }
@@ -251,23 +266,56 @@ function vibrateOrTick(pattern: number | number[]): void {
 }
 
 function iosTick(): void {
-  const input = getIosSwitch();
-  if (!input) return;
-  input.click();
+  const pair = getIosSwitchPair();
+  if (!pair) return;
+  try {
+    // iOS 18+ Taptic often needs a label activation, not only input.click().
+    pair.label.click();
+  } catch {
+    try {
+      pair.input.click();
+    } catch {
+      // Progressive enhancement.
+    }
+  }
 }
 
-function getIosSwitch(): HTMLInputElement | null {
+function getIosSwitchPair(): {
+  input: HTMLInputElement;
+  label: HTMLLabelElement;
+} | null {
   if (typeof document === "undefined") return null;
-  if (iosSwitch?.isConnected) return iosSwitch;
+  if (iosSwitch?.isConnected && iosSwitchLabel?.isConnected) {
+    return { input: iosSwitch, label: iosSwitchLabel };
+  }
 
-  const input = document.createElement("input");
-  input.type = "checkbox";
-  input.setAttribute("switch", "");
-  input.setAttribute("aria-hidden", "true");
-  input.tabIndex = -1;
-  input.style.cssText =
-    "position:fixed;left:0;top:0;width:1px;height:1px;margin:0;padding:0;opacity:0;pointer-events:none;border:0;";
-  document.body.appendChild(input);
+  const id = "japan-trip-ios-haptic-switch";
+  let input = document.getElementById(id) as HTMLInputElement | null;
+  if (!input) {
+    input = document.createElement("input");
+    input.type = "checkbox";
+    input.id = id;
+    input.setAttribute("switch", "");
+    input.setAttribute("aria-hidden", "true");
+    input.tabIndex = -1;
+    input.style.cssText =
+      "position:fixed;left:0;top:0;width:1px;height:1px;margin:0;padding:0;opacity:0;pointer-events:none;border:0;";
+    document.body.appendChild(input);
+  }
+
+  let label = document.querySelector(
+    `label[for="${id}"]`,
+  ) as HTMLLabelElement | null;
+  if (!label) {
+    label = document.createElement("label");
+    label.htmlFor = id;
+    label.setAttribute("aria-hidden", "true");
+    label.style.cssText =
+      "position:fixed;left:0;top:0;width:1px;height:1px;margin:0;padding:0;opacity:0;pointer-events:none;border:0;";
+    document.body.appendChild(label);
+  }
+
   iosSwitch = input;
-  return input;
+  iosSwitchLabel = label;
+  return { input, label };
 }

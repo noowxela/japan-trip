@@ -56,7 +56,11 @@ type OutboxContextValue = {
   refresh: () => Promise<void>;
   replay: () => Promise<void>;
   retryEntry: (id: string) => Promise<void>;
-  markVisited: (id: string, visited: boolean) => Promise<ActionResult>;
+  markVisited: (
+    id: string,
+    visited: boolean,
+    options?: { silent?: boolean },
+  ) => Promise<ActionResult>;
   markPrep: (id: string, done: boolean) => Promise<ActionResult>;
   submitSpend: (
     formData: FormData,
@@ -279,10 +283,18 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
   );
 
   const markVisited = useCallback(
-    async (id: string, visited: boolean) => {
+    async (
+      id: string,
+      visited: boolean,
+      options?: { silent?: boolean },
+    ) => {
       setVisitedOverlay((current) => ({ ...current, [id]: visited }));
       const outcome = await runToggleVisited(id, visited);
-      applyEnqueueToast(outcome, toast, t, notify);
+      if (options?.silent) {
+        if (outcome.status === "error") void notify(outcome.result);
+      } else {
+        applyEnqueueToast(outcome, toast, t, notify);
+      }
       if (outcome.status === "queued") {
         await refresh();
         return { ok: true as const };

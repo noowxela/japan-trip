@@ -7,6 +7,7 @@ import {
   parkPlaceAsPending,
 } from "@/app/actions";
 import { useActionToast } from "@/components/action-form";
+import { SwipeRow } from "@/components/compact/swipe-row";
 import { useCanEdit } from "@/components/edit-session";
 import {
   useHiddenMapPinIds,
@@ -18,6 +19,7 @@ import { MapsPinLink } from "@/components/maps-pin-link";
 import { Modal } from "@/components/modal";
 import { useOutbox } from "@/components/outbox-provider";
 import { useToast } from "@/components/toast-provider";
+import { haptic } from "@/lib/haptic";
 import {
   formatGapMinutes,
   formatTime,
@@ -448,14 +450,20 @@ export function DayAgendaBoard({
       setPopId(id);
       window.setTimeout(() => setPopId((current) => (current === id ? null : current)), 450);
     }
+    haptic("success");
     startTransition(async () => {
-      await markVisited(id, visited);
+      const result = await markVisited(id, visited, { silent: true });
+      if (!result.ok) return;
       toast(
-        visited ? t("action.markedVisited") : t("action.markedUnvisited"),
+        result.message == null
+          ? t("offline.savedQueued")
+          : visited
+            ? t("action.markedVisited")
+            : t("action.markedUnvisited"),
         {
           actionLabel: t("common.undo"),
           onAction: () => {
-            void markVisited(id, !visited);
+            void markVisited(id, !visited, { silent: true });
           },
         },
       );
@@ -640,73 +648,118 @@ export function DayAgendaBoard({
                         </div>
                       </div>
                     ) : (
-                      <div
-                        draggable={canEdit && !visited}
-                        onDragStart={(event) => {
-                          if (visited) return;
-                          event.dataTransfer.setData(
-                            "text/plain",
-                            JSON.stringify({ id: item.id, from: "agenda" }),
-                          );
-                          event.dataTransfer.effectAllowed = "move";
-                        }}
-                        className={`relative flex min-h-11 min-w-0 items-center gap-1 py-1.5 pr-9 ${
-                          isFocus ? "border-l-2 border-accent pl-2 -ml-0.5" : ""
-                        }`}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="flex min-w-0 items-center gap-1.5 truncate text-[13px] leading-4">
-                            {visited ? (
-                              <HankoStamp
-                                variant="ok"
-                                size="sm"
-                                pop={popId === item.id}
-                                className="shrink-0"
-                              >
-                                {t("theme.stampVisited")}
-                              </HankoStamp>
-                            ) : null}
-                            <span
-                              className={`truncate font-medium ${
-                                visited
-                                  ? "text-ink-muted line-through decoration-line"
-                                  : "text-ink"
-                              }`}
-                            >
-                              {item.name}
+                      <SwipeRow
+                        className={isFocus ? "rounded-r-lg" : ""}
+                        leftReveal={
+                          <span className="flex flex-col items-center gap-0.5">
+                            <span className="font-[ui-serif,Georgia,'Noto Serif JP',serif] text-sm font-bold">
+                              {t("theme.stampVisited")}
                             </span>
-                            {primaryMeta.length > 0 ? (
-                              <span className="truncate text-ink-muted">
-                                · {primaryMeta.join(" · ")}
-                              </span>
-                            ) : null}
-                          </p>
-                          {secondaryBits.length > 0 ? (
-                            <p className="mt-0.5 truncate text-[11px] leading-3 text-ink-muted">
-                              {secondaryBits.join(" · ")}
-                            </p>
-                          ) : null}
-                        </div>
-                        <button
-                          type="button"
-                          aria-label={t("agenda.actionsFor", {
-                            name: item.name,
-                          })}
-                          draggable={false}
-                          onPointerDown={(event) => event.stopPropagation()}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setMenuId(item.id);
+                            <span className="text-[10px] font-medium opacity-90">
+                              {t("agenda.swipeVisited")}
+                            </span>
+                          </span>
+                        }
+                        rightReveal={
+                          <span aria-hidden>{t("common.more")}</span>
+                        }
+                        onSwipeRight={
+                          canEdit
+                            ? () => setVisited(item.id, !visited)
+                            : undefined
+                        }
+                        onSwipeLeft={() => setMenuId(item.id)}
+                      >
+                        <div
+                          draggable={canEdit && !visited}
+                          onDragStart={(event) => {
+                            if (visited) return;
+                            event.dataTransfer.setData(
+                              "text/plain",
+                              JSON.stringify({ id: item.id, from: "agenda" }),
+                            );
+                            event.dataTransfer.effectAllowed = "move";
                           }}
-                          className="absolute right-0 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted hover:bg-canvas hover:text-ink"
+                          className={`relative flex min-h-11 min-w-0 items-center gap-1 bg-canvas py-1.5 pr-9 ${
+                            isFocus
+                              ? "border-l-2 border-accent bg-accent/5 pl-2 -ml-0.5"
+                              : ""
+                          }`}
                         >
-                          <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
-                            <circle cx="6" cy="12" r="1.5" fill="currentColor" />
-                            <circle cx="12" cy="12" r="1.5" fill="currentColor" />
-                            <circle cx="18" cy="12" r="1.5" fill="currentColor" />
-                          </svg>
-                        </button>
-                      </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="flex min-w-0 items-center gap-1.5 truncate text-[13px] leading-4">
+                              {visited ? (
+                                <HankoStamp
+                                  variant="ok"
+                                  size="sm"
+                                  pop={popId === item.id}
+                                  className="shrink-0"
+                                >
+                                  {t("theme.stampVisited")}
+                                </HankoStamp>
+                              ) : null}
+                              <span
+                                className={`truncate font-medium ${
+                                  visited
+                                    ? "text-ink-muted line-through decoration-line"
+                                    : "text-ink"
+                                }`}
+                              >
+                                {item.name}
+                              </span>
+                              {primaryMeta.length > 0 ? (
+                                <span className="truncate text-ink-muted">
+                                  · {primaryMeta.join(" · ")}
+                                </span>
+                              ) : null}
+                            </p>
+                            {secondaryBits.length > 0 ? (
+                              <p className="mt-0.5 truncate text-[11px] leading-3 text-ink-muted">
+                                {secondaryBits.join(" · ")}
+                              </p>
+                            ) : null}
+                          </div>
+                          <button
+                            type="button"
+                            data-no-swipe=""
+                            aria-label={t("agenda.actionsFor", {
+                              name: item.name,
+                            })}
+                            draggable={false}
+                            onPointerDown={(event) => event.stopPropagation()}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setMenuId(item.id);
+                            }}
+                            className="absolute right-0 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted hover:bg-canvas hover:text-ink"
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              className="h-4 w-4"
+                              aria-hidden
+                            >
+                              <circle
+                                cx="6"
+                                cy="12"
+                                r="1.5"
+                                fill="currentColor"
+                              />
+                              <circle
+                                cx="12"
+                                cy="12"
+                                r="1.5"
+                                fill="currentColor"
+                              />
+                              <circle
+                                cx="18"
+                                cy="12"
+                                r="1.5"
+                                fill="currentColor"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                      </SwipeRow>
                     )}
                   </div>
                 </li>
@@ -762,6 +815,7 @@ export function DayAgendaBoard({
               <button
                 type="button"
                 disabled={busy}
+                data-haptic="manual"
                 onClick={() =>
                   setVisited(menuItem.id, !isVisited(menuItem))
                 }

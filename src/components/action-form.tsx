@@ -38,6 +38,7 @@ export function ActionForm({
   return (
     <form
       className={className}
+      data-haptic="manual"
       onSubmit={(event) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
