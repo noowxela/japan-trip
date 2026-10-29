@@ -1,5 +1,5 @@
-import { TimelineSkeletonPage } from "@/components/timeline-skeleton";
+import { ScheduleSkeleton } from "@/components/page-skeletons";
 
 export default function ScheduleLoading() {
-  return <TimelineSkeletonPage rows={7} />;
+  return <ScheduleSkeleton />;
 }

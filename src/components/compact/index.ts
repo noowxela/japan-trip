@@ -25,3 +25,16 @@ export { PageHeader } from "@/components/compact/page-header";
 export { SectionHeader } from "@/components/compact/section-header";
 export { SummaryStrip } from "@/components/compact/summary-strip";
 export { SwipeRow } from "@/components/compact/swipe-row";
+export {
+  SkeletonBar,
+  SkeletonChips,
+  SkeletonHeader,
+  SkeletonLine,
+  SkeletonPage,
+  SkeletonRow,
+  SkeletonRows,
+  SkeletonSectionHeader,
+  SkeletonSegmented,
+  SkeletonStatus,
+  SkeletonStrip,
+} from "@/components/compact/skeleton";

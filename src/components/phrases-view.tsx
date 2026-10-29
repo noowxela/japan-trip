@@ -24,6 +24,7 @@ import {
 import { EmptyState } from "@/components/empty-state";
 import { useT } from "@/components/i18n-provider";
 import { PageShell } from "@/components/page-shell";
+import { PhrasesSkeleton } from "@/components/page-skeletons";
 import {
   BUILTIN_PHRASES,
   CUSTOM_PHRASES_STORAGE_KEY,
@@ -703,7 +704,6 @@ function PhraseShowOverlay({
 
 /** Offline / Notion-fail: stays from trip snapshot. */
 export function PhrasesOfflineFallback() {
-  const { t } = useT();
   const tripSnapshot = useSyncExternalStore(
     subscribeTripCache,
     getTripCacheSnapshot,
@@ -718,11 +718,7 @@ export function PhrasesOfflineFallback() {
   const stays = tripSnapshot?.stays ?? EMPTY_STAYS;
 
   if (!ready) {
-    return (
-      <div className="flex h-dvh items-center justify-center bg-canvas px-4 text-sm text-ink-muted">
-        {t("common.loading")}
-      </div>
-    );
+    return <PhrasesSkeleton />;
   }
 
   return <PhrasesView initialStays={stays} fromCache />;

@@ -5,6 +5,7 @@ import { useSyncExternalStore } from "react";
 import { CacheFallbackSignal } from "@/components/cache-fallback";
 import { EmptyState } from "@/components/empty-state";
 import { useT } from "@/components/i18n-provider";
+import { ScheduleSkeleton } from "@/components/page-skeletons";
 import { ScheduleView } from "@/components/schedule-view";
 import { schedulePropsFromSnapshot } from "@/lib/schedule-pins";
 import { readTripCache, TRIP_CACHE_STORAGE_KEY } from "@/lib/trip-cache";
@@ -70,11 +71,7 @@ export function ScheduleOfflineFallback({
   );
 
   if (!state.ready) {
-    return (
-      <div className="flex h-dvh items-center justify-center bg-canvas px-4 text-sm text-ink-muted">
-        {t("schedule.loadingSaved")}
-      </div>
-    );
+    return <ScheduleSkeleton />;
   }
 
   if (!state.props) {

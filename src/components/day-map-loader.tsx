@@ -2,20 +2,11 @@
 
 import nextDynamic from "next/dynamic";
 import type { DayMapPin } from "@/components/day-map";
-import { useT } from "@/components/i18n-provider";
-
-function MapLoading() {
-  const { t } = useT();
-  return (
-    <div className="flex h-full min-h-[inherit] items-center justify-center bg-canvas text-sm text-ink-muted">
-      {t("map.loading")}
-    </div>
-  );
-}
+import { MapAreaSkeleton } from "@/components/page-skeletons";
 
 const DayMap = nextDynamic(() => import("@/components/day-map"), {
   ssr: false,
-  loading: () => <MapLoading />,
+  loading: () => <MapAreaSkeleton />,
 });
 
 export function DayMapLoader({

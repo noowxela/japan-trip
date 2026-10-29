@@ -18,3 +18,4 @@ Living specs for this repo. Change specs stay `draft` until approved. Do not tre
 | [011](011-phrases-uses-snapshot-stability.md) | /phrases USES snapshot stability (#185) | implemented | Cache custom phrases + EMPTY stays; fix hydrate max-update-depth |
 | [012](012-silent-mark-visited-toast.md) | Silent markVisited toast | implemented | Optional `{ silent }` so Undo callers show one toast |
 | [013](013-daily-countdown-push.md) | Daily countdown push | implemented | Morning MYT countdown cron + per-sub prefs; departureTransitBody skips duplicate route in name |
+| [014](014-loading-skeletons.md) | Loading skeletons match compact pages | implemented | Compact skeleton primitives; per-route `loading.tsx` (incl. map drawer, schedule sheet, expense slide-in); offline/map-chunk placeholders reuse them |

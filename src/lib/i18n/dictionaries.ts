@@ -57,7 +57,6 @@ const en = {
   "schedule.expand": "Expand schedule",
   "schedule.collapse": "Collapse schedule",
   "schedule.savedItinerary": "Saved itinerary · {time}",
-  "schedule.loadingSaved": "Loading saved itinerary…",
   "schedule.offlineTitle": "Can't reach Notion",
   "schedule.offlineBody":
     "No saved itinerary on this phone. Open Schedule once while online, then it will work underground.",
@@ -470,7 +469,6 @@ const en = {
   "map.style.satellite": "Sat",
   "offline.cacheBanner": "Notion connection failed — showing cached data",
   "offline.offlineBanner": "You're offline — showing cached data",
-  "a11y.loadingTimeline": "Loading timeline",
 
   "flight.emptyTitle": "No flights yet",
   "flight.emptyBody": "Add flights in Transit, or link them to a day on the schedule.",
@@ -709,7 +707,6 @@ const zh: Record<DictKey, string> = {
   "schedule.expand": "展开行程",
   "schedule.collapse": "收起行程",
   "schedule.savedItinerary": "已存行程 · {time}",
-  "schedule.loadingSaved": "正在加载已存行程…",
   "schedule.offlineTitle": "无法连接 Notion",
   "schedule.offlineBody":
     "这台手机还没有已存行程。请先在有网时打开一次行程页，之后地铁里也能用。",
@@ -1120,7 +1117,6 @@ const zh: Record<DictKey, string> = {
   "map.style.satellite": "卫星",
   "offline.cacheBanner": "Notion 连接失败，显示的是缓存数据",
   "offline.offlineBanner": "当前离线，显示的是缓存数据",
-  "a11y.loadingTimeline": "正在加载时间线",
 
   "flight.emptyTitle": "还没有航班",
   "flight.emptyBody": "在交通中添加航班，或在行程中关联到某一天。",
