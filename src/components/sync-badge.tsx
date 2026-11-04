@@ -8,6 +8,11 @@ import { useT } from "@/components/i18n-provider";
 import { formatTime } from "@/lib/format";
 import { readTripCache, TRIP_CACHE_STORAGE_KEY } from "@/lib/trip-cache";
 import {
+  isServedFromCacheMessage,
+  staleSinceIso,
+  type ServedFromCacheMessage,
+} from "@/lib/offline-status";
+import {
   type AddSpendPayload,
   type OutboxEntry,
   type TogglePrepPayload,
@@ -80,9 +85,20 @@ export function SyncBadge() {
   const hydrated = useSyncExternalStore(subscribeMounted, () => true, () => false);
   const savedAt = useSyncExternalStore(subscribeSavedAt, getSavedAt, () => null);
   const [open, setOpen] = useState(false);
+  const [served, setServed] = useState<ServedFromCacheMessage | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const onSchedule = pathname === "/schedule" || pathname.startsWith("/schedule?");
   const onMap = pathname === "/map";
+
+  useEffect(() => {
+    const sw = typeof navigator === "undefined" ? undefined : navigator.serviceWorker;
+    if (!sw) return;
+    const onMessage = (event: MessageEvent) => {
+      if (isServedFromCacheMessage(event.data)) setServed(event.data);
+    };
+    sw.addEventListener("message", onMessage);
+    return () => sw.removeEventListener("message", onMessage);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -97,14 +113,25 @@ export function SyncBadge() {
   // from stale SW-cached HTML; avoid hydration text mismatches.
   if (!hydrated) return null;
 
-  const showBanner = !online || fromCache;
+  let servedHere: ServedFromCacheMessage | null = null;
+  try {
+    if (served && new URL(served.url).pathname === pathname) servedHere = served;
+  } catch {
+    servedHere = null;
+  }
+  const showBanner = !online || fromCache || servedHere !== null;
   const showPendingChip = pendingCount > 0;
   if (!showBanner && !showPendingChip) return null;
 
   const time = formatTime(savedAt) ?? "--:--";
+  const staleTime = formatTime(staleSinceIso(servedHere?.cachedAt, savedAt));
   const bannerText = !online
-    ? t("offline.offlineBanner")
-    : t("offline.cacheBanner");
+    ? staleTime
+      ? t("offline.offlineBannerSince", { time: staleTime })
+      : t("offline.offlineBanner")
+    : fromCache
+      ? t("offline.cacheBanner")
+      : t("offline.staleBannerSince", { time: staleTime ?? "--:--" });
   const chipLabel = !online
     ? pendingCount > 0
       ? t("offline.badgeOfflinePending", { time, n: pendingCount })

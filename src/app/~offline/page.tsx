@@ -1,8 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import {
   CompactRow,
   CompactRowList,
@@ -12,6 +10,7 @@ import {
 } from "@/components/compact";
 import { EmptyState } from "@/components/empty-state";
 import { useT } from "@/components/i18n-provider";
+import { hardNavigationHref } from "@/lib/offline-nav";
 import { buildAgenda, pickFocusDay } from "@/lib/trip-core";
 import { dateKey, formatDay, formatTime, tokyoToday } from "@/lib/format";
 import {
@@ -28,15 +27,36 @@ function getServerSnapshot(): TripSnapshot | null {
   return null;
 }
 
+/**
+ * The SW serves this page's HTML for any uncached document navigation, so it
+ * renders at a URL it was not built for. Use plain links and full reloads
+ * (no next/link / useRouter) so leaving it never depends on the client router
+ * state (SDD 015).
+ */
 export default function OfflineFallbackPage() {
   const { t, locale } = useT();
-  const router = useRouter();
   const snapshot = useSyncExternalStore(
     subscribeTripCache,
     getSnapshot,
     getServerSnapshot,
   );
   const today = tokyoToday();
+
+  // Shared chrome (BottomNav) uses next/link. Here the router was booted from
+  // the /~offline payload at another URL, so soft navigations can stall
+  // ("Router action dispatched before initialization"). Turn every in-app
+  // link click into a full document navigation instead.
+  useEffect(() => {
+    const onClick = (event: MouseEvent) => {
+      const href = hardNavigationHref(event, window.location.origin);
+      if (!href) return;
+      event.preventDefault();
+      event.stopPropagation();
+      window.location.assign(href);
+    };
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, []);
 
   const view = useMemo(() => {
     if (!snapshot || snapshot.days.length === 0) return null;
@@ -76,8 +96,7 @@ export default function OfflineFallbackPage() {
           <button
             type="button"
             onClick={() => {
-              router.push("/");
-              router.refresh();
+              window.location.reload();
             }}
             className={compactBtnPrimaryClass}
           >
@@ -114,12 +133,12 @@ export default function OfflineFallbackPage() {
             />
           ) : null}
           <p className="text-center text-[13px]">
-            <Link
+            <a
               href="/schedule"
               className="font-medium text-ink-muted no-underline"
             >
               {t("common.openSchedule")}
-            </Link>
+            </a>
           </p>
         </div>
       )}

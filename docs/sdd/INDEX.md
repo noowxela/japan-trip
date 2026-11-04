@@ -19,3 +19,4 @@ Living specs for this repo. Change specs stay `draft` until approved. Do not tre
 | [012](012-silent-mark-visited-toast.md) | Silent markVisited toast | implemented | Optional `{ silent }` so Undo callers show one toast |
 | [013](013-daily-countdown-push.md) | Daily countdown push | implemented | Morning MYT countdown cron + per-sub prefs; departureTransitBody skips duplicate route in name |
 | [014](014-loading-skeletons.md) | Loading skeletons match compact pages | implemented | Compact skeleton primitives; per-route `loading.tsx` (incl. map drawer, schedule sheet, expense slide-in); offline/map-chunk placeholders reuse them |
+| [015](015-offline-navigation.md) | Offline navigation | implemented | Fallback page escapes via full nav; stable SW RSC cache keys + warm on full load; offline/stale banner with time |

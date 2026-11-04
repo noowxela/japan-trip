@@ -75,3 +75,6 @@ Roughly medium (1–2 focused sessions): shared row chrome + four list migration
 - 收据拍照 — receipt photo on expense, stored to Notion
 - 分账结算 — settle-up page in RM for shared spend
 - 旅行日记 — daily journal with photos + export recap
+| [015](sdd/015-offline-navigation.md) | Device verify offline soft nav on iOS PWA | Chromium-only so far; on iPhone: visit pages online, airplane mode, tap tabs, check banner time and fallback escape |
+| [015](sdd/015-offline-navigation.md) | Nested `/budget/[id]` offline soft nav | Shallower-payload reuse not browser-checked for nested routes |
+| [015](sdd/015-offline-navigation.md) | Offline Playwright check in CI | `/tmp/kc-offline/fix.mjs` scenario; needs prod build + mock Notion |

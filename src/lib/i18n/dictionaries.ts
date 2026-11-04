@@ -469,6 +469,8 @@ const en = {
   "map.style.satellite": "Sat",
   "offline.cacheBanner": "Notion connection failed — showing cached data",
   "offline.offlineBanner": "You're offline — showing cached data",
+  "offline.offlineBannerSince": "Offline · showing data from {time}",
+  "offline.staleBannerSince": "Network slow · showing cached data from {time}",
 
   "flight.emptyTitle": "No flights yet",
   "flight.emptyBody": "Add flights in Transit, or link them to a day on the schedule.",
@@ -1117,6 +1119,8 @@ const zh: Record<DictKey, string> = {
   "map.style.satellite": "卫星",
   "offline.cacheBanner": "Notion 连接失败，显示的是缓存数据",
   "offline.offlineBanner": "当前离线，显示的是缓存数据",
+  "offline.offlineBannerSince": "离线 · 显示 {time} 的缓存数据",
+  "offline.staleBannerSince": "网络较慢 · 显示 {time} 的缓存数据",
 
   "flight.emptyTitle": "还没有航班",
   "flight.emptyBody": "在交通中添加航班，或在行程中关联到某一天。",
