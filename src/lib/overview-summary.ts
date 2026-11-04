@@ -1,4 +1,5 @@
 import { dateKey, dayDiff, formatTripSpan } from "@/lib/format";
+import type { DepartureCountdown } from "@/lib/departure-countdown";
 import { t, type Locale } from "@/lib/i18n/dictionaries";
 
 /** Build the one-line overview SummaryStrip: "Day 3/8 · span · cities". */
@@ -9,8 +10,11 @@ export function formatOverviewSummaryLine(input: {
   cityFlow: string;
   locale: Locale;
   dayCount: number;
+  /** From departureCountdown(); hours/minutes override the day wording (< 48h). */
+  departure?: DepartureCountdown;
 }): string {
-  const { today, tripStart, tripEnd, cityFlow, locale, dayCount } = input;
+  const { today, tripStart, tripEnd, cityFlow, locale, dayCount, departure } =
+    input;
   const span = formatTripSpan(tripStart, tripEnd, locale);
   const startKey = dateKey(tripStart);
   const endKey = dateKey(tripEnd) ?? startKey;
@@ -18,7 +22,13 @@ export function formatOverviewSummaryLine(input: {
   let dayBit = "";
   if (startKey && endKey && dayCount > 0) {
     const until = dayDiff(today, startKey);
-    if (until > 0) {
+    if (until >= 0 && departure?.mode === "hours") {
+      dayBit = t(locale, "overview.summaryBeforeHours", { n: departure.hours });
+    } else if (until >= 0 && departure?.mode === "minutes") {
+      dayBit = t(locale, "overview.summaryBeforeMinutes", {
+        n: departure.minutes,
+      });
+    } else if (until > 0) {
       dayBit = t(locale, "overview.summaryBefore", { n: until });
     } else if (today > endKey) {
       dayBit = t(locale, "overview.summaryDone", { n: dayCount });

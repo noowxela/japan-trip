@@ -19,7 +19,8 @@ import { dateKey, tokyoToday } from "@/lib/format";
 import { labelCity, t } from "@/lib/i18n/dictionaries";
 import { getLocale } from "@/lib/i18n/server";
 import { notionReady } from "@/lib/notion";
-import { formatOverviewSummaryLine } from "@/lib/overview-summary";
+import { departureInstant } from "@/lib/departure-countdown";
+import { DepartureSummary } from "@/components/departure-summary";
 import { byDay, moneySummary } from "@/lib/spend";
 import type { AgendaItem } from "@/lib/types";
 import { makeTripSnapshot } from "@/lib/trip-cache";
@@ -68,14 +69,7 @@ export default async function OverviewPage() {
     hops.length > 0
       ? hops.map((city) => labelCity(locale, city) ?? city).join(" → ")
       : "";
-  const summary = formatOverviewSummaryLine({
-    today,
-    tripStart,
-    tripEnd,
-    cityFlow,
-    locale,
-    dayCount: dated.length,
-  });
+  const departureIso = departureInstant(days, transit);
   const flights = transit.filter((item) => item.mode === "Flight");
   const dayNames = new Map(days.map((day) => [day.id, day.name]));
   const phase = tripPhase(days, today);
@@ -152,7 +146,17 @@ export default async function OverviewPage() {
           }
         />
 
-        <SummaryStrip>{summary}</SummaryStrip>
+        <SummaryStrip>
+          <DepartureSummary
+            tripStart={tripStart}
+            tripEnd={tripEnd}
+            cityFlow={cityFlow}
+            locale={locale}
+            dayCount={dated.length}
+            departureIso={departureIso}
+            initialNowMs={now.getTime()}
+          />
+        </SummaryStrip>
 
         {phase === "after" ? (
           <div className="grid gap-2">

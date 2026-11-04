@@ -78,3 +78,5 @@ Roughly medium (1–2 focused sessions): shared row chrome + four list migration
 | [015](sdd/015-offline-navigation.md) | Device verify offline soft nav on iOS PWA | Chromium-only so far; on iPhone: visit pages online, airplane mode, tap tabs, check banner time and fallback escape |
 | [015](sdd/015-offline-navigation.md) | Nested `/budget/[id]` offline soft nav | Shallower-payload reuse not browser-checked for nested routes |
 | [015](sdd/015-offline-navigation.md) | Offline Playwright check in CI | `/tmp/kc-offline/fix.mjs` scenario; needs prod build + mock Notion |
+
+- [ ] CountdownWidget: use departureCountdown hours/minutes (countdown.hour/hours/minutes strings exist) if the widget is ever rendered on home (SDD 019).
