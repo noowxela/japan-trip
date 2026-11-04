@@ -21,4 +21,4 @@ Living specs for this repo. Change specs stay `draft` until approved. Do not tre
 | [014](014-loading-skeletons.md) | Loading skeletons match compact pages | implemented | Compact skeleton primitives; per-route `loading.tsx` (incl. map drawer, schedule sheet, expense slide-in); offline/map-chunk placeholders reuse them |
 | [015](015-offline-navigation.md) | Offline navigation | implemented | Fallback page escapes via full nav; stable SW RSC cache keys + warm on full load; offline/stale banner with time |
 | [019](019-hours-countdown.md) | Hour-based departure countdown | implemented | Under 48h the home strip shows 还有 N 小时出发 (minutes under 1h) to Day 1 flight, ticking client-side every 30s |
-| [019](019-schedule-sheet-drag.md) | Schedule sheet drag + tall map snap | implemented | Snaps 0.17/0.45/0.72/0.92 (map up to 83%); drag from whole header with flick momentum; tap cycles snaps |
+| [020](020-schedule-sheet-drag.md) | Schedule sheet drag + tall map snap | implemented | Snaps 0.17/0.45/0.72/0.92 (map up to 83%); drag from whole header with flick momentum; tap cycles snaps |

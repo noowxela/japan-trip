@@ -17,7 +17,7 @@ Follow-ups from SDDs. Not a backlog of every idea — only deferred scope from a
 | [008](sdd/008-compact-schedule-budget-map.md) | Device verify dense schedule/budget + map sheet | Agent cannot browser-check; confirm ≥8–9 stops / ≥9–10 expenses at 390×844 and map zoom/sheet/desktop panel |
 | [013](sdd/013-daily-countdown-push.md) | Device verify morning countdown + prefs toggles | After deploy: dry-run `/api/cron/countdown?dry=1`; toggle prefs on phone; confirm tag replaces prior countdown |
 | [013](sdd/013-daily-countdown-push.md) | Confirm next bump-version release notes | First post-013 tag should show grouped notes via `scripts/release-notes.sh` (not empty `--generate-notes`) |
-| [019](sdd/019-schedule-sheet-drag.md) | Device verify schedule sheet drag | Real touch on iPhone: header drag vs tab pan-x, flick momentum, 0.17 snap clear of quick-add / Overview pills |
+| [020](sdd/020-schedule-sheet-drag.md) | Device verify schedule sheet drag | Real touch on iPhone: header drag vs tab pan-x, flick momentum, 0.17 snap clear of quick-add / Overview pills |
 
 ## Unify list screens into the Schedule row style (design review item 3)
 
