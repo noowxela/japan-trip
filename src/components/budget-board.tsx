@@ -9,18 +9,19 @@ import { categoryColor } from "@/components/spend-category-icon";
 import { SpendItemCard } from "@/components/spend-item-card";
 import { SpendTimeline, formatAmount } from "@/components/spend-timeline";
 import { labelCategory } from "@/lib/i18n/dictionaries";
-import { categoryBreakdown, topSpend } from "@/lib/spend";
+import { categoryBreakdown, settleUp, topSpend } from "@/lib/spend";
 import { SPEND_CATEGORIES, type SpendItem, type TripDay } from "@/lib/types";
 
-type Tab = "timeline" | "category" | "top";
+type Tab = "timeline" | "category" | "top" | "split";
 type DisplayCurrency = "MYR" | "YEN";
 type CategoryFilter = "all" | (typeof SPEND_CATEGORIES)[number];
 
-const TAB_IDS: Tab[] = ["timeline", "category", "top"];
+const TAB_IDS: Tab[] = ["timeline", "category", "top", "split"];
 const TAB_KEY: Record<Tab, string> = {
   timeline: "budget.tabTimeline",
   category: "budget.tabCategory",
   top: "budget.tabTop",
+  split: "budget.tabSplit",
 };
 
 export function BudgetBoard({
@@ -32,9 +33,11 @@ export function BudgetBoard({
   tenMyrInYen: _tenMyrInYen,
   fxLive,
   fxAsOf,
+  people = [],
 }: {
   actuals: SpendItem[];
   days: TripDay[];
+  people?: string[];
   spentRm: number;
   estimateRm: number;
   jpyPerRm: number;
@@ -65,6 +68,10 @@ export function BudgetBoard({
   const over = usedPct != null && spentRm > estimateRm;
   const categories = categoryBreakdown(mergedActuals, jpyPerRm);
   const topItems = topSpend(mergedActuals, 10, jpyPerRm);
+  const settle = useMemo(
+    () => settleUp(mergedActuals, people, jpyPerRm),
+    [mergedActuals, people, jpyPerRm],
+  );
   const yen100InRm = jpyPerRm > 0 ? 100 / jpyPerRm : 0;
   const fxTitle = fxLive
     ? fxAsOf
@@ -225,7 +232,137 @@ export function BudgetBoard({
           </EmptyState>
         )
       ) : null}
+
+      {tab === "split" ? (
+        <SettlePanel
+          settle={settle}
+          displayYen={yen}
+          jpyPerRm={jpyPerRm}
+          fxTitle={fxTitle}
+        />
+      ) : null}
     </>
+  );
+}
+
+function SettlePanel({
+  settle,
+  displayYen,
+  jpyPerRm,
+  fxTitle,
+}: {
+  settle: ReturnType<typeof settleUp>;
+  displayYen: boolean;
+  jpyPerRm: number;
+  fxTitle: string;
+}) {
+  const { t } = useT();
+  const money = (rm: number) => formatAmount(rm, displayYen, jpyPerRm);
+  const anyPaid = settle.balances.some((row) => row.paidRm > 0);
+
+  if (!anyPaid && settle.unassigned.length === 0) {
+    return (
+      <EmptyState title={t("budget.empty")}>{t("settle.empty")}</EmptyState>
+    );
+  }
+
+  return (
+    <div className="grid gap-3 md:max-w-xl">
+      <section>
+        <h2 className="text-[13px] font-semibold text-ink">
+          {settle.transfers.length > 0
+            ? t("settle.transfersTitle", { n: settle.transfers.length })
+            : t("settle.allSettled")}
+        </h2>
+        {settle.transfers.length > 0 ? (
+          <ul className="mt-1 divide-y divide-line/80">
+            {settle.transfers.map((transfer) => (
+              <li
+                key={`${transfer.from}->${transfer.to}`}
+                className="flex min-h-11 items-center gap-2 text-[13px]"
+                aria-label={t("settle.transferAria", {
+                  from: transfer.from,
+                  to: transfer.to,
+                  amount: money(transfer.rm),
+                })}
+              >
+                <span aria-hidden className="min-w-0 truncate font-medium">
+                  {transfer.from}
+                </span>
+                <span aria-hidden className="text-ink-muted">→</span>
+                <span aria-hidden className="min-w-0 flex-1 truncate font-medium">
+                  {transfer.to}
+                </span>
+                <span aria-hidden className="shrink-0 font-semibold tabular-nums">
+                  {money(transfer.rm)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </section>
+
+      <section>
+        <table className="w-full text-[13px]">
+          <caption className="pb-1 text-left text-[13px] font-semibold text-ink">
+            {t("settle.balancesTitle")}
+          </caption>
+          <thead>
+            <tr className="text-[11px] text-ink-muted">
+              <th scope="col" className="py-1 text-left font-medium" />
+              <th scope="col" className="py-1 text-right font-medium">{t("settle.paid")}</th>
+              <th scope="col" className="py-1 text-right font-medium">{t("settle.share")}</th>
+              <th scope="col" className="py-1 text-right font-medium">{t("settle.net")}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line/80">
+            {settle.balances.map((row) => {
+              const cents = Math.round(row.netRm * 100);
+              return (
+                <tr key={row.name}>
+                  <th scope="row" className="truncate py-1.5 text-left font-medium">
+                    {row.name}
+                  </th>
+                  <td className="py-1.5 text-right tabular-nums">{money(row.paidRm)}</td>
+                  <td className="py-1.5 text-right tabular-nums">{money(row.shareRm)}</td>
+                  <td
+                    className={`py-1.5 text-right font-medium tabular-nums ${
+                      cents > 0 ? "text-ok" : cents < 0 ? "text-accent" : "text-ink-muted"
+                    }`}
+                  >
+                    {cents > 0 ? "+" : cents < 0 ? "−" : ""}
+                    {money(Math.abs(row.netRm))}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </section>
+
+      {settle.unassigned.length > 0 ? (
+        <details className="rounded-lg border border-line bg-surface px-3 py-2">
+          <summary className="flex min-h-8 cursor-pointer items-center text-[13px] font-medium text-maybe">
+            ⚠ {t("settle.unassigned", { n: settle.unassigned.length })}
+          </summary>
+          <div className="mt-1 grid">
+            {settle.unassigned.map((item) => (
+              <SpendItemCard
+                key={item.id}
+                item={item}
+                jpyPerRm={jpyPerRm}
+                displayYen={displayYen}
+                compact
+              />
+            ))}
+          </div>
+        </details>
+      ) : null}
+
+      <p className="text-[11px] text-ink-muted">
+        {fxTitle} · {t("settle.fxNote")}
+      </p>
+    </div>
   );
 }
 

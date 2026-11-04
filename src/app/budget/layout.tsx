@@ -74,6 +74,7 @@ export default async function BudgetLayout({
             tenMyrInYen={yenForMyr(10, fx.jpyPerRm)}
             fxLive={fx.live}
             fxAsOf={fx.asOf}
+            people={people}
           />
         </BudgetStack>
       </PageShell>

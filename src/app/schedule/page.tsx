@@ -10,7 +10,7 @@ import { getLocale } from "@/lib/i18n/server";
 import { notionReady } from "@/lib/notion";
 import { schedulePropsFromSnapshot } from "@/lib/schedule-pins";
 import { getEditorNames, unvisitedFromPastDays } from "@/lib/trip";
-import { loadTripSnapshot } from "@/lib/trip-snapshot";
+import { loadTripSnapshotWithWeather } from "@/lib/trip-snapshot";
 import { tokyoToday } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +30,7 @@ export default async function SchedulePage({
 
   let snapshot;
   try {
-    snapshot = await loadTripSnapshot();
+    snapshot = await loadTripSnapshotWithWeather();
   } catch {
     return (
       <ScheduleOfflineFallback
@@ -89,6 +89,8 @@ export default async function SchedulePage({
         today={today}
         phase={props.phase}
         nowIso={nowIso}
+        weather={props.weather}
+        weatherAt={props.weatherAt}
       />
     </>
   );

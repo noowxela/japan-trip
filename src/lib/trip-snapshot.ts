@@ -1,4 +1,5 @@
 import { makeTripSnapshot, type TripSnapshot } from "@/lib/trip-cache";
+import { getTripWeather } from "@/lib/weather";
 import {
   getDays,
   getPlaces,
@@ -18,4 +19,13 @@ export async function loadTripSnapshot(): Promise<TripSnapshot> {
     getPrep(),
   ]);
   return makeTripSnapshot({ days, places, transit, stays, spend, prep });
+}
+
+/** Snapshot plus forecast; weather failures never fail the load. */
+export async function loadTripSnapshotWithWeather(): Promise<TripSnapshot> {
+  const [snapshot, weather] = await Promise.all([
+    loadTripSnapshot(),
+    getDays().then((days) => getTripWeather(days)),
+  ]);
+  return makeTripSnapshot({ ...snapshot, weather });
 }

@@ -9,6 +9,7 @@ import {
 } from "@/lib/push-store";
 import { computeReminders } from "@/lib/reminders";
 import { getDays, getPrep, getStays, getTransit } from "@/lib/trip";
+import { getTripWeather } from "@/lib/weather";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,8 +51,10 @@ export async function GET(request: Request) {
     getPrep(),
   ]);
 
+  const weather = await getTripWeather(days, now);
+
   const reminders = computeReminders(
-    { days, transit, stays, prep },
+    { days, transit, stays, prep, weather },
     now,
     { locale: "zh" },
   );

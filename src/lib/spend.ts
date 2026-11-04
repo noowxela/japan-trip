@@ -134,6 +134,101 @@ export function categoryBreakdown(
   });
 }
 
+/** Stored `Split with`: empty when the selection covers everyone (so later editors are included). */
+export function normalizeSplitWith(selected: string[], people: string[]): string[] {
+  const unique = [...new Set(selected.map((name) => name.trim()).filter(Boolean))];
+  const coversEveryone =
+    people.length > 0 &&
+    unique.length === people.length &&
+    people.every((name) => unique.includes(name));
+  return coversEveryone ? [] : unique;
+}
+
+export type SettleBalance = {
+  name: string;
+  paidRm: number;
+  shareRm: number;
+  netRm: number;
+};
+
+export type SettleTransfer = { from: string; to: string; rm: number };
+
+export type SettleResult = {
+  balances: SettleBalance[];
+  transfers: SettleTransfer[];
+  unassigned: SpendItem[];
+};
+
+/**
+ * Who owes whom, in RM. Each Actual expense is split equally among `splitWith`
+ * (empty = everyone). Transfers greedily pair the largest debtor with the
+ * largest creditor, so there are at most n−1 of them.
+ */
+export function settleUp(
+  items: SpendItem[],
+  people: string[],
+  jpyPerRm = JPY_PER_RM,
+): SettleResult {
+  const counted = items.filter((item) => item.kind !== "Estimate");
+  const unassigned = counted.filter((item) => !item.paidBy);
+  const assigned = counted.filter((item) => item.paidBy);
+  const everyone =
+    people.length > 0
+      ? people
+      : [...new Set(assigned.map((item) => item.paidBy as string))];
+
+  const order: string[] = [...everyone];
+  const paid = new Map<string, number>();
+  const share = new Map<string, number>();
+  const touch = (name: string) => {
+    if (!order.includes(name)) order.push(name);
+  };
+
+  for (const item of assigned) {
+    const payer = item.paidBy as string;
+    const rm = toRm(item.amount, item.currency, jpyPerRm);
+    const listed = [...new Set(item.splitWith)];
+    const participants = listed.length > 0 ? listed : everyone;
+    const split = participants.length > 0 ? participants : [payer];
+    touch(payer);
+    paid.set(payer, (paid.get(payer) ?? 0) + rm);
+    for (const name of split) {
+      touch(name);
+      share.set(name, (share.get(name) ?? 0) + rm / split.length);
+    }
+  }
+
+  const balances = order.map((name) => {
+    const paidRm = paid.get(name) ?? 0;
+    const shareRm = share.get(name) ?? 0;
+    return { name, paidRm, shareRm, netRm: paidRm - shareRm };
+  });
+
+  const cents = balances.map((row) => ({
+    name: row.name,
+    cents: Math.round(row.netRm * 100),
+  }));
+  const creditors = cents.filter((row) => row.cents > 0).sort((a, b) => b.cents - a.cents);
+  const debtors = cents.filter((row) => row.cents < 0).sort((a, b) => a.cents - b.cents);
+  const transfers: SettleTransfer[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < creditors.length && j < debtors.length) {
+    const creditor = creditors[i]!;
+    const debtor = debtors[j]!;
+    const amount = Math.min(creditor.cents, -debtor.cents);
+    if (amount > 0) {
+      transfers.push({ from: debtor.name, to: creditor.name, rm: amount / 100 });
+    }
+    creditor.cents -= amount;
+    debtor.cents += amount;
+    if (creditor.cents <= 0) i += 1;
+    if (debtor.cents >= 0) j += 1;
+  }
+
+  return { balances, transfers, unassigned };
+}
+
 export function topSpend(
   items: SpendItem[],
   n = 10,

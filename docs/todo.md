@@ -81,3 +81,9 @@ Roughly medium (1–2 focused sessions): shared row chrome + four list migration
 | [015](sdd/015-offline-navigation.md) | Offline Playwright check in CI | `/tmp/kc-offline/fix.mjs` scenario; needs prod build + mock Notion |
 
 - [ ] CountdownWidget: use departureCountdown hours/minutes (countdown.hour/hours/minutes strings exist) if the widget is ever rendered on home (SDD 019).
+| [016](sdd/016-settle-up-split.md) | Device verify Split with on add / edit / offline add | Needs editor PIN; untick one person, check Notion row + 分账 tab, repeat in airplane mode |
+| [016](sdd/016-settle-up-split.md) | Mark transfers as settled | Non-goal; balances are always "since trip start" |
+| [016](sdd/016-settle-up-split.md) | Historical FX per Yen expense | Non-goal; today's rate is used for all Yen rows |
+| [017](sdd/017-weather-rain-hint.md) | Device verify cached weather offline | Open Schedule online, airplane mode, reopen PWA |
+| [017](sdd/017-weather-rain-hint.md) | Weather for `Other`-city days / day-trip towns (Nara, Kobe) | v1 uses city-centre coords of Tokyo / Kyoto / Osaka only |
+| [017](sdd/017-weather-rain-hint.md) | Fix `addDay` / `updateDay` City write for multi-select | Done 2026-11-04 — `cityPropertyValue` in `src/lib/day-city.ts`; edit keeps a multi-city list when the chosen city is in it |

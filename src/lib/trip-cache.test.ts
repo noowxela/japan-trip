@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  carryWeather,
   invalidateTripCacheMemory,
   isTripSnapshot,
   makeTripSnapshot,
@@ -104,5 +105,43 @@ describe("readCachedTripSnapshot", () => {
     const third = readCachedTripSnapshot(getRaw);
     expect(third).toBeNull();
     expect(third).not.toBe(second);
+  });
+});
+
+describe("carryWeather / makeTripSnapshot weather", () => {
+  const base = makeTripSnapshot({
+    days: [],
+    places: [],
+    transit: [],
+    stays: [],
+    savedAt: "2026-11-04T10:00:00.000Z",
+  });
+  const weather = {
+    "2026-11-06": { code: 63, tMin: 12, tMax: 17, rainPct: 80 },
+  };
+
+  it("omits empty weather and stamps weatherAt from savedAt", () => {
+    expect(makeTripSnapshot({ ...base, weather: {} }).weather).toBeUndefined();
+    const withWeather = makeTripSnapshot({ ...base, weather });
+    expect(withWeather.weather).toEqual(weather);
+    expect(withWeather.weatherAt).toBe("2026-11-04T10:00:00.000Z");
+  });
+
+  it("keeps cached weather when the next write has none", () => {
+    const prev = makeTripSnapshot({ ...base, weather });
+    const next = makeTripSnapshot({ ...base, savedAt: "2026-11-04T11:00:00.000Z" });
+    expect(carryWeather(next, prev)).toEqual({
+      ...next,
+      weather,
+      weatherAt: "2026-11-04T10:00:00.000Z",
+    });
+  });
+
+  it("prefers fresh weather and passes through when nothing is cached", () => {
+    const fresh = { "2026-11-07": { code: 0, tMin: 9, tMax: 18, rainPct: 0 } };
+    const prev = makeTripSnapshot({ ...base, weather });
+    const next = makeTripSnapshot({ ...base, weather: fresh });
+    expect(carryWeather(next, prev).weather).toEqual(fresh);
+    expect(carryWeather(base, null)).toBe(base);
   });
 });

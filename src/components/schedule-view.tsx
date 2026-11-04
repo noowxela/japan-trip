@@ -37,6 +37,7 @@ import {
 } from "@/lib/sheet-drag";
 import { nextAgendaItem } from "@/lib/trip-core";
 import type { AgendaItem, Place, Stay, TripDay } from "@/lib/types";
+import { weatherKind, weatherShort, type TripWeather } from "@/lib/weather";
 
 /**
  * Sheet height fractions of the page root (SDD 019). 0.17 leaves handle +
@@ -70,6 +71,8 @@ export function ScheduleView({
   today,
   phase,
   nowIso = null,
+  weather = null,
+  weatherAt = null,
 }: {
   days: TripDay[];
   places: Place[];
@@ -84,6 +87,8 @@ export function ScheduleView({
   phase: "before" | "during" | "after" | "none";
   /** Server (or SW-cached) clock; first client render must match to avoid hydration #418. */
   nowIso?: string | null;
+  weather?: TripWeather | null;
+  weatherAt?: string | null;
 }) {
   const { t, locale } = useT();
   const router = useRouter();
@@ -111,6 +116,8 @@ export function ScheduleView({
   const agenda = useMemo(() => slice?.agenda ?? [], [slice]);
   const pending = slice?.pending ?? [];
   const lodging = slice?.stays ?? [];
+  const selectedDate = dateKey(selectedDay?.date ?? null);
+  const dayWeather = selectedDate ? (weather?.[selectedDate] ?? null) : null;
   const mapPins = selectedDay ? (slice?.mapPins ?? []) : allPins;
   const mapCity =
     selectedDay?.city ?? days.find((day) => day.city)?.city ?? null;
@@ -516,6 +523,27 @@ export function ScheduleView({
                             city={selectedDay.city}
                             className="text-[11px]"
                           />
+                        </span>
+                      ) : null}
+                      {dayWeather ? (
+                        <span
+                          className="inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap tabular-nums"
+                          title={
+                            weatherAt
+                              ? t("weather.asOf", { time: formatCachedAt(weatherAt) })
+                              : undefined
+                          }
+                        >
+                          <span aria-hidden>·</span>
+                          <span aria-hidden>{weatherShort(dayWeather)}</span>
+                          <span className="sr-only">
+                            {t("weather.aria", {
+                              kind: t(`weather.${weatherKind(dayWeather.code)}`),
+                              min: Math.round(dayWeather.tMin),
+                              max: Math.round(dayWeather.tMax),
+                              rain: dayWeather.rainPct ?? 0,
+                            })}
+                          </span>
                         </span>
                       ) : null}
                       {lodging[0] ? (

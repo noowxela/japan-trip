@@ -15,3 +15,7 @@
 | Delete Undo window | low | Toast ~6s; restore needs editor cookie; navigating away mid-toast still works if toast mounted in root |
 | Hobby cron hour precision | low | Countdown `0 1 * * *` may fire 01:00–01:59 UTC (09:00–09:59 MYT); documented in README + SDD 013 |
 | Env-fallback push prefs | low | `PUSH_SUBSCRIPTIONS` cannot PATCH prefs; Settings disables switches with hint |
+| Open-Meteo dependency | low | Free non-commercial tier, 3 s timeout; on failure Schedule shows no weather and the evening push skips the rain line silently |
+| Weather is city-centre only | low | Day trips (Nara, Kobe) get the base city's forecast; multi-city days use the first listed city |
+| Settle-up uses today's FX for Yen | low | Transfer amounts drift a little day to day; the 分账 tab shows rate + date |
+| `Split with` missing in Notion | low | Writes retry without it (warns in logs), so splits silently fall back to everyone until `npm run migrate:v2` runs |

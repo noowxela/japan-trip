@@ -1,9 +1,11 @@
 "use server";
 
+import { APIErrorCode, APIResponseError } from "@notionhq/client";
 import { revalidatePath, updateTag } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { actionErr, actionOk, type ActionResult } from "@/lib/action-result";
+import { cityPropertyValue } from "@/lib/day-city";
 import {
   clearEditorCookie,
   requireEditor,
@@ -26,6 +28,63 @@ import { findSpendDuplicate, getDay, TRIP_TAGS } from "@/lib/trip";
 
 function bump(...tags: string[]) {
   for (const tag of tags) updateTag(tag);
+}
+
+/** Days `City` may be select (fresh setup) or multi-select (live workspace). */
+async function dayCityValue(city: string, pageId?: string) {
+  const notion = getNotion();
+  if (pageId) {
+    const page = await notion.pages.retrieve({ page_id: pageId });
+    const prop = "properties" in page ? page.properties.City : undefined;
+    if (prop?.type === "multi_select") {
+      return cityPropertyValue(
+        "multi_select",
+        city,
+        prop.multi_select.map((option) => option.name),
+      );
+    }
+    if (prop?.type === "select") return cityPropertyValue("select", city);
+  }
+  const source = await notion.dataSources.retrieve({ data_source_id: ds("DAYS") });
+  const type =
+    "properties" in source && source.properties.City?.type === "multi_select"
+      ? "multi_select"
+      : "select";
+  return cityPropertyValue(type, city);
+}
+
+function splitWithFrom(formData: FormData) {
+  return [
+    ...new Set(
+      formData
+        .getAll("splitWith")
+        .map((value) => String(value).trim())
+        .filter(Boolean),
+    ),
+  ];
+}
+
+function splitWithProp(names: string[]) {
+  return { "Split with": { multi_select: names.map((name) => ({ name })) } };
+}
+
+/** Until `npm run migrate:v2` adds `Split with`, retry the write without it. */
+async function withSplitWithFallback<T>(
+  write: (includeSplit: boolean) => Promise<T>,
+): Promise<T> {
+  try {
+    return await write(true);
+  } catch (error) {
+    if (
+      !APIResponseError.isAPIResponseError(error) ||
+      error.code !== APIErrorCode.ValidationError ||
+      !error.message.includes("Split with")
+    ) {
+      throw error;
+    }
+    console.warn("Spend DS has no `Split with` column; run npm run migrate:v2");
+    return write(false);
+  }
 }
 
 function startValue(formData: FormData) {
@@ -120,7 +179,7 @@ export async function addDay(formData: FormData): Promise<ActionResult> {
     properties: {
       Name: titleProp(name),
       ...(date ? { Date: { date: { start: date } } } : {}),
-      ...(city ? { City: { select: { name: city } } } : {}),
+      ...(city ? { City: await dayCityValue(city) } : {}),
     },
   });
   bump(TRIP_TAGS.days);
@@ -141,7 +200,7 @@ export async function updateDay(formData: FormData): Promise<ActionResult> {
     properties: {
       Name: titleProp(name),
       Date: { date: date ? { start: date } : null },
-      City: { select: city ? { name: city } : null },
+      City: await dayCityValue(city, id),
     },
   });
   bump(TRIP_TAGS.days);
@@ -537,6 +596,7 @@ export async function addSpend(formData: FormData): Promise<ActionResult> {
   const notes = String(formData.get("notes") ?? "").trim();
   const dayId = String(formData.get("dayId") ?? "").trim();
   const paidBy = String(formData.get("paidBy") ?? "").trim();
+  const splitWith = splitWithFrom(formData);
   const currency = parseSpendCurrency(String(formData.get("currency") ?? ""));
   const amount = Number(amountRaw);
   const clientCreatedAt = String(formData.get("clientCreatedAt") ?? "").trim();
@@ -563,20 +623,23 @@ export async function addSpend(formData: FormData): Promise<ActionResult> {
     }
   }
   const notion = getNotion();
-  const created = await notion.pages.create({
-    parent: { data_source_id: ds("SPEND") },
-    properties: {
-      Name: titleProp(name),
-      Amount: { number: amount },
-      Currency: { select: { name: currency } },
-      ...(kind ? { Kind: { select: { name: kind } } } : {}),
-      ...(category ? { Category: { select: { name: category } } } : {}),
-      ...(notes ? { Notes: textProp(notes) } : {}),
-      ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
-      ...(start ? { Start: startProp(start) } : {}),
-      ...(paidBy ? { "Paid by": { select: { name: paidBy } } } : {}),
-    },
-  });
+  const created = await withSplitWithFallback((includeSplit) =>
+    notion.pages.create({
+      parent: { data_source_id: ds("SPEND") },
+      properties: {
+        Name: titleProp(name),
+        Amount: { number: amount },
+        Currency: { select: { name: currency } },
+        ...(kind ? { Kind: { select: { name: kind } } } : {}),
+        ...(category ? { Category: { select: { name: category } } } : {}),
+        ...(notes ? { Notes: textProp(notes) } : {}),
+        ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
+        ...(start ? { Start: startProp(start) } : {}),
+        ...(paidBy ? { "Paid by": { select: { name: paidBy } } } : {}),
+        ...(includeSplit && splitWith.length > 0 ? splitWithProp(splitWith) : {}),
+      },
+    }),
+  );
   bump(TRIP_TAGS.spend);
   return actionOk(await actionT("action.spendAdded"), created.id);
 }
@@ -592,26 +655,30 @@ export async function updateSpend(formData: FormData): Promise<ActionResult> {
   const notes = String(formData.get("notes") ?? "").trim();
   const dayId = String(formData.get("dayId") ?? "").trim();
   const paidBy = String(formData.get("paidBy") ?? "").trim();
+  const splitWith = splitWithFrom(formData);
   const currency = parseSpendCurrency(String(formData.get("currency") ?? ""));
   const amount = Number(amountRaw);
   const start = spendStartValue(formData);
   if (!id || !name) return actionErr(await actionT("action.spendNameRequired"));
   if (!Number.isFinite(amount)) return actionErr(await actionT("action.amountRequired"));
   const notion = getNotion();
-  await notion.pages.update({
-    page_id: id,
-    properties: {
-      Name: titleProp(name),
-      Amount: { number: amount },
-      Currency: { select: { name: currency } },
-      Kind: { select: kind ? { name: kind } : null },
-      Category: { select: category ? { name: category } : null },
-      Notes: textProp(notes),
-      Day: { relation: dayId ? [{ id: dayId }] : [] },
-      Start: startProp(start || null),
-      "Paid by": { select: paidBy ? { name: paidBy } : null },
-    },
-  });
+  await withSplitWithFallback((includeSplit) =>
+    notion.pages.update({
+      page_id: id,
+      properties: {
+        Name: titleProp(name),
+        Amount: { number: amount },
+        Currency: { select: { name: currency } },
+        Kind: { select: kind ? { name: kind } : null },
+        Category: { select: category ? { name: category } : null },
+        Notes: textProp(notes),
+        Day: { relation: dayId ? [{ id: dayId }] : [] },
+        Start: startProp(start || null),
+        "Paid by": { select: paidBy ? { name: paidBy } : null },
+        ...(includeSplit ? splitWithProp(splitWith) : {}),
+      },
+    }),
+  );
   bump(TRIP_TAGS.spend);
   return actionOk(await actionT("action.spendSaved"));
 }

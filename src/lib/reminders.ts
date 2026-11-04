@@ -1,12 +1,19 @@
 import { dateKey, dayDiff, formatTime } from "@/lib/format";
-import type { Locale } from "@/lib/i18n/dictionaries";
+import { labelCity, type Locale } from "@/lib/i18n/dictionaries";
 import type { PrepItem, Stay, Transit, TripDay } from "@/lib/types";
+import {
+  isRainy,
+  tempRange,
+  weatherGlyph,
+  type TripWeather,
+} from "@/lib/weather";
 
 export type ReminderTripData = {
   days: TripDay[];
   transit: Transit[];
   stays: Stay[];
   prep: PrepItem[];
+  weather?: TripWeather;
 };
 
 export type Reminder = {
@@ -255,6 +262,26 @@ export function computeReminders(
           : `Trip starts ${start} — check bags and tickets`,
       url: "/",
       tag: "departure",
+    });
+  }
+
+  // (e) Rain likely tomorrow (trip days only)
+  const tomorrowDay = tripData.days.find((day) => dateKey(day.date) === tomorrow);
+  const rain = tripData.weather?.[tomorrow];
+  if (tomorrowDay && rain && isRainy(rain)) {
+    const city =
+      labelCity(locale, tomorrowDay.city) ?? (locale === "zh" ? "当地" : "the city");
+    const glyph = weatherGlyph(rain.code);
+    const range = tempRange(rain);
+    put({
+      id: `weather:${tomorrow}`,
+      title: locale === "zh" ? `明天${city}可能下雨` : `Rain likely tomorrow in ${city}`,
+      body:
+        locale === "zh"
+          ? `${glyph} 降雨 ${rain.rainPct}% · ${range}，记得带伞`
+          : `${glyph} ${rain.rainPct}% rain · ${range}, bring an umbrella`,
+      url: dayUrl(tripData.days, tomorrow),
+      tag: `weather-${tomorrow}`,
     });
   }
 

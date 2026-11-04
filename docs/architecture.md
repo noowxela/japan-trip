@@ -2,7 +2,7 @@
 
 - **Repo:** `o000o_active/japan_trip_app` (GitHub: `noowxela/japan-trip`)
 - **Status:** current
-- **Date:** 2026-10-28
+- **Date:** 2026-11-04
 - **Not this document:** workspace `spec001.md` is a backlog idea (Firebase, journal, boarding-pass bookings). Live source of truth is **Notion**.
 
 ## What it is
@@ -18,6 +18,7 @@ Mobile-first itinerary companion PWA. Notion holds trip data; this Next.js app i
 | Data | `@notionhq/client` v5, API `2025-09-03`, `dataSources.query` |
 | Maps | Leaflet + react-leaflet; geocode via Nominatim + landmark table |
 | FX | Live MYR→JPY with static fallback `JPY_PER_RM` (39.3) |
+| Weather | Open-Meteo daily forecast (no key), one call per city in the 16-day window, cached 3 h server-side; `{}` on failure (SDD 017) |
 | Test | Vitest 3 (`npm test`); pure-logic unit tests under `src/lib/*.test.ts` |
 | CI | `.github/workflows/ci.yml` — lint, typecheck, test on push/PR (Node 22, no Notion secrets) |
 | PWA | `src/app/manifest.ts` (`start_url: /`, standalone). Serwist (`@serwist/turbopack`) SW at `/serwist/sw.js` (production only; disabled in `next dev`). Offline: navigation/runtime caches + localStorage itinerary snapshot v2 + IndexedDB outbox. Web Push: `web-push` + SW `push`/`notificationclick` (same-origin focus + navigate try/catch); crons `/api/cron/reminders` (11:00 UTC evening-before JST) and `/api/cron/countdown` (01:00 UTC ≈ 09:00 MYT; Hobby hour precision); dry-run `?dry=1&now=`; per-sub `prefs` (`reminders`/`countdown`, missing = on); subs in Upstash Redis REST or `PUSH_SUBSCRIPTIONS` env (not Notion). Env vars listed in README — do not rely on `.env.example` for push keys |
@@ -37,6 +38,7 @@ flowchart LR
   pushStore[Upstash Redis or PUSH_SUBSCRIPTIONS]
   cronReminders[Cron reminders 11:00 UTC]
   cronCountdown[Cron countdown 01:00 UTC]
+  weather[Open-Meteo]
   browser --> next
   next --> notion
   next --> browser
@@ -50,11 +52,12 @@ flowchart LR
   cronReminders --> next
   cronCountdown --> next
   next -->|web-push| sw
+  next -->|schedule + reminders| weather
 ```
 
 - **Read:** server components call cached getters in `src/lib/trip.ts` → `src/lib/notion.ts` `queryAll()`.
 - **Write (online):** forms → `src/app/actions.ts` → Notion `pages.create` / `update` → `revalidatePath` / `updateTag`.
-- **Offline read:** Serwist caches visited documents/assets; `TripCacheSync` writes days/places/transit/stays/spend/prep to `japan-trip-itinerary-v1` (content `v: 2`). Schedule, `/phrases` (stays for hotel cards), and `/~offline` can fall back from the snapshot. Pages that fail to reach Notion while online keep existing fallbacks. Phrase deck data is bundled in `src/lib/phrases.ts` (no Notion). `useSyncExternalStore` readers for trip cache + custom phrases memoize by raw localStorage string (stable snapshot refs; React #185).
+- **Offline read:** Serwist caches visited documents/assets; `TripCacheSync` writes days/places/transit/stays/spend/prep (+ optional `weather` / `weatherAt` from Schedule) to `japan-trip-itinerary-v1` (content `v: 2`). Writes without weather keep the cached forecast (`carryWeather`). Schedule, `/phrases` (stays for hotel cards), and `/~offline` can fall back from the snapshot. Pages that fail to reach Notion while online keep existing fallbacks. Phrase deck data is bundled in `src/lib/phrases.ts` (no Notion). `useSyncExternalStore` readers for trip cache + custom phrases memoize by raw localStorage string (stable snapshot refs; React #185).
 - **Offline write:** client wrappers enqueue `toggleVisited` / `addSpend` / `togglePrep` into IndexedDB (`japan-trip` / `outbox`), apply optimistic UI, replay on `online` / app start / every 30s. Toggles send desired state; spend uses `clientId` + `createdAt` for idempotency.
 
 Pages are `export const dynamic = "force-dynamic"`. No webhooks, no poll, no multi-device conflict UI.
@@ -63,11 +66,11 @@ Pages are `export const dynamic = "force-dynamic"`. No webhooks, no poll, no mul
 
 | Env | Role |
 | --- | --- |
-| `NOTION_DAYS_DS` | Trip days (date, city, status) |
+| `NOTION_DAYS_DS` | Trip days (date, city, status). Live `City` is **multi-select** (travel days list two); the app reads select, else the first value; day writes match the column type (`src/lib/day-city.ts`) |
 | `NOTION_PLACES_DS` | Stops (type, start, lat/lng, visited, pending) |
 | `NOTION_STAYS_DS` | Hotels (check-in/out, address) |
 | `NOTION_TRANSIT_DS` | Legs (mode, from/to, start) |
-| `NOTION_SPEND_DS` | Expenses (Yen/RM, category, paid by) |
+| `NOTION_SPEND_DS` | Expenses (Yen/RM, category, paid by, `Split with` multi-select; empty = everyone) |
 | `NOTION_EDITORS_DS` | Optional editor name + PIN |
 | `NOTION_PREP_DS` | Optional packing/checklist |
 
@@ -101,13 +104,15 @@ Viewers: no login; anyone with the deployed URL can **read**. Editors: PIN in No
 | `src/lib/trip-cache.ts` | localStorage snapshot v2 |
 | `src/lib/outbox-core.ts` / `outbox.ts` | Outbox pure logic + IndexedDB I/O |
 | `src/app/sw.ts` | Serwist service worker (+ push / notificationclick) |
-| `src/lib/reminders.ts` | Pure evening-before reminder planner (Tokyo) |
+| `src/lib/reminders.ts` | Pure evening-before reminder planner (Tokyo), incl. rainy-tomorrow line from weather |
+| `src/lib/weather.ts` | Open-Meteo fetch + pure WMO glyph / window / rain helpers |
 | `src/lib/countdown.ts` | Pure morning countdown planner (MYT calendar) |
 | `src/lib/cron-auth.ts` | Shared `CRON_SECRET` Bearer check |
 | `src/lib/push-store.ts` / `push.ts` | Subscription store (+ prefs) + `web-push` send |
 | `src/app/api/push/*` / `api/cron/reminders` / `api/cron/countdown` | Subscribe / prefs / test / dual daily crons |
 | `scripts/release-notes.sh` | Conventional-commit release notes for bump-version workflow |
-| `src/lib/spend.ts` / `exchange.ts` | Budget math and FX |
+| `src/lib/spend.ts` / `exchange.ts` | Budget math, `settleUp` (who owes whom, RM) and FX |
+| `src/components/split-with-field.tsx` | Multi-chip 分摊人 field for spend forms |
 | `src/lib/geocode.ts` | Nominatim + landmarks |
 | `src/lib/theme.ts` / `theme-server.ts` | Appearance cookie + boot script |
 | `src/app/globals.css` | Semantic color/type/card tokens + dark |

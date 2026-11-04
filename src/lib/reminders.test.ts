@@ -337,3 +337,71 @@ describe("computeReminders", () => {
     expect(reminders[0]!.url).toBe("/schedule");
   });
 });
+
+describe("computeReminders — rain tomorrow", () => {
+  const days = [
+    day({ id: "d1", name: "Day 1", date: "2026-11-05", city: "Tokyo" }),
+    day({ id: "d2", name: "Day 2", date: "2026-11-06", city: "Kyoto" }),
+  ];
+  const now = tokyoNoon("2026-11-05");
+
+  it("adds one reminder when tomorrow's rain chance is ≥ 50%", () => {
+    const reminders = computeReminders(
+      {
+        ...empty,
+        days,
+        weather: {
+          "2026-11-06": { code: 63, tMin: 12.4, tMax: 16.6, rainPct: 80 },
+        },
+      },
+      now,
+    );
+    expect(reminders).toEqual([
+      {
+        id: "weather:2026-11-06",
+        title: "明天京都可能下雨",
+        body: "🌧️ 降雨 80% · 12–17°，记得带伞",
+        url: "/schedule?day=d2",
+        tag: "weather-2026-11-06",
+      },
+    ]);
+  });
+
+  it("writes English copy", () => {
+    const [reminder] = computeReminders(
+      {
+        ...empty,
+        days,
+        weather: { "2026-11-06": { code: 81, tMin: 10, tMax: 15, rainPct: 60 } },
+      },
+      now,
+      { locale: "en" },
+    );
+    expect(reminder!.title).toBe("Rain likely tomorrow in Kyoto");
+    expect(reminder!.body).toBe("🌧️ 60% rain · 10–15°, bring an umbrella");
+  });
+
+  it("skips dry days, missing weather, and non-trip days", () => {
+    expect(
+      computeReminders(
+        {
+          ...empty,
+          days,
+          weather: { "2026-11-06": { code: 2, tMin: 10, tMax: 15, rainPct: 49 } },
+        },
+        now,
+      ),
+    ).toEqual([]);
+    expect(computeReminders({ ...empty, days }, now)).toEqual([]);
+    expect(
+      computeReminders(
+        {
+          ...empty,
+          days,
+          weather: { "2026-11-07": { code: 63, tMin: 10, tMax: 15, rainPct: 90 } },
+        },
+        tokyoNoon("2026-11-06"),
+      ),
+    ).toEqual([]);
+  });
+});

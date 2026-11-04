@@ -1,4 +1,5 @@
 import type { Place, PrepItem, SpendItem, Stay, Transit, TripDay } from "@/lib/types";
+import type { TripWeather } from "@/lib/weather";
 
 export const TRIP_CACHE_STORAGE_KEY = "japan-trip-itinerary-v1";
 /** Same-tab signal for useSyncExternalStore subscribers. */
@@ -26,6 +27,9 @@ export type TripSnapshot = {
   stays: Stay[];
   spend: SpendItem[];
   prep: PrepItem[];
+  /** Only Schedule fetches it; other pages' writes carry the cached value forward. */
+  weather?: TripWeather;
+  weatherAt?: string;
 };
 
 /** Module memo so getSnapshot returns a stable reference (React #185). */
@@ -143,12 +147,24 @@ export function readTripCache(): TripSnapshot | null {
   }
 }
 
+export function carryWeather(
+  next: TripSnapshot,
+  prev: TripSnapshot | null,
+): TripSnapshot {
+  if (next.weather || !prev?.weather) return next;
+  return { ...next, weather: prev.weather, weatherAt: prev.weatherAt };
+}
+
 export function writeTripCache(snapshot: TripSnapshot) {
   if (typeof window === "undefined") return;
-  const raw = JSON.stringify(snapshot);
+  const prev = readCachedTripSnapshot(() =>
+    localStorage.getItem(TRIP_CACHE_STORAGE_KEY),
+  );
+  const next = carryWeather(snapshot, prev);
+  const raw = JSON.stringify(next);
   localStorage.setItem(TRIP_CACHE_STORAGE_KEY, raw);
   memoryRaw = raw;
-  memorySnapshot = snapshot;
+  memorySnapshot = next;
   window.dispatchEvent(new Event(TRIP_CACHE_CHANGE_EVENT));
 }
 
@@ -176,15 +192,21 @@ export function makeTripSnapshot(input: {
   spend?: SpendItem[];
   prep?: PrepItem[];
   savedAt?: string;
+  weather?: TripWeather;
+  weatherAt?: string;
 }): TripSnapshot {
+  const savedAt = input.savedAt ?? new Date().toISOString();
   return {
     v: 2,
-    savedAt: input.savedAt ?? new Date().toISOString(),
+    savedAt,
     days: input.days,
     places: input.places,
     transit: input.transit,
     stays: input.stays,
     spend: input.spend ?? [],
     prep: input.prep ?? [],
+    ...(input.weather && Object.keys(input.weather).length > 0
+      ? { weather: input.weather, weatherAt: input.weatherAt ?? savedAt }
+      : {}),
   };
 }

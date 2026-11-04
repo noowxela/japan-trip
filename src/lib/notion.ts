@@ -94,6 +94,12 @@ export function selectOf(page: PageObjectResponse, name: string) {
   return property.select?.name ?? null;
 }
 
+export function multiSelectOf(page: PageObjectResponse, name: string): string[] {
+  const property = page.properties[name];
+  if (!property || property.type !== "multi_select") return [];
+  return property.multi_select.map((option) => option.name);
+}
+
 export function statusOf(page: PageObjectResponse, name: string) {
   const property = page.properties[name];
   if (!property || property.type !== "status") return null;

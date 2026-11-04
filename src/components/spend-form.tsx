@@ -7,6 +7,7 @@ import { ActionForm } from "@/components/action-form";
 import { ChipGroup } from "@/components/chip-group";
 import { SpendAmountField } from "@/components/spend-amount-field";
 import { useSlideIn } from "@/components/slide-in-page";
+import { SplitWithField } from "@/components/split-with-field";
 import { DatePicker } from "@/components/date-picker";
 import { useEditSession } from "@/components/edit-session";
 import { useT } from "@/components/i18n-provider";
@@ -72,6 +73,7 @@ export function SpendForm({
   const [paidBy, setPaidBy] = useState(
     item?.paidBy ?? editorName ?? people[0] ?? "",
   );
+  const [splitWith, setSplitWith] = useState<string[]>(item?.splitWith ?? []);
   const dayId = dayIdForDate(days, dayDate);
   const matchedDay = days.find((day) => day.id === dayId);
   const tripDates = useMemo(() => {
@@ -164,6 +166,7 @@ export function SpendForm({
         </label>
 
         <PaidByField people={people} value={paidBy} onChange={setPaidBy} />
+        <SplitWithField people={people} value={splitWith} onChange={setSplitWith} />
 
         <label className="grid gap-1">
           <span className="text-[12px] font-medium text-ink-muted">{t("form.notes")}</span>

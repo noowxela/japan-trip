@@ -9,6 +9,7 @@ import { useT } from "@/components/i18n-provider";
 import { Modal } from "@/components/modal";
 import { useOutbox } from "@/components/outbox-provider";
 import { btnPrimaryClass, fieldClass } from "@/components/page-shell";
+import { SplitWithField } from "@/components/split-with-field";
 import { useToast } from "@/components/toast-provider";
 import { dateKey, formatDay, tokyoNowTime, tokyoToday } from "@/lib/format";
 import { haptic } from "@/lib/haptic";
@@ -111,6 +112,7 @@ function QuickExpenseForm({
   const [paidBy, setPaidBy] = useState(() =>
     readStoredPayer(people, editorName),
   );
+  const [splitWith, setSplitWith] = useState<string[]>([]);
   const [name, setName] = useState("");
   const [dayDate, setDayDate] = useState(initialDate);
   const [time, setTime] = useState(() => tokyoNowTime());
@@ -163,6 +165,7 @@ function QuickExpenseForm({
     formData.set("notes", "");
     formData.set("dayId", dayId);
     formData.set("paidBy", paidBy);
+    for (const person of splitWith) formData.append("splitWith", person);
     formData.set("dayDate", dayDate);
     formData.set("time", time);
     formData.set("clientId", clientId);
@@ -304,6 +307,8 @@ function QuickExpenseForm({
           />
         </label>
       )}
+
+      <SplitWithField people={people} value={splitWith} onChange={setSplitWith} />
 
       <label className="grid gap-1">
         <span className="text-xs font-medium text-ink-muted">

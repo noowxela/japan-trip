@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   byDay,
   moneySummary,
+  normalizeSplitWith,
   parseSpendCurrency,
+  settleUp,
   toRm,
 } from "@/lib/spend";
 import type { SpendItem } from "@/lib/types";
@@ -17,6 +19,7 @@ const item = (
   dayIds: partial.dayIds ?? [],
   start: partial.start ?? null,
   paidBy: partial.paidBy ?? null,
+  splitWith: partial.splitWith ?? [],
   ...partial,
 });
 
@@ -61,6 +64,121 @@ describe("moneySummary", () => {
       estimate: 200,
       actual: 60,
       remaining: 140,
+    });
+  });
+});
+
+describe("normalizeSplitWith", () => {
+  const people = ["Alex", "Ben", "Cara"];
+
+  it("stores empty when the selection is exactly everyone", () => {
+    expect(normalizeSplitWith(["Cara", "Alex", "Ben"], people)).toEqual([]);
+  });
+
+  it("keeps partial selections and extra names", () => {
+    expect(normalizeSplitWith(["Alex", " Ben ", "Alex"], people)).toEqual(["Alex", "Ben"]);
+    expect(normalizeSplitWith([...people, "Dan"], people)).toEqual([...people, "Dan"]);
+    expect(normalizeSplitWith(["Alex"], [])).toEqual(["Alex"]);
+  });
+});
+
+describe("settleUp", () => {
+  const people = ["Alex", "Ben", "Cara"];
+  const actual = (
+    partial: Partial<SpendItem> & Pick<SpendItem, "id" | "amount">,
+  ) => item({ currency: "RM", kind: "Actual", ...partial });
+  const net = (result: ReturnType<typeof settleUp>) =>
+    Object.fromEntries(
+      result.balances.map((row) => [row.name, Math.round(row.netRm * 100) / 100]),
+    );
+
+  it("splits equally among everyone when Split with is empty", () => {
+    const result = settleUp([actual({ id: "a", amount: 90, paidBy: "Alex" })], people);
+    expect(net(result)).toEqual({ Alex: 60, Ben: -30, Cara: -30 });
+    expect(result.transfers).toEqual([
+      { from: "Ben", to: "Alex", rm: 30 },
+      { from: "Cara", to: "Alex", rm: 30 },
+    ]);
+  });
+
+  it("splits only among listed people, payer may be excluded", () => {
+    const result = settleUp(
+      [
+        actual({ id: "a", amount: 40, paidBy: "Alex", splitWith: ["Ben", "Cara"] }),
+        actual({ id: "b", amount: 10, paidBy: "Ben", splitWith: ["Ben"] }),
+      ],
+      people,
+    );
+    expect(net(result)).toEqual({ Alex: 40, Ben: -20, Cara: -20 });
+    expect(result.balances.find((row) => row.name === "Ben")).toMatchObject({
+      paidRm: 10,
+      shareRm: 30,
+    });
+  });
+
+  it("converts Yen, skips estimates, and reports missing payers", () => {
+    const result = settleUp(
+      [
+        actual({ id: "y", amount: 3930, currency: "Yen", paidBy: "Cara", splitWith: ["Alex", "Cara"] }),
+        item({ id: "e", amount: 500, currency: "RM", kind: "Estimate", paidBy: "Alex" }),
+        actual({ id: "u", amount: 20 }),
+      ],
+      people,
+      39.3,
+    );
+    expect(net(result)).toEqual({ Alex: -50, Ben: 0, Cara: 50 });
+    expect(result.transfers).toEqual([{ from: "Alex", to: "Cara", rm: 50 }]);
+    expect(result.unassigned.map((row) => row.id)).toEqual(["u"]);
+  });
+
+  it("keeps names that are no longer editors and rounds to cents", () => {
+    const result = settleUp(
+      [actual({ id: "a", amount: 100, paidBy: "Dan", splitWith: ["Alex", "Ben", "Dan"] })],
+      people,
+    );
+    expect(result.balances.map((row) => row.name)).toEqual(["Alex", "Ben", "Cara", "Dan"]);
+    expect(result.transfers).toEqual([
+      { from: "Alex", to: "Dan", rm: 33.33 },
+      { from: "Ben", to: "Dan", rm: 33.33 },
+    ]);
+  });
+
+  it("needs at most n-1 transfers and nets to zero", () => {
+    const result = settleUp(
+      [
+        actual({ id: "1", amount: 120, paidBy: "Alex" }),
+        actual({ id: "2", amount: 45, paidBy: "Ben", splitWith: ["Ben", "Cara"] }),
+        actual({ id: "3", amount: 33, paidBy: "Cara", splitWith: ["Alex", "Cara"] }),
+      ],
+      people,
+    );
+    expect(result.transfers.length).toBeLessThanOrEqual(people.length - 1);
+    const total = result.balances.reduce((sum, row) => sum + row.netRm, 0);
+    expect(Math.abs(total)).toBeLessThan(1e-9);
+    const after = new Map(result.balances.map((row) => [row.name, Math.round(row.netRm * 100)]));
+    for (const transfer of result.transfers) {
+      after.set(transfer.from, (after.get(transfer.from) ?? 0) + Math.round(transfer.rm * 100));
+      after.set(transfer.to, (after.get(transfer.to) ?? 0) - Math.round(transfer.rm * 100));
+    }
+    for (const cents of after.values()) expect(Math.abs(cents)).toBeLessThanOrEqual(1);
+  });
+
+  it("falls back to payers when there is no Editors list", () => {
+    const result = settleUp(
+      [
+        actual({ id: "a", amount: 10, paidBy: "Alex" }),
+        actual({ id: "b", amount: 30, paidBy: "Ben" }),
+      ],
+      [],
+    );
+    expect(result.transfers).toEqual([{ from: "Alex", to: "Ben", rm: 10 }]);
+  });
+
+  it("is empty with no expenses", () => {
+    expect(settleUp([], people)).toEqual({
+      balances: people.map((name) => ({ name, paidRm: 0, shareRm: 0, netRm: 0 })),
+      transfers: [],
+      unassigned: [],
     });
   });
 });

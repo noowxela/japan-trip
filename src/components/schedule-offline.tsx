@@ -111,6 +111,8 @@ export function ScheduleOfflineFallback({
         cachedAt={state.savedAt}
         today={state.props.today}
         phase={state.props.phase}
+        weather={state.props.weather}
+        weatherAt={state.props.weatherAt}
       />
     </>
   );

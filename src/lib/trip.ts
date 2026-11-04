@@ -8,6 +8,7 @@ import {
   ds,
   hasEditorsDs,
   hasPrepDs,
+  multiSelectOf,
   numberOf,
   queryAll,
   relationIdsOf,
@@ -53,7 +54,7 @@ function parseDay(page: Awaited<ReturnType<typeof queryAll>>[number]): TripDay {
     id: page.id,
     name: titleOf(page),
     date: dateOf(page, "Date"),
-    city: selectOf(page, "City"),
+    city: selectOf(page, "City") ?? multiSelectOf(page, "City")[0] ?? null,
     status: statusOf(page, "Status"),
   };
 }
@@ -113,6 +114,7 @@ function parseSpend(page: Awaited<ReturnType<typeof queryAll>>[number]): SpendIt
     dayIds: relationIdsOf(page, "Day"),
     start: dateOf(page, "Start"),
     paidBy: selectOf(page, "Paid by"),
+    splitWith: multiSelectOf(page, "Split with"),
   };
 }
 

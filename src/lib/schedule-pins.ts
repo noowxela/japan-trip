@@ -222,5 +222,7 @@ export function schedulePropsFromSnapshot(
     phase,
     nowModeAllowed,
     today,
+    weather: snapshot.weather ?? null,
+    weatherAt: snapshot.weatherAt ?? null,
   };
 }

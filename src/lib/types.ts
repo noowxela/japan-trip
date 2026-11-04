@@ -59,6 +59,8 @@ export type SpendItem = {
   dayIds: string[];
   start: string | null;
   paidBy: string | null;
+  /** Empty = split among everyone. */
+  splitWith: string[];
 };
 
 export type PrepItem = {

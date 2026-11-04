@@ -23,6 +23,8 @@ export type AddSpendPayload = {
   notes: string;
   dayId: string;
   paidBy: string;
+  /** Missing on entries queued before SDD 016; empty = everyone. */
+  splitWith?: string[];
   dayDate: string;
   time: string;
 };
@@ -85,6 +87,7 @@ export function buildAddSpendPayload(
     notes: input.notes,
     dayId: input.dayId,
     paidBy: input.paidBy,
+    splitWith: input.splitWith ?? [],
     dayDate: input.dayDate,
     time: input.time,
   };

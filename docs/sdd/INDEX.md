@@ -22,3 +22,6 @@ Living specs for this repo. Change specs stay `draft` until approved. Do not tre
 | [015](015-offline-navigation.md) | Offline navigation | implemented | Fallback page escapes via full nav; stable SW RSC cache keys + warm on full load; offline/stale banner with time |
 | [019](019-hours-countdown.md) | Hour-based departure countdown | implemented | Under 48h the home strip shows 还有 N 小时出发 (minutes under 1h) to Day 1 flight, ticking client-side every 30s |
 | [020](020-schedule-sheet-drag.md) | Schedule sheet drag + tall map snap | implemented | Snaps 0.17/0.45/0.72/0.92 (map up to 83%); drag from whole header with flick momentum; tap cycles snaps |
+| [016](016-settle-up-split.md) | Settle-up tab + Split with | implemented | Notion `Split with` multi-select; 分账 tab with min transfers in RM |
+| [017](017-weather-rain-hint.md) | Weather + rain hint | implemented | Open-Meteo per city/day in Schedule header + offline snapshot; rainy-tomorrow line in evening push |
+| [018](018-global-search.md) | Global search | draft | Client-only search sheet over the trip snapshot + phrases; works offline |
