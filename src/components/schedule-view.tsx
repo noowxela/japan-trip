@@ -26,28 +26,27 @@ import { dateKey, formatCachedAt, formatDay, formatTime, formatTripSpan } from "
 import { toggleHiddenMapPin } from "@/lib/hidden-map-pins";
 import { labelMode, labelType } from "@/lib/i18n/dictionaries";
 import type { DayScheduleSlice, SchedulePin } from "@/lib/schedule-pins";
+import {
+  clampSheetHeight,
+  cycleSnap,
+  DRAG_THRESHOLD_PX,
+  pushSample,
+  releaseSnap,
+  releaseVelocity,
+  type VelocitySample,
+} from "@/lib/sheet-drag";
 import { nextAgendaItem } from "@/lib/trip-core";
 import type { AgendaItem, Place, Stay, TripDay } from "@/lib/types";
 
-/** Sheet height fractions; default leaves map ≈28dvh on phone. */
-const SNAPS = [0.55, 0.72, 0.92] as const;
-const DEFAULT_SNAP = 1;
+/**
+ * Sheet height fractions of the page root (SDD 019). 0.17 leaves handle +
+ * day tabs + a sliver so the map gets ≈83%; default 0.72 (map ≈28%).
+ */
+const SNAPS = [0.17, 0.45, 0.72, 0.92] as const;
+const DEFAULT_SNAP = 2;
 const TAP_SLOP_PX = 10;
 
 type ScheduleMode = "view" | "now" | "edit";
-
-function nearestSnap(fraction: number) {
-  let best = 0;
-  let bestDist = Infinity;
-  SNAPS.forEach((snap, index) => {
-    const dist = Math.abs(snap - fraction);
-    if (dist < bestDist) {
-      best = index;
-      bestDist = dist;
-    }
-  });
-  return best;
-}
 
 function writeScheduleUrl(dayId: string, mode: ScheduleMode) {
   const params = new URLSearchParams();
@@ -237,9 +236,12 @@ export function ScheduleView({
   const skipClickRef = useRef(false);
   const dragRef = useRef<{
     pointerId: number;
+    startX: number;
     startY: number;
     startHeight: number;
-    moved: boolean;
+    startIndex: number;
+    active: boolean;
+    samples: VelocitySample[];
   } | null>(null);
   const [snapIndex, setSnapIndex] = useState(DEFAULT_SNAP);
   const [dragHeight, setDragHeight] = useState<number | null>(null);
@@ -247,75 +249,87 @@ export function ScheduleView({
 
   const sheetHeight =
     dragHeight != null ? `${dragHeight}px` : `${SNAPS[snapIndex] * 100}%`;
-  const expanded = snapIndex === SNAPS.length - 1 && dragHeight == null;
+  const atTop = snapIndex === SNAPS.length - 1;
+  const collapsed = snapIndex === 0 && dragHeight == null;
 
-  const clampHeight = useCallback((next: number) => {
-    const rootH = rootRef.current?.clientHeight ?? 0;
-    if (rootH <= 0) return next;
-    const min = rootH * SNAPS[0];
-    const max = rootH * SNAPS[SNAPS.length - 1];
-    return Math.min(max, Math.max(min, next));
-  }, []);
-
-  const endDrag = useCallback(
-    (clientY: number) => {
-      const drag = dragRef.current;
-      const rootH = rootRef.current?.clientHeight ?? 0;
-      dragRef.current = null;
-      if (!drag || rootH <= 0) {
-        setDragHeight(null);
-        return;
-      }
-
-      if (!drag.moved) {
-        setDragHeight(null);
-        return;
-      }
-
-      skipClickRef.current = true;
-      const height = clampHeight(drag.startHeight + (drag.startY - clientY));
-      setSnapIndex(nearestSnap(height / rootH));
-      setDragHeight(null);
-    },
-    [clampHeight],
-  );
-
-  function onHandlePointerDown(event: React.PointerEvent<HTMLButtonElement>) {
-    if (mapFullscreen) return;
-    if (event.button !== 0) return;
-    const sheet = event.currentTarget.parentElement;
-    if (!sheet) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
+  /**
+   * Drag from anywhere in the sheet header (handle, day tabs, sticky day
+   * title). A pointer only becomes a drag after DRAG_THRESHOLD_PX of mostly
+   * vertical travel, so taps and horizontal tab scrolls still work.
+   */
+  function onSheetPointerDown(event: React.PointerEvent<HTMLElement>) {
+    skipClickRef.current = false;
+    if (mapFullscreen || event.button !== 0) return;
+    const target = event.target as Element | null;
+    if (!target?.closest("[data-sheet-drag]")) return;
     dragRef.current = {
       pointerId: event.pointerId,
+      startX: event.clientX,
       startY: event.clientY,
-      startHeight: sheet.getBoundingClientRect().height,
-      moved: false,
+      startHeight: event.currentTarget.getBoundingClientRect().height,
+      startIndex: snapIndex,
+      active: false,
+      samples: [{ t: event.timeStamp, y: event.clientY }],
     };
   }
 
-  function onHandlePointerMove(event: React.PointerEvent<HTMLButtonElement>) {
+  function onSheetPointerMove(event: React.PointerEvent<HTMLElement>) {
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
-    const delta = drag.startY - event.clientY;
-    if (Math.abs(delta) > TAP_SLOP_PX) drag.moved = true;
-    if (!drag.moved) return;
-    setDragHeight(clampHeight(drag.startHeight + delta));
-  }
-
-  function onHandlePointerUp(event: React.PointerEvent<HTMLButtonElement>) {
-    if (dragRef.current?.pointerId !== event.pointerId) return;
-    endDrag(event.clientY);
-  }
-
-  function onHandleClick() {
-    if (skipClickRef.current) {
-      skipClickRef.current = false;
-      return;
+    const dy = drag.startY - event.clientY;
+    if (!drag.active) {
+      const dx = Math.abs(event.clientX - drag.startX);
+      if (dx > DRAG_THRESHOLD_PX && dx > Math.abs(dy)) {
+        dragRef.current = null; // horizontal: let the day tabs scroll
+        return;
+      }
+      if (Math.abs(dy) < DRAG_THRESHOLD_PX) return;
+      drag.active = true;
+      event.currentTarget.setPointerCapture(event.pointerId);
     }
-    setSnapIndex((index) =>
-      index === SNAPS.length - 1 ? DEFAULT_SNAP : SNAPS.length - 1,
-    );
+    drag.samples = pushSample(drag.samples, {
+      t: event.timeStamp,
+      y: event.clientY,
+    });
+    const rootH = rootRef.current?.clientHeight ?? 0;
+    setDragHeight(clampSheetHeight(SNAPS, drag.startHeight + dy, rootH));
+  }
+
+  function onSheetPointerUp(event: React.PointerEvent<HTMLElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    dragRef.current = null;
+    if (!drag.active) return;
+    skipClickRef.current = true;
+    const rootH = rootRef.current?.clientHeight ?? 0;
+    if (rootH > 0 && event.type === "pointerup") {
+      const samples = pushSample(drag.samples, {
+        t: event.timeStamp,
+        y: event.clientY,
+      });
+      const height = clampSheetHeight(
+        SNAPS,
+        drag.startHeight + (drag.startY - event.clientY),
+        rootH,
+      );
+      setSnapIndex(
+        releaseSnap(
+          SNAPS,
+          drag.startIndex,
+          height / rootH,
+          releaseVelocity(samples, event.timeStamp),
+        ),
+      );
+    }
+    setDragHeight(null);
+  }
+
+  /** Swallow the click that follows a drag (tab select, handle cycle). */
+  function onSheetClickCapture(event: React.MouseEvent<HTMLElement>) {
+    if (!skipClickRef.current) return;
+    skipClickRef.current = false;
+    event.preventDefault();
+    event.stopPropagation();
   }
 
   function onHandleKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
@@ -327,11 +341,6 @@ export function ScheduleView({
     } else if (event.key === "ArrowDown" || event.key === "End") {
       event.preventDefault();
       setSnapIndex((index) => (event.key === "End" ? 0 : Math.max(0, index - 1)));
-    } else if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      setSnapIndex((index) =>
-        index === SNAPS.length - 1 ? DEFAULT_SNAP : SNAPS.length - 1,
-      );
     }
   }
 
@@ -437,7 +446,7 @@ export function ScheduleView({
 
       <section
         className={`relative z-20 flex shrink-0 flex-col overflow-hidden rounded-t-2xl border-t border-line bg-surface shadow-[0_-8px_32px_rgba(28,25,23,0.12)] ${
-          mapFullscreen ? "pointer-events-none min-h-0" : "min-h-64"
+          mapFullscreen ? "pointer-events-none" : ""
         }`}
         style={{
           height: mapFullscreen ? 0 : sheetHeight,
@@ -448,27 +457,33 @@ export function ScheduleView({
               : "none",
         }}
         aria-hidden={mapFullscreen}
+        data-sheet-snap={snapIndex}
+        onPointerDown={onSheetPointerDown}
+        onPointerMove={onSheetPointerMove}
+        onPointerUp={onSheetPointerUp}
+        onPointerCancel={onSheetPointerUp}
+        onClickCapture={onSheetClickCapture}
       >
         <button
           type="button"
-          aria-label={expanded ? t("schedule.collapse") : t("schedule.expand")}
-          aria-expanded={expanded}
-          onPointerDown={onHandlePointerDown}
-          onPointerMove={onHandlePointerMove}
-          onPointerUp={onHandlePointerUp}
-          onPointerCancel={onHandlePointerUp}
-          onClick={onHandleClick}
+          data-sheet-drag
+          data-sheet-handle
+          aria-label={atTop ? t("schedule.collapse") : t("schedule.expand")}
+          aria-expanded={!collapsed}
+          onClick={() => setSnapIndex((index) => cycleSnap(SNAPS, index))}
           onKeyDown={onHandleKeyDown}
-          className="flex shrink-0 cursor-grab touch-none flex-col items-center pt-2 pb-1 active:cursor-grabbing"
+          className="flex h-11 w-full shrink-0 cursor-grab touch-none items-start justify-center pt-2 active:cursor-grabbing"
         >
-          <span className="h-1 w-10 rounded-full bg-ink-muted/35" />
+          <span className="h-1.5 w-12 rounded-full bg-ink-muted/40" />
         </button>
 
-        <ScheduleDayTabs
-          days={days}
-          selectedId={selectedDay?.id ?? "all"}
-          onSelect={selectDay}
-        />
+        <div data-sheet-drag className="shrink-0 touch-pan-x">
+          <ScheduleDayTabs
+            days={days}
+            selectedId={selectedDay?.id ?? "all"}
+            onSelect={selectDay}
+          />
+        </div>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-canvas">
           {selectedDay ? (
@@ -479,7 +494,8 @@ export function ScheduleView({
             >
               <div
                 data-schedule-sticky-header
-                className="sticky top-0 z-30 border-b border-line bg-surface px-3 py-2"
+                data-sheet-drag
+                className="sticky top-0 z-30 touch-none border-b border-line bg-surface px-3 py-2"
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0 flex-1">

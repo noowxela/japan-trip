@@ -27,13 +27,13 @@ export function DayQuickFab({
 
   return (
     <>
-      <div className="tab-bar-follow fixed inset-x-0 bottom-0 z-20 flex justify-end px-4 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] lg:hidden">
+      <div className="tab-bar-follow fixed inset-x-0 bottom-0 z-20 pointer-events-none flex justify-end px-4 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] lg:hidden">
         <button
           type="button"
           onClick={() =>
             editOrUnlock(() => setOpen(open === "menu" ? null : "menu"))
           }
-          className="notebook-btn bg-accent px-5 py-3 text-sm font-medium text-white"
+          className="pointer-events-auto notebook-btn bg-accent px-5 py-3 text-sm font-medium text-white"
         >
           {open === "menu" ? t("fab.close") : t("fab.quickAdd")}
         </button>
