@@ -74,7 +74,7 @@ Pages are `export const dynamic = "force-dynamic"`. No webhooks, no poll, no mul
 | `NOTION_EDITORS_DS` | Optional editor name + PIN |
 | `NOTION_PREP_DS` | Optional packing/checklist |
 
-Canonical schema: `notion/src/main.ts`. CLI fallbacks: `notion/scripts/`.
+Canonical schema: `notion/src/main.ts`. CLI fallbacks: `notion/scripts/`. `notion/` is a local checkout of [makenotion/notion-as-code-template](https://github.com/makenotion/notion-as-code-template) and is not committed (see [setup](setup.md)); nothing at runtime imports it.
 
 ## Surfaces
 
