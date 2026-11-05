@@ -11,6 +11,7 @@ import {
   PendingPanel,
 } from "@/components/day-agenda-board";
 import { CityKanji } from "@/components/city-kanji";
+import { FlightPlaneIcon } from "@/components/flight-plane-icon";
 import { DayMapLoader } from "@/components/day-map-loader";
 import type { DayMapFocus } from "@/components/day-map";
 import { DayQuickFab } from "@/components/day-quick-fab";
@@ -754,10 +755,10 @@ function NowCard({
     status === "now" ? t("schedule.now") : t("schedule.upNext"),
     formatTime(item.start) ?? t("common.anytime"),
     item.name,
-    chipLabel,
   ]
     .filter(Boolean)
     .join(" · ");
+  const isFlight = item.kind === "transit" && item.chip === "Flight";
 
   return (
     <section
@@ -779,6 +780,13 @@ function NowCard({
     >
       <p className="min-w-0 flex-1 truncate text-[13px] font-medium leading-4 text-ink">
         <span className="tabular-nums">{line}</span>
+        {chipLabel ? (
+          <>
+            {" · "}
+            {chipLabel}
+            {isFlight ? <FlightPlaneIcon className="ml-0.5 text-accent" /> : null}
+          </>
+        ) : null}
       </p>
       {item.kind === "place" ? (
         <div

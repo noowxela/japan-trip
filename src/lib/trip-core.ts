@@ -15,6 +15,9 @@ export function tripPhase(
   return "during";
 }
 
+/** How long a started flight (no arrival stored) stays the current item. */
+const FLIGHT_NOW_MS = 8 * 60 * 60 * 1000;
+
 function agendaItemTimeMs(item: AgendaItem): number | null {
   if (!item.start || !item.start.includes("T")) return null;
   const ms = Date.parse(item.start);
@@ -46,7 +49,13 @@ export function nextAgendaItem(
         const laterTime = agendaItemTimeMs(later);
         return laterTime != null && laterTime <= nowMs;
       });
-      if (item.kind === "transit" || laterStarted) continue;
+      // A flight stays "now" while plausibly in the air (no arrival time is
+      // stored); other transit is skipped once its start has passed.
+      const inFlight =
+        item.kind === "transit" &&
+        item.chip === "Flight" &&
+        nowMs - time < FLIGHT_NOW_MS;
+      if (laterStarted || (item.kind === "transit" && !inFlight)) continue;
     }
 
     const status: "now" | "next" =

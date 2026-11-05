@@ -15,6 +15,7 @@ import {
 import { DirectionsLink } from "@/components/directions-link";
 import { HankoStamp } from "@/components/hanko-stamp";
 import { useT } from "@/components/i18n-provider";
+import { FlightPlaneIcon } from "@/components/flight-plane-icon";
 import { MapsPinLink } from "@/components/maps-pin-link";
 import { Modal } from "@/components/modal";
 import { useOutbox } from "@/components/outbox-provider";
@@ -641,6 +642,9 @@ export function DayAgendaBoard({
                           <p className="truncate text-[13px] leading-4 text-ink">
                             <span className="mr-1.5 inline-block rounded bg-transit-soft px-1 py-px text-[10px] font-medium text-transit align-middle">
                               {modeLabel}
+                              {item.chip === "Flight" ? (
+                                <FlightPlaneIcon className="ml-0.5" />
+                              ) : null}
                             </span>
                             <span className="font-medium">{item.name}</span>
                             {item.detail ? (

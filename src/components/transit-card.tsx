@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { FlightPlaneIcon } from "@/components/flight-plane-icon";
 import { useState, useTransition } from "react";
 import { deleteTransit, updateTransit } from "@/app/actions";
 import { ActionForm } from "@/components/action-form";
@@ -185,6 +186,9 @@ export function TransitCard({
             {modeLabel ? (
               <span className="mr-1 inline-block rounded bg-transit-soft px-1 py-px text-[10px] font-medium text-transit align-middle">
                 {modeLabel}
+                {item.mode === "Flight" ? (
+                  <FlightPlaneIcon className="ml-0.5" />
+                ) : null}
               </span>
             ) : null}
             {route || item.name}

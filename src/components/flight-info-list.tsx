@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FlightPlaneIcon } from "@/components/flight-plane-icon";
 import {
   CompactRow,
   CompactRowList,
@@ -64,8 +65,9 @@ export async function FlightInfoList({ flights, dayNames }: FlightInfoListProps)
             <li key={flight.id}>
               <CompactRow
                 leading={
-                  <span className="text-[10px] font-medium text-ink-muted">
+                  <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-ink-muted">
                     {labelMode(locale, "Flight")}
+                    <FlightPlaneIcon className="text-accent" />
                   </span>
                 }
                 title={flight.name}

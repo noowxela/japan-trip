@@ -54,3 +54,33 @@ describe("tripPhase", () => {
     expect(tripPhase([], "2026-10-27")).toBe("none");
   });
 });
+
+describe("nextAgendaItem: overnight flight (KLIA, 2026-11-06)", () => {
+  // Live Day 1 data: flight stored as 02:15 JST, next item 09:24 JST.
+  const flight: AgendaItem = {
+    ...item("depart", "transit", "2026-11-06T02:15:00.000+09:00"),
+    chip: "Flight",
+    detail: "KLIA → osaka - Kansai",
+  };
+  const day = [
+    flight,
+    item("test", "place", "2026-11-06T09:24:00.000+09:00"),
+    item("kix", "place", "2026-11-07T09:30:00.000+08:00"),
+  ];
+  it("keeps the flight current at 01:26 MYT (phone in UTC+8)", () => {
+    const now = new Date("2026-11-06T01:26:00+08:00");
+    expect(nextAgendaItem(day, { now, isToday: true })).toEqual({ item: flight, status: "now" });
+  });
+  it("is 'next' before departure", () => {
+    const now = new Date("2026-11-06T00:30:00+08:00");
+    expect(nextAgendaItem(day, { now, isToday: true })).toEqual({ item: flight, status: "next" });
+  });
+  it("moves on once the next item starts", () => {
+    const now = new Date("2026-11-06T09:30:00+09:00");
+    expect(nextAgendaItem(day, { now, isToday: true })?.item.id).toBe("test");
+  });
+  it("moves on after the in-flight window even with no later start", () => {
+    const now = new Date("2026-11-06T11:00:00+09:00");
+    expect(nextAgendaItem([flight, item("untimed", "place", null)], { now, isToday: true })?.item.id).toBe("untimed");
+  });
+});
