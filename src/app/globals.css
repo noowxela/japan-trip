@@ -470,3 +470,9 @@ fieldset:disabled [data-haptic-overlay],
     transition: none;
   }
 }
+
+/* Schedule row tap → focused pin on the inline day map. */
+.leaflet-marker-icon.day-map-pin-focus {
+  z-index: 10000 !important;
+  filter: drop-shadow(0 0 0.35rem var(--accent));
+}

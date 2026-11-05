@@ -12,6 +12,7 @@ import {
 } from "@/components/day-agenda-board";
 import { CityKanji } from "@/components/city-kanji";
 import { DayMapLoader } from "@/components/day-map-loader";
+import type { DayMapFocus } from "@/components/day-map";
 import { DayQuickFab } from "@/components/day-quick-fab";
 import { DirectionsLink } from "@/components/directions-link";
 import { useCanEdit } from "@/components/edit-session";
@@ -46,6 +47,8 @@ import { weatherKind, weatherShort, type TripWeather } from "@/lib/weather";
 const SNAPS = [0.17, 0.45, 0.72, 0.92] as const;
 const DEFAULT_SNAP = 2;
 const TAP_SLOP_PX = 10;
+/** Snap used when a row focuses its pin: map gets ≈55%. */
+const FOCUS_SNAP = 1;
 
 type ScheduleMode = "view" | "now" | "edit";
 
@@ -118,6 +121,7 @@ export function ScheduleView({
   const lodging = slice?.stays ?? [];
   const selectedDate = dateKey(selectedDay?.date ?? null);
   const dayWeather = selectedDate ? (weather?.[selectedDate] ?? null) : null;
+  const selectedDayId = selectedDay?.id ?? null;
   const mapPins = selectedDay ? (slice?.mapPins ?? []) : allPins;
   const mapCity =
     selectedDay?.city ?? days.find((day) => day.city)?.city ?? null;
@@ -253,6 +257,19 @@ export function ScheduleView({
   const [snapIndex, setSnapIndex] = useState(DEFAULT_SNAP);
   const [dragHeight, setDragHeight] = useState<number | null>(null);
   const [mapFullscreen, setMapFullscreen] = useState(false);
+  const [mapFocus, setMapFocus] = useState<
+    (DayMapFocus & { dayId: string | null }) | null
+  >(null);
+  const focusOnMap = useCallback((id: string) => {
+    setMapFocus((prev) => ({
+      id,
+      dayId: selectedDayId,
+      nonce: (prev?.nonce ?? 0) + 1,
+    }));
+    // Drop the sheet so the map is visible (never raise it).
+    setDragHeight(null);
+    setSnapIndex((index) => Math.min(index, FOCUS_SNAP));
+  }, [selectedDayId]);
 
   const sheetHeight =
     dragHeight != null ? `${dragHeight}px` : `${SNAPS[snapIndex] * 100}%`;
@@ -418,6 +435,13 @@ export function ScheduleView({
           className="h-full border-0"
           fullscreen={mapFullscreen}
           onFullscreenChange={setMapFullscreen}
+          focus={
+            mapFocus &&
+            mapFocus.dayId === selectedDayId &&
+            mapPins.some((pin) => pin.id === mapFocus.id)
+              ? mapFocus
+              : null
+          }
         />
         <Link
           href="/"
@@ -649,6 +673,7 @@ export function ScheduleView({
                       showPending={false}
                       highlightId={nowModeActive ? focusId : null}
                       mutedIds={nowModeActive ? mutedIds : undefined}
+                      onFocusItem={focusOnMap}
                     />
                   </>
                 )}

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { Marker as LeafletMarker } from "leaflet";
 import { MapContainer, Marker, Popup, Polyline, ScaleControl, Tooltip, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { useVisibleMapPins } from "@/components/hide-map-pin-button";
@@ -31,7 +32,44 @@ export type DayMapPin = {
   label?: string;
 };
 
+/** Focus request; `nonce` changes on every tap so re-tapping flies again. */
+export type DayMapFocus = { id: string; nonce: number };
+
 const NAME_ZOOM = 14;
+const FOCUS_ZOOM = 16;
+/** Wait for the schedule sheet snap transition before flying. */
+const FOCUS_DELAY_MS = 320;
+
+function FocusPin({
+  focus,
+  markers,
+}: {
+  focus: DayMapFocus | null | undefined;
+  markers: React.RefObject<Map<string, LeafletMarker>>;
+}) {
+  const map = useMap();
+  const id = focus?.id ?? null;
+  const nonce = focus?.nonce ?? 0;
+  useEffect(() => {
+    if (!id) return;
+    const marker = markers.current.get(id);
+    if (!marker) return;
+    const el = marker.getElement();
+    el?.classList.add("day-map-pin-focus");
+    const timer = window.setTimeout(() => {
+      map.invalidateSize();
+      map.flyTo(marker.getLatLng(), Math.max(map.getZoom(), FOCUS_ZOOM), {
+        duration: 0.6,
+      });
+      map.once("moveend", () => marker.openPopup());
+    }, FOCUS_DELAY_MS);
+    return () => {
+      window.clearTimeout(timer);
+      el?.classList.remove("day-map-pin-focus");
+    };
+  }, [map, markers, id, nonce]);
+  return null;
+}
 
 function MapZoomGate({ minZoom }: { minZoom: number }) {
   const map = useMap();
@@ -202,13 +240,16 @@ export default function DayMap({
   className = "",
   fullscreen: fullscreenProp,
   onFullscreenChange,
+  focus,
 }: {
   city: string | null;
   pins: DayMapPin[];
   className?: string;
   fullscreen?: boolean;
   onFullscreenChange?: (value: boolean) => void;
+  focus?: DayMapFocus | null;
 }) {
+  const markersRef = useRef(new Map<string, LeafletMarker>());
   const fallback = (city && CITY_COORDS[city]) || CITY_COORDS.Kyoto;
   const { t } = useT();
   const visiblePins = useVisibleMapPins(pins);
@@ -267,6 +308,7 @@ export default function DayMap({
         <ScaleControl position="bottomleft" imperial={false} maxWidth={80} />
         <MapZoomGate minZoom={NAME_ZOOM} />
         <FitPins positions={path} fallback={fallback} />
+        <FocusPin focus={focus} markers={markersRef} />
         <MapTiles styleId={styleId} tiles={tiles} />
         {sightPath.length > 1 ? (
           <Polyline
@@ -289,6 +331,10 @@ export default function DayMap({
               key={pin.id}
               position={[pin.lat, pin.lng]}
               icon={icon}
+              ref={(marker) => {
+                if (marker) markersRef.current.set(pin.id, marker);
+                else markersRef.current.delete(pin.id);
+              }}
             >
               <Tooltip
                 permanent

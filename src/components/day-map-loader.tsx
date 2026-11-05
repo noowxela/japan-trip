@@ -1,7 +1,7 @@
 "use client";
 
 import nextDynamic from "next/dynamic";
-import type { DayMapPin } from "@/components/day-map";
+import type { DayMapFocus, DayMapPin } from "@/components/day-map";
 import { MapAreaSkeleton } from "@/components/page-skeletons";
 
 const DayMap = nextDynamic(() => import("@/components/day-map"), {
@@ -15,12 +15,14 @@ export function DayMapLoader({
   className = "",
   fullscreen,
   onFullscreenChange,
+  focus,
 }: {
   city: string | null;
   pins: DayMapPin[];
   className?: string;
   fullscreen?: boolean;
   onFullscreenChange?: (value: boolean) => void;
+  focus?: DayMapFocus | null;
 }) {
   return (
     <DayMap
@@ -29,6 +31,7 @@ export function DayMapLoader({
       className={className}
       fullscreen={fullscreen}
       onFullscreenChange={onFullscreenChange}
+      focus={focus}
     />
   );
 }

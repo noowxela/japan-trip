@@ -29,7 +29,7 @@ import {
 import { walkLabelBetween } from "@/lib/geo";
 import { toggleHiddenMapPin } from "@/lib/hidden-map-pins";
 import { labelMode, labelType } from "@/lib/i18n/dictionaries";
-import { sightNumbersFromAgenda } from "@/lib/schedule-pins";
+import { isMapFocusable, sightNumbersFromAgenda } from "@/lib/schedule-pins";
 import type { AgendaItem, Place } from "@/lib/types";
 
 type DragPayload = { id: string; from: "pending" | "agenda" };
@@ -391,6 +391,7 @@ export function DayAgendaBoard({
   showPending = true,
   highlightId = null,
   mutedIds,
+  onFocusItem,
 }: {
   agenda: AgendaItem[];
   pending: Place[];
@@ -399,6 +400,8 @@ export function DayAgendaBoard({
   showPending?: boolean;
   highlightId?: string | null;
   mutedIds?: Set<string>;
+  /** Tap a located place row to focus it on the day map. */
+  onFocusItem?: (id: string) => void;
 }) {
   const [busy, startTransition] = useTransition();
   const [over, setOver] = useState<string | null>(null);
@@ -542,6 +545,8 @@ export function DayAgendaBoard({
                 item.lat != null &&
                 item.lng != null &&
                 hiddenIds.has(item.id);
+              const focusable =
+                onFocusItem != null && isMapFocusable(item, hiddenIds);
               const typeLabel =
                 item.kind === "place" ? labelType(locale, item.chip) : null;
               const modeLabel =
@@ -680,7 +685,32 @@ export function DayAgendaBoard({
                             );
                             event.dataTransfer.effectAllowed = "move";
                           }}
+                          role={focusable ? "button" : undefined}
+                          tabIndex={focusable ? 0 : undefined}
+                          aria-label={
+                            focusable
+                              ? t("agenda.showOnMapFocus", { name: item.name })
+                              : undefined
+                          }
+                          onClick={
+                            focusable
+                              ? () => onFocusItem?.(item.id)
+                              : undefined
+                          }
+                          onKeyDown={
+                            focusable
+                              ? (event) => {
+                                  if (event.target !== event.currentTarget) return;
+                                  if (event.key === "Enter" || event.key === " ") {
+                                    event.preventDefault();
+                                    onFocusItem?.(item.id);
+                                  }
+                                }
+                              : undefined
+                          }
                           className={`relative flex min-h-11 min-w-0 items-center gap-1 bg-canvas py-1.5 pr-9 ${
+                            focusable ? "cursor-pointer " : ""
+                          }${
                             isFocus
                               ? "border-l-2 border-accent bg-accent/5 pl-2 -ml-0.5"
                               : ""

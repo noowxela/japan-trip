@@ -27,6 +27,19 @@ export type DayScheduleSlice = {
   places: Place[];
 };
 
+/** Agenda rows that can focus the inline day map: placed, located, not hidden. */
+export function isMapFocusable(
+  item: AgendaItem,
+  hiddenIds: ReadonlySet<string>,
+): boolean {
+  return (
+    item.kind === "place" &&
+    item.lat != null &&
+    item.lng != null &&
+    !hiddenIds.has(item.id)
+  );
+}
+
 export function pinKind(type: string | null): SchedulePin["kind"] {
   if (type === "Food" || type === "Cafe") return "food";
   if (type === "Sight") return "sight";
