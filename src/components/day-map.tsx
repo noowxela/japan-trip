@@ -18,6 +18,8 @@ import {
   sightNumberIcon,
   stayPinIcon,
 } from "@/lib/map-pin-icons";
+import { FlightMapArcs } from "@/components/flight-map-arc";
+import type { FlightRoute } from "@/lib/flight-path";
 import { sightNumbersById } from "@/lib/schedule-pins";
 import { CITY_COORDS } from "@/lib/types";
 import { googleMapsHref } from "@/lib/maps";
@@ -237,6 +239,7 @@ function FitPins({
 export default function DayMap({
   city,
   pins,
+  flights = [],
   className = "",
   fullscreen: fullscreenProp,
   onFullscreenChange,
@@ -244,6 +247,7 @@ export default function DayMap({
 }: {
   city: string | null;
   pins: DayMapPin[];
+  flights?: FlightRoute[];
   className?: string;
   fullscreen?: boolean;
   onFullscreenChange?: (value: boolean) => void;
@@ -309,6 +313,7 @@ export default function DayMap({
         <MapZoomGate minZoom={NAME_ZOOM} />
         <FitPins positions={path} fallback={fallback} />
         <FocusPin focus={focus} markers={markersRef} />
+        <FlightMapArcs flights={flights} pins={pins} />
         <MapTiles styleId={styleId} tiles={tiles} />
         {sightPath.length > 1 ? (
           <Polyline

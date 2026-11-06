@@ -82,6 +82,9 @@ export type AgendaItem = {
   mapsUrl?: string | null;
   lat?: number | null;
   lng?: number | null;
+  /** Transit endpoints. Flight pairing reads these (detail stays "from → to"). */
+  from?: string;
+  to?: string;
 };
 
 export const CITIES = ["Tokyo", "Kyoto", "Osaka", "Other"] as const;

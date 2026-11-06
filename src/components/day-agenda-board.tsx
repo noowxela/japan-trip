@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import {
   confirmPendingPlace,
   movePendingToDay,
@@ -16,6 +16,7 @@ import { DirectionsLink } from "@/components/directions-link";
 import { HankoStamp } from "@/components/hanko-stamp";
 import { useT } from "@/components/i18n-provider";
 import { FlightPlaneIcon } from "@/components/flight-plane-icon";
+import { FlightRouteOverlay } from "@/components/flight-route-overlay";
 import { MapsPinLink } from "@/components/maps-pin-link";
 import { Modal } from "@/components/modal";
 import { useOutbox } from "@/components/outbox-provider";
@@ -30,6 +31,7 @@ import {
 import { walkLabelBetween } from "@/lib/geo";
 import { toggleHiddenMapPin } from "@/lib/hidden-map-pins";
 import { labelMode, labelType } from "@/lib/i18n/dictionaries";
+import { flightListLinks } from "@/lib/flight-path";
 import { isMapFocusable, sightNumbersFromAgenda } from "@/lib/schedule-pins";
 import type { AgendaItem, Place } from "@/lib/types";
 
@@ -421,6 +423,8 @@ export function DayAgendaBoard({
   };
   const visitedCount = agenda.filter((item) => isVisited(item)).length;
   const sightNumbers = sightNumbersFromAgenda(agenda);
+  const listRef = useRef<HTMLOListElement>(null);
+  const flightLinks = useMemo(() => flightListLinks(agenda), [agenda]);
 
   function dropOnAgenda(before: AgendaItem | null) {
     return (event: React.DragEvent) => {
@@ -515,7 +519,8 @@ export function DayAgendaBoard({
               : t("agenda.emptySchedule")}
           </div>
         ) : (
-          <ol className="relative">
+          <div className="relative">
+          <ol ref={listRef}>
             {agenda.map((item, index) => {
               const food = item.kind === "place" && isFoodChip(item.chip);
               const visited = isVisited(item);
@@ -617,6 +622,7 @@ export function DayAgendaBoard({
                       align={transit ? "transit" : "place"}
                     >
                       <span
+                        data-flight-anchor={item.id}
                         className={
                           isFocus
                             ? "rounded-full ring-2 ring-accent ring-offset-1 ring-offset-canvas"
@@ -821,6 +827,8 @@ export function DayAgendaBoard({
               />
             </li>
           </ol>
+          <FlightRouteOverlay listRef={listRef} links={flightLinks} />
+          </div>
         )}
       </div>
       {showPending ? (

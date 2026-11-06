@@ -489,3 +489,69 @@ fieldset:disabled [data-haptic-overlay],
 @media (prefers-reduced-motion: reduce) {
   .flight-plane-icon { animation: none; }
 }
+
+/* Schedule gutter: dashed arc + plane from a flight row to its arrival. */
+.flight-route-layer,
+.flight-route-layer * {
+  pointer-events: none;
+}
+.flight-route-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  color: var(--accent);
+}
+.flight-route-lines path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.25;
+  stroke-dasharray: 2.5 4;
+  stroke-linecap: round;
+  opacity: 0.5;
+}
+.flight-route-plane {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 14px;
+  height: 14px;
+  color: var(--accent);
+  offset-anchor: center;
+  offset-rotate: auto;
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.9));
+  animation: flight-route-fly 8.4s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+}
+@keyframes flight-route-fly {
+  0% { offset-distance: 0%; }
+  82% { offset-distance: 100%; }
+  100% { offset-distance: 100%; }
+}
+.flight-route-plane-static {
+  animation: none;
+  offset-path: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .flight-route-plane {
+    animation: none;
+    offset-distance: 38%;
+  }
+}
+
+.leaflet-marker-icon.flight-map-plane {
+  background: none;
+  border: none;
+  pointer-events: none;
+}
+.flight-map-plane-rot {
+  display: block;
+  width: 16px;
+  height: 16px;
+  color: var(--accent);
+  transform-origin: center;
+  filter:
+    drop-shadow(0 0 1px rgba(255, 255, 255, 0.92))
+    drop-shadow(0 1px 1px rgba(28, 25, 23, 0.35));
+}
