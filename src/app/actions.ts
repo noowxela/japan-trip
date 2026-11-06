@@ -17,6 +17,8 @@ import { actionT } from "@/lib/i18n/action";
 import { isLocale } from "@/lib/i18n/dictionaries";
 import { LANG_COOKIE, LANG_MAX_AGE_SEC } from "@/lib/i18n/server";
 import { ds, getNotion, textProp, titleProp } from "@/lib/notion";
+import { notionStartProperty } from "@/lib/notion-date";
+import { notionErrorCode } from "@/lib/notion-error";
 import { parseSpendCurrency } from "@/lib/spend";
 import {
   THEME_COOKIE,
@@ -104,14 +106,27 @@ function spendStartValue(formData: FormData) {
 }
 
 function startProp(start: string | null) {
-  if (!start) return { date: null };
-  if (!start.includes("T")) return { date: { start } };
-  return {
-    date: {
-      start,
-      time_zone: "Asia/Tokyo",
-    },
-  };
+  return notionStartProperty(start);
+}
+
+/** Turn a thrown Notion failure into a toast instead of crashing the sheet. */
+async function spendActionError(error: unknown): Promise<ActionResult> {
+  console.error("spend write failed", error);
+  const raw = APIResponseError.isAPIResponseError(error)
+    ? error.message
+    : error instanceof Error
+      ? error.message
+      : "";
+  const code = notionErrorCode(raw);
+  if (code) {
+    return actionErr(await actionT("action.spendNotionCode", { code }));
+  }
+  const detail = raw.replace(/\s+/g, " ").trim().slice(0, 180);
+  return actionErr(
+    await actionT("action.spendSaveFailed", {
+      detail: detail || "Notion request failed",
+    }),
+  );
 }
 
 function orderValue(formData: FormData) {
@@ -622,24 +637,31 @@ export async function addSpend(formData: FormData): Promise<ActionResult> {
       return actionOk(await actionT("action.spendAdded"), existing.id);
     }
   }
-  const notion = getNotion();
-  const created = await withSplitWithFallback((includeSplit) =>
-    notion.pages.create({
-      parent: { data_source_id: ds("SPEND") },
-      properties: {
-        Name: titleProp(name),
-        Amount: { number: amount },
-        Currency: { select: { name: currency } },
-        ...(kind ? { Kind: { select: { name: kind } } } : {}),
-        ...(category ? { Category: { select: { name: category } } } : {}),
-        ...(notes ? { Notes: textProp(notes) } : {}),
-        ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
-        ...(start ? { Start: startProp(start) } : {}),
-        ...(paidBy ? { "Paid by": { select: { name: paidBy } } } : {}),
-        ...(includeSplit && splitWith.length > 0 ? splitWithProp(splitWith) : {}),
-      },
-    }),
-  );
+  let created: { id: string };
+  try {
+    const notion = getNotion();
+    created = await withSplitWithFallback((includeSplit) =>
+      notion.pages.create({
+        parent: { data_source_id: ds("SPEND") },
+        properties: {
+          Name: titleProp(name),
+          Amount: { number: amount },
+          Currency: { select: { name: currency } },
+          ...(kind ? { Kind: { select: { name: kind } } } : {}),
+          ...(category ? { Category: { select: { name: category } } } : {}),
+          ...(notes ? { Notes: textProp(notes) } : {}),
+          ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
+          ...(start ? { Start: startProp(start) } : {}),
+          ...(paidBy ? { "Paid by": { select: { name: paidBy } } } : {}),
+          ...(includeSplit && splitWith.length > 0
+            ? splitWithProp(splitWith)
+            : {}),
+        },
+      }),
+    );
+  } catch (error) {
+    return spendActionError(error);
+  }
   bump(TRIP_TAGS.spend);
   return actionOk(await actionT("action.spendAdded"), created.id);
 }
@@ -661,24 +683,28 @@ export async function updateSpend(formData: FormData): Promise<ActionResult> {
   const start = spendStartValue(formData);
   if (!id || !name) return actionErr(await actionT("action.spendNameRequired"));
   if (!Number.isFinite(amount)) return actionErr(await actionT("action.amountRequired"));
-  const notion = getNotion();
-  await withSplitWithFallback((includeSplit) =>
-    notion.pages.update({
-      page_id: id,
-      properties: {
-        Name: titleProp(name),
-        Amount: { number: amount },
-        Currency: { select: { name: currency } },
-        Kind: { select: kind ? { name: kind } : null },
-        Category: { select: category ? { name: category } : null },
-        Notes: textProp(notes),
-        Day: { relation: dayId ? [{ id: dayId }] : [] },
-        Start: startProp(start || null),
-        "Paid by": { select: paidBy ? { name: paidBy } : null },
-        ...(includeSplit ? splitWithProp(splitWith) : {}),
-      },
-    }),
-  );
+  try {
+    const notion = getNotion();
+    await withSplitWithFallback((includeSplit) =>
+      notion.pages.update({
+        page_id: id,
+        properties: {
+          Name: titleProp(name),
+          Amount: { number: amount },
+          Currency: { select: { name: currency } },
+          Kind: { select: kind ? { name: kind } : null },
+          Category: { select: category ? { name: category } : null },
+          Notes: textProp(notes),
+          Day: { relation: dayId ? [{ id: dayId }] : [] },
+          Start: startProp(start || null),
+          "Paid by": { select: paidBy ? { name: paidBy } : null },
+          ...(includeSplit ? splitWithProp(splitWith) : {}),
+        },
+      }),
+    );
+  } catch (error) {
+    return spendActionError(error);
+  }
   bump(TRIP_TAGS.spend);
   return actionOk(await actionT("action.spendSaved"));
 }

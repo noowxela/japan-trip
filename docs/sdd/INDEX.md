@@ -26,3 +26,4 @@ Living specs for this repo. Change specs stay `draft` until approved. Do not tre
 | [016](016-settle-up-split.md) | Settle-up tab + Split with | implemented | Notion `Split with` multi-select; 分账 tab with min transfers in RM |
 | [017](017-weather-rain-hint.md) | Weather + rain hint | implemented | Open-Meteo per city/day in Schedule header + offline snapshot; rainy-tomorrow line in evening push |
 | [018](018-global-search.md) | Global search | draft | Client-only search sheet over the trip snapshot + phrases; works offline |
+| [022](022-expense-save-error.md) | Expense save Notion date error | implemented | `ERROR 1112746976` was an invalid Start payload; save now succeeds or toasts, and no longer freezes reload |
