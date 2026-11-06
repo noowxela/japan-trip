@@ -18,6 +18,7 @@ import {
   type ToggleVisitedPayload,
 } from "@/lib/outbox-core";
 import { enqueueOutbox } from "@/lib/outbox";
+import { notionErrorCode } from "@/lib/notion-error";
 import { parseSpendCurrency } from "@/lib/spend";
 import type { SpendCurrency, SpendItem } from "@/lib/types";
 
@@ -188,9 +189,29 @@ export async function runAddSpend(
     if (!result.ok) return { status: "error", result };
     return { status: "synced", result };
   } catch (error) {
-    if (!isNetworkFailure(error)) throw error;
-    const queued = stampQueuedSpend(payload);
-    const entry = await enqueueOutbox("addSpend", queued);
-    return { status: "queued", entryId: entry.id, kind: "addSpend", payload: queued };
+    if (isNetworkFailure(error)) {
+      const queued = stampQueuedSpend(payload);
+      const entry = await enqueueOutbox("addSpend", queued);
+      return {
+        status: "queued",
+        entryId: entry.id,
+        kind: "addSpend",
+        payload: queued,
+      };
+    }
+    // A Notion 500 (message `ERROR <id>`) is not a dropped connection. Rethrowing
+    // it from the save transition crashes the sheet and leaves iOS reload stuck.
+    const raw = error instanceof Error ? error.message : "";
+    const code = notionErrorCode(raw);
+    return {
+      status: "error",
+      result: {
+        ok: false,
+        error: code
+          ? `Couldn't save this expense (${code}). Nothing was saved. Try again.`
+          : raw.trim().slice(0, 180) ||
+            "Couldn't save this expense. Nothing was saved. Try again.",
+      },
+    };
   }
 }

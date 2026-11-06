@@ -58,7 +58,7 @@ flowchart LR
 - **Read:** server components call cached getters in `src/lib/trip.ts` → `src/lib/notion.ts` `queryAll()`.
 - **Write (online):** forms → `src/app/actions.ts` → Notion `pages.create` / `update` → `revalidatePath` / `updateTag`.
 - **Offline read:** Serwist caches visited documents/assets; `TripCacheSync` writes days/places/transit/stays/spend/prep (+ optional `weather` / `weatherAt` from Schedule) to `japan-trip-itinerary-v1` (content `v: 2`). Writes without weather keep the cached forecast (`carryWeather`). Schedule, `/phrases` (stays for hotel cards), and `/~offline` can fall back from the snapshot. Pages that fail to reach Notion while online keep existing fallbacks. Phrase deck data is bundled in `src/lib/phrases.ts` (no Notion). `useSyncExternalStore` readers for trip cache + custom phrases memoize by raw localStorage string (stable snapshot refs; React #185).
-- **Offline write:** client wrappers enqueue `toggleVisited` / `addSpend` / `togglePrep` into IndexedDB (`japan-trip` / `outbox`), apply optimistic UI, replay on `online` / app start / every 30s. Toggles send desired state; spend uses `clientId` + `createdAt` for idempotency.
+- **Offline write:** client wrappers enqueue `toggleVisited` / `addSpend` / `togglePrep` into IndexedDB (`japan-trip` / `outbox`), apply optimistic UI, replay on `online` / app start / every 30s. Toggles send desired state; spend uses `clientId` + `createdAt` for idempotency. Notion `Start` is either an offset timestamp or a wall time plus `time_zone`, never both (`notionStartProperty`). A failed spend write returns an `ActionResult` error; it is not rethrown into the save transition.
 
 Pages are `export const dynamic = "force-dynamic"`. No webhooks, no poll, no multi-device conflict UI.
 

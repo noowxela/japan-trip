@@ -2,6 +2,7 @@
 
 import { useTransition, type ReactNode } from "react";
 import type { ActionResult } from "@/lib/action-result";
+import { useT } from "@/components/i18n-provider";
 import { useToast } from "@/components/toast-provider";
 import { hapticError, hapticSuccess, shouldUseIosOverlays } from "@/lib/haptic";
 
@@ -34,6 +35,7 @@ export function ActionForm({
 }) {
   const [pending, startTransition] = useTransition();
   const notify = useActionToast();
+  const { t } = useT();
 
   return (
     <form
@@ -45,13 +47,23 @@ export function ActionForm({
         // iOS only fires Taptic during a real tap. After await, Safari ignores it.
         if (shouldUseIosOverlays()) hapticSuccess();
         startTransition(async () => {
-          const result = await action(formData);
-          if (result.ok && successMessage && !result.message) {
-            await notify({ ok: true, message: successMessage });
-          } else {
-            await notify(result);
+          try {
+            const result = await action(formData);
+            if (result.ok && successMessage && !result.message) {
+              await notify({ ok: true, message: successMessage });
+            } else {
+              await notify(result);
+            }
+            if (result.ok) onSuccess?.();
+          } catch (error) {
+            // A rejected save used to escape this transition and freeze the
+            // iOS sheet (body scroll lock + a stuck router, so reload no-ops).
+            const message =
+              error instanceof Error && error.message.trim()
+                ? error.message.trim()
+                : t("action.saveFailed");
+            await notify({ ok: false, error: message });
           }
-          if (result.ok) onSuccess?.();
         });
       }}
     >

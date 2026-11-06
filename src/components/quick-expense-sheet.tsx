@@ -178,7 +178,19 @@ function QuickExpenseForm({
     }
 
     startTransition(async () => {
-      const result = await submitSpend(formData, { silent: true });
+      let result;
+      try {
+        result = await submitSpend(formData, { silent: true });
+      } catch (error) {
+        const message =
+          error instanceof Error && error.message.trim()
+            ? error.message.trim()
+            : t("action.saveFailed");
+        setError(message);
+        haptic("error");
+        toast(message, "error");
+        return;
+      }
       if (!result.ok) {
         setError(result.error);
         haptic("error");
