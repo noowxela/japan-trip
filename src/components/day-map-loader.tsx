@@ -2,6 +2,7 @@
 
 import nextDynamic from "next/dynamic";
 import type { DayMapFocus, DayMapPin } from "@/components/day-map";
+import type { FlightRoute } from "@/lib/flight-path";
 import { MapAreaSkeleton } from "@/components/page-skeletons";
 
 const DayMap = nextDynamic(() => import("@/components/day-map"), {
@@ -12,6 +13,7 @@ const DayMap = nextDynamic(() => import("@/components/day-map"), {
 export function DayMapLoader({
   city,
   pins,
+  flights = [],
   className = "",
   fullscreen,
   onFullscreenChange,
@@ -19,6 +21,7 @@ export function DayMapLoader({
 }: {
   city: string | null;
   pins: DayMapPin[];
+  flights?: FlightRoute[];
   className?: string;
   fullscreen?: boolean;
   onFullscreenChange?: (value: boolean) => void;
@@ -28,6 +31,7 @@ export function DayMapLoader({
     <DayMap
       city={city}
       pins={pins}
+      flights={flights}
       className={className}
       fullscreen={fullscreen}
       onFullscreenChange={onFullscreenChange}

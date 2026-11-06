@@ -121,6 +121,8 @@ export function buildAgenda(places: Place[], transit: Transit[]): AgendaItem[] {
       name: item.name,
       chip: item.mode,
       detail: [item.from, item.to].filter(Boolean).join(" → "),
+      from: item.from,
+      to: item.to,
       start: item.start,
       order: item.order,
     })),

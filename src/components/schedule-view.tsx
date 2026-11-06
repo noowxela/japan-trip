@@ -24,6 +24,7 @@ import { useT } from "@/components/i18n-provider";
 import { MapsPinLink } from "@/components/maps-pin-link";
 import { Modal } from "@/components/modal";
 import { ScheduleDayTabs } from "@/components/schedule-day-tabs";
+import { flightRoutesFromTransit } from "@/lib/flight-path";
 import { dateKey, formatCachedAt, formatDay, formatTime, formatTripSpan } from "@/lib/format";
 import { toggleHiddenMapPin } from "@/lib/hidden-map-pins";
 import { labelMode, labelType } from "@/lib/i18n/dictionaries";
@@ -124,6 +125,10 @@ export function ScheduleView({
   const dayWeather = selectedDate ? (weather?.[selectedDate] ?? null) : null;
   const selectedDayId = selectedDay?.id ?? null;
   const mapPins = selectedDay ? (slice?.mapPins ?? []) : allPins;
+  const flightRoutes = useMemo(
+    () => (selectedDay ? flightRoutesFromTransit(slice?.transit ?? []) : []),
+    [selectedDay, slice],
+  );
   const mapCity =
     selectedDay?.city ?? days.find((day) => day.city)?.city ?? null;
 
@@ -433,6 +438,7 @@ export function ScheduleView({
         <DayMapLoader
           city={mapCity}
           pins={mapPins}
+          flights={flightRoutes}
           className="h-full border-0"
           fullscreen={mapFullscreen}
           onFullscreenChange={setMapFullscreen}
