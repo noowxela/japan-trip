@@ -442,22 +442,27 @@ export async function updatePlace(formData: FormData): Promise<ActionResult> {
   if (!id || !name) return actionErr(await actionT("action.placeNameRequired"));
   const notion = getNotion();
   const known = lookupLandmark(name);
+  const fromMaps = mapsUrl ? await resolveGoogleMapsUrl(mapsUrl) : null;
   await notion.pages.update({
     page_id: id,
     properties: {
       Name: titleProp(name),
       Type: { select: type ? { name: type } : null },
-      "Maps URL": { url: mapsUrl || known?.mapsUrl || null },
+      "Maps URL": {
+        url: fromMaps?.mapsUrl || mapsUrl || known?.mapsUrl || null,
+      },
       Notes: textProp(notes),
       Day: { relation: dayId ? [{ id: dayId }] : [] },
       Start: startProp(start || null),
       Pending: { checkbox: false },
-      ...(known
-        ? { Lat: { number: known.lat }, Lng: { number: known.lng } }
-        : {}),
+      ...(fromMaps
+        ? { Lat: { number: fromMaps.lat }, Lng: { number: fromMaps.lng } }
+        : known
+          ? { Lat: { number: known.lat }, Lng: { number: known.lng } }
+          : {}),
     },
   });
-  if (!known && !mapsUrl) {
+  if (!fromMaps && !known && !mapsUrl) {
     const day = dayId ? await getDay(dayId) : null;
     const coords = await geocodeJapan(
       [name, day?.city].filter(Boolean).join(" "),
@@ -537,6 +542,7 @@ export async function updateTransit(formData: FormData): Promise<ActionResult> {
   const from = String(formData.get("from") ?? "").trim();
   const to = String(formData.get("to") ?? "").trim();
   const date = String(formData.get("date") ?? "").trim();
+  const hasBookingUrl = formData.has("bookingUrl");
   const bookingUrl = String(formData.get("bookingUrl") ?? "").trim();
   const dayId = String(formData.get("dayId") ?? "").trim();
   const start = startValue(formData);
@@ -552,7 +558,9 @@ export async function updateTransit(formData: FormData): Promise<ActionResult> {
       From: textProp(from),
       To: textProp(to),
       Date: { date: dateStart ? { start: dateStart } : null },
-      "Booking URL": { url: bookingUrl || null },
+      ...(hasBookingUrl
+        ? { "Booking URL": { url: bookingUrl || null } }
+        : {}),
       Day: { relation: dayId ? [{ id: dayId }] : [] },
       Start: startProp(start || null),
       Order: { number: order },

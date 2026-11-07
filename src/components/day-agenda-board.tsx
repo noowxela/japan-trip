@@ -9,9 +9,11 @@ import {
   parkPlaceAsPending,
 } from "@/app/actions";
 import { useActionToast } from "@/components/action-form";
+import { AgendaItemEditSheet } from "@/components/agenda-item-edit-sheet";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { SwipeRow } from "@/components/compact/swipe-row";
 import { useCanEdit } from "@/components/edit-session";
+import { useEditOrUnlock } from "@/components/unlock-provider";
 import {
   useHiddenMapPinIds,
 } from "@/components/hide-map-pin-button";
@@ -28,6 +30,7 @@ import { haptic } from "@/lib/haptic";
 import {
   formatGapMinutes,
   formatTime,
+  isPastTripDay,
   minutesBetweenStarts,
   startBefore,
 } from "@/lib/format";
@@ -442,6 +445,7 @@ export function DayAgendaBoard({
   pending,
   dayId,
   dayDate,
+  dayCity = null,
   showPending = true,
   highlightId = null,
   mutedIds,
@@ -451,6 +455,7 @@ export function DayAgendaBoard({
   pending: Place[];
   dayId: string;
   dayDate: string | null;
+  dayCity?: string | null;
   showPending?: boolean;
   highlightId?: string | null;
   mutedIds?: Set<string>;
@@ -460,14 +465,16 @@ export function DayAgendaBoard({
   const [busy, startTransition] = useTransition();
   const [over, setOver] = useState<string | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [popId, setPopId] = useState<string | null>(null);
-  const [showVisited, setShowVisited] = useState(false);
+  const [showVisited, setShowVisited] = useState(() => isPastTripDay(dayDate));
   const [showSkipped, setShowSkipped] = useState(false);
   const notify = useActionToast();
   const { toast } = useToast();
   const trashWithUndo = useTrashUndo();
   const canEdit = useCanEdit();
+  const editOrUnlock = useEditOrUnlock();
   const hiddenIds = useHiddenMapPinIds();
   const { t, locale } = useT();
   const { markVisited, markSkipped, visitedOverlay, skippedOverlay } = useOutbox();
@@ -561,6 +568,7 @@ export function DayAgendaBoard({
   }
 
   const menuItem = agenda.find((item) => item.id === menuId);
+  const editItem = agenda.find((item) => item.id === editId) ?? null;
   const menuHasCoords =
     menuItem != null && menuItem.lat != null && menuItem.lng != null;
   const menuHidden = menuItem != null && hiddenIds.has(menuItem.id);
@@ -568,11 +576,19 @@ export function DayAgendaBoard({
 
   function openItemMenu(id: string) {
     setDeleteId(null);
+    setEditId(null);
     setMenuId(id);
+  }
+
+  function openItemEdit(id: string) {
+    setMenuId(null);
+    setDeleteId(null);
+    editOrUnlock(() => setEditId(id));
   }
 
   function requestDelete(id: string) {
     setMenuId(null);
+    setEditId(null);
     setDeleteId(id);
   }
 
@@ -780,7 +796,11 @@ export function DayAgendaBoard({
                         <span aria-hidden>{t("common.delete")}</span>
                       }
                       rightRevealClassName="bg-accent text-white"
-                      onSwipeRight={() => openItemMenu(item.id)}
+                      onSwipeRight={() =>
+                        canEdit
+                          ? openItemEdit(item.id)
+                          : openItemMenu(item.id)
+                      }
                       onSwipeLeft={
                         canEdit ? () => requestDelete(item.id) : undefined
                       }
@@ -989,6 +1009,14 @@ export function DayAgendaBoard({
       >
         {menuItem ? (
           <div className="grid gap-2 pb-[calc(env(safe-area-inset-bottom,0px)+0.25rem)]">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => openItemEdit(menuItem.id)}
+              className="notebook-btn min-h-11 w-full border border-line bg-surface px-4 py-3 text-left text-sm font-medium text-ink disabled:opacity-60"
+            >
+              {t("agenda.editItem")}
+            </button>
             {canEdit ? (
               <button
                 type="button"
@@ -1067,6 +1095,14 @@ export function DayAgendaBoard({
           </div>
         ) : null}
       </Modal>
+      <AgendaItemEditSheet
+        open={editItem != null}
+        onClose={() => setEditId(null)}
+        item={editItem}
+        dayId={dayId}
+        dayDate={dayDate}
+        city={dayCity}
+      />
       <ConfirmDialog
         open={deleteItem != null}
         title={t("agenda.deleteStop")}

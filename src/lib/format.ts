@@ -205,6 +205,12 @@ export function tokyoToday() {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
 }
 
+/** True when the day date is strictly before Tokyo today (YYYY-MM-DD). */
+export function isPastTripDay(dayDate: string | null, today = tokyoToday()) {
+  const key = dateKey(dayDate);
+  return Boolean(key && key < today);
+}
+
 export function dayDiff(from: string, to: string) {
   const start = new Date(`${from}T12:00:00`);
   const end = new Date(`${to}T12:00:00`);

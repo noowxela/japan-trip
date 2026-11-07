@@ -614,6 +614,7 @@ const en = {
   "stay.deleteMessage": "Remove “{name}”?",
 
   "agenda.noStopsEdit": "No stops yet. Add a place or transit below.",
+  "agenda.editItem": "Edit stop",
   "agenda.deleteStop": "Delete stop?",
   "agenda.deleteStopMessage": "Remove “{name}”?",
 
@@ -1307,6 +1308,7 @@ const zh: Record<DictKey, string> = {
   "stay.deleteMessage": "移除「{name}」？",
 
   "agenda.noStopsEdit": "还没有行程点。在下方添加地点或交通。",
+  "agenda.editItem": "编辑行程",
   "agenda.deleteStop": "删除这一站？",
   "agenda.deleteStopMessage": "移除「{name}」？",
 

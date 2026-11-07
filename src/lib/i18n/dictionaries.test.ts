@@ -13,3 +13,10 @@ describe("t()", () => {
     expect(t("zh", "does.not.exist")).toBe("does.not.exist");
   });
 });
+
+describe("agenda.editItem", () => {
+  it("has zh and en copy", () => {
+    expect(t("en", "agenda.editItem")).toBe("Edit stop");
+    expect(t("zh", "agenda.editItem")).toBe("编辑行程");
+  });
+});
