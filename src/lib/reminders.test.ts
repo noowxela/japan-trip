@@ -41,6 +41,9 @@ function stay(partial: Partial<Stay> & { id: string; name: string }): Stay {
     address: "",
     bookingUrl: null,
     confirmation: "",
+    mapsUrl: null,
+    lat: null,
+    lng: null,
     ...partial,
   };
 }

@@ -588,9 +588,18 @@ export async function addStay(formData: FormData): Promise<ActionResult> {
   const address = String(formData.get("address") ?? "").trim();
   const bookingUrl = String(formData.get("bookingUrl") ?? "").trim();
   const confirmation = String(formData.get("confirmation") ?? "").trim();
+  const mapsUrl = String(formData.get("mapsUrl") ?? "").trim();
+  const latRaw = String(formData.get("lat") ?? "").trim();
+  const lngRaw = String(formData.get("lng") ?? "").trim();
+  const lat = Number(latRaw);
+  const lng = Number(lngRaw);
+  const picked =
+    latRaw && lngRaw && Number.isFinite(lat) && Number.isFinite(lng)
+      ? { lat, lng }
+      : null;
   if (!name) return actionErr(await actionT("action.stayNameRequired"));
   const notion = getNotion();
-  await notion.pages.create({
+  const page = await notion.pages.create({
     parent: { data_source_id: ds("STAYS") },
     properties: {
       Name: titleProp(name),
@@ -599,8 +608,43 @@ export async function addStay(formData: FormData): Promise<ActionResult> {
       ...(address ? { Address: textProp(address) } : {}),
       ...(bookingUrl ? { "Booking URL": { url: bookingUrl } } : {}),
       ...(confirmation ? { Confirmation: textProp(confirmation) } : {}),
+      ...(mapsUrl ? { "Maps URL": { url: mapsUrl } } : {}),
+      ...(picked
+        ? { Lat: { number: picked.lat }, Lng: { number: picked.lng } }
+        : {}),
     },
   });
+
+  if (!picked) {
+    const fromMaps = mapsUrl ? await resolveGoogleMapsUrl(mapsUrl) : null;
+    if (fromMaps) {
+      await notion.pages.update({
+        page_id: page.id,
+        properties: {
+          Lat: { number: fromMaps.lat },
+          Lng: { number: fromMaps.lng },
+          "Maps URL": { url: fromMaps.mapsUrl || mapsUrl },
+        },
+      });
+    } else {
+      const query = [address, name].filter(Boolean).join(" ");
+      if (query) {
+        const coords = await geocodeJapan(query);
+        if (coords) {
+          await notion.pages.update({
+            page_id: page.id,
+            properties: {
+              Lat: { number: coords.lat },
+              Lng: { number: coords.lng },
+              ...(coords.mapsUrl || mapsUrl
+                ? { "Maps URL": { url: coords.mapsUrl || mapsUrl } }
+                : {}),
+            },
+          });
+        }
+      }
+    }
+  }
   bump(TRIP_TAGS.stays);
   return actionOk(await actionT("action.stayAdded"));
 }
@@ -615,8 +659,18 @@ export async function updateStay(formData: FormData): Promise<ActionResult> {
   const address = String(formData.get("address") ?? "").trim();
   const bookingUrl = String(formData.get("bookingUrl") ?? "").trim();
   const confirmation = String(formData.get("confirmation") ?? "").trim();
+  const mapsUrl = String(formData.get("mapsUrl") ?? "").trim();
+  const latRaw = String(formData.get("lat") ?? "").trim();
+  const lngRaw = String(formData.get("lng") ?? "").trim();
+  const lat = Number(latRaw);
+  const lng = Number(lngRaw);
+  const picked =
+    latRaw && lngRaw && Number.isFinite(lat) && Number.isFinite(lng)
+      ? { lat, lng }
+      : null;
   if (!id || !name) return actionErr(await actionT("action.stayNameRequired"));
   const notion = getNotion();
+  const fromMaps = !picked && mapsUrl ? await resolveGoogleMapsUrl(mapsUrl) : null;
   await notion.pages.update({
     page_id: id,
     properties: {
@@ -626,8 +680,32 @@ export async function updateStay(formData: FormData): Promise<ActionResult> {
       Address: textProp(address),
       "Booking URL": { url: bookingUrl || null },
       Confirmation: textProp(confirmation),
+      "Maps URL": {
+        url: fromMaps?.mapsUrl || mapsUrl || null,
+      },
+      ...(picked
+        ? { Lat: { number: picked.lat }, Lng: { number: picked.lng } }
+        : fromMaps
+          ? { Lat: { number: fromMaps.lat }, Lng: { number: fromMaps.lng } }
+          : {}),
     },
   });
+  if (!picked && !fromMaps && !mapsUrl) {
+    const query = [address, name].filter(Boolean).join(" ");
+    if (query) {
+      const coords = await geocodeJapan(query);
+      if (coords) {
+        await notion.pages.update({
+          page_id: id,
+          properties: {
+            Lat: { number: coords.lat },
+            Lng: { number: coords.lng },
+            "Maps URL": { url: coords.mapsUrl },
+          },
+        });
+      }
+    }
+  }
   bump(TRIP_TAGS.stays);
   return actionOk(await actionT("action.staySaved"));
 }

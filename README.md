@@ -26,6 +26,14 @@ npm run migrate:skipped
 
 Live env secrets often cannot be decrypted here. If that command cannot reach Notion, add the checkbox manually in both databases. Until it exists, marking a stop skipped will error and will not save.
 
+Stays need `Maps URL` (url) plus `Lat` / `Lng` (number) to paste a Google Maps link onto a hotel. One-shot migrate (schema only, no row changes):
+
+```bash
+npm run migrate:stay-maps
+```
+
+If secrets cannot decrypt here, add those three properties manually on the Stays database. Until they exist, saving a stay with a Maps link will error.
+
 ## Run
 
 ```bash

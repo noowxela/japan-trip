@@ -85,6 +85,9 @@ function parseStay(page: Awaited<ReturnType<typeof queryAll>>[number]): Stay {
     address: richTextOf(page, "Address"),
     bookingUrl: urlOf(page, "Booking URL"),
     confirmation: richTextOf(page, "Confirmation"),
+    mapsUrl: urlOf(page, "Maps URL"),
+    lat: numberOf(page, "Lat"),
+    lng: numberOf(page, "Lng"),
   };
 }
 

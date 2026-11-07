@@ -98,7 +98,15 @@ export function coordsOfPlace(place: {
   return known ? { lat: known.lat, lng: known.lng } : null;
 }
 
-export function coordsOfStay(stay: { name: string; address?: string }) {
+export function coordsOfStay(stay: {
+  name: string;
+  address?: string;
+  lat?: number | null;
+  lng?: number | null;
+}) {
+  if (stay.lat != null && stay.lng != null) {
+    return { lat: stay.lat, lng: stay.lng };
+  }
   return (
     lookupLandmark(stay.name) ??
     (stay.address ? lookupLandmark(stay.address) : null)

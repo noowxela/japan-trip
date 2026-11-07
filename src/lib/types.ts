@@ -29,6 +29,9 @@ export type Stay = {
   address: string;
   bookingUrl: string | null;
   confirmation: string;
+  mapsUrl: string | null;
+  lat: number | null;
+  lng: number | null;
 };
 
 export type Transit = {

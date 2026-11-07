@@ -186,6 +186,9 @@ const stays = createDatabase("Stays", "🏨", {
 	Address: { rich_text: {} },
 	"Booking URL": { url: {} },
 	Confirmation: { rich_text: {} },
+	"Maps URL": { url: {} },
+	Lat: { number: { format: "number" } },
+	Lng: { number: { format: "number" } },
 });
 
 const transit = createDatabase("Transit", "🚆", {

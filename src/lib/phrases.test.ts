@@ -175,6 +175,9 @@ describe("buildHotelCards / stayDisplayAddress", () => {
     address: "1-1 Chiyoda, Tokyo",
     bookingUrl: null,
     confirmation: "",
+    mapsUrl: null,
+    lat: null,
+    lng: null,
   };
 
   it("uses address when no Japanese field", () => {

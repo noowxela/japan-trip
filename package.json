@@ -13,7 +13,8 @@
     "migrate:v2": "npm run migrate:v2 --prefix notion",
     "sync:place-maps": "node notion/scripts/sync-place-maps.mjs",
     "migrate:transit-visited": "node notion/scripts/add-transit-visited.mjs",
-    "migrate:skipped": "node notion/scripts/add-skipped.mjs"
+    "migrate:skipped": "node notion/scripts/add-skipped.mjs",
+    "migrate:stay-maps": "node notion/scripts/add-stay-maps.mjs"
   },
   "dependencies": {
     "@notionhq/client": "^5.25.2",
