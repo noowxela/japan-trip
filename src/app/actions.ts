@@ -12,7 +12,7 @@ import {
   setEditorCookie,
   verifyEditorPin,
 } from "@/lib/edit-session";
-import { geocodeJapan, lookupLandmark, searchPlacesJapan } from "@/lib/geocode";
+import { geocodeJapan, lookupLandmark, resolveGoogleMapsUrl, searchPlacesJapan } from "@/lib/geocode";
 import { actionT } from "@/lib/i18n/action";
 import { isLocale } from "@/lib/i18n/dictionaries";
 import { LANG_COOKIE, LANG_MAX_AGE_SEC } from "@/lib/i18n/server";
@@ -301,18 +301,30 @@ export async function addPlace(formData: FormData): Promise<ActionResult> {
   });
 
   if (!picked) {
-    const day = dayId ? await getDay(dayId) : null;
-    const query = [name, day?.city].filter(Boolean).join(" ");
-    const coords = await geocodeJapan(query, day?.city ?? undefined);
-    if (coords) {
+    const fromMaps = mapsUrl ? await resolveGoogleMapsUrl(mapsUrl) : null;
+    if (fromMaps) {
       await notion.pages.update({
         page_id: page.id,
         properties: {
-          Lat: { number: coords.lat },
-          Lng: { number: coords.lng },
-          ...(coords.mapsUrl ? { "Maps URL": { url: coords.mapsUrl } } : {}),
+          Lat: { number: fromMaps.lat },
+          Lng: { number: fromMaps.lng },
+          "Maps URL": { url: fromMaps.mapsUrl || mapsUrl },
         },
       });
+    } else {
+      const day = dayId ? await getDay(dayId) : null;
+      const query = [name, day?.city].filter(Boolean).join(" ");
+      const coords = await geocodeJapan(query, day?.city ?? undefined);
+      if (coords) {
+        await notion.pages.update({
+          page_id: page.id,
+          properties: {
+            Lat: { number: coords.lat },
+            Lng: { number: coords.lng },
+            ...(coords.mapsUrl ? { "Maps URL": { url: coords.mapsUrl } } : {}),
+          },
+        });
+      }
     }
   }
   bump(TRIP_TAGS.places);

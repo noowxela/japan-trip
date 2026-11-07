@@ -8,6 +8,7 @@ import { useT } from "@/components/i18n-provider";
 import { btnPrimaryClass, fieldClass } from "@/components/page-shell";
 import { dateKey } from "@/lib/format";
 import type { PlaceSearchHit } from "@/lib/geocode";
+import { isGoogleMapsUrl } from "@/lib/maps-url";
 import { labelMode, labelType } from "@/lib/i18n/dictionaries";
 import {
   PLACE_TYPES,
@@ -42,21 +43,37 @@ export function AddAgendaForm({
   );
   const date = dateKey(dayDate) ?? "";
 
-  function onSearch() {
-    setError("");
-    startSearch(async () => {
-      const hits = await searchPlaces(query, city);
-      setResults(hits);
-      if (hits.length === 0) {
-        setError(t("form.noMapResults"));
-      }
-    });
-  }
-
   function pick(hit: PlaceSearchHit) {
     setPicked(hit);
     setName(hit.name);
     setResults([]);
+    setError("");
+  }
+
+  function applyHits(hits: PlaceSearchHit[], raw: string) {
+    if (hits.length === 1 && isGoogleMapsUrl(raw)) {
+      pick(hits[0]);
+      return;
+    }
+    setResults(hits);
+    if (hits.length === 0) {
+      setError(
+        isGoogleMapsUrl(raw) ? t("form.mapsLinkFailed") : t("form.noMapResults"),
+      );
+    }
+  }
+
+  function runSearch(raw = query) {
+    const value = raw.trim();
+    setError("");
+    startSearch(async () => {
+      const hits = await searchPlaces(value, city);
+      applyHits(hits, value);
+    });
+  }
+
+  function onSearch() {
+    runSearch();
   }
 
   return (
@@ -93,13 +110,19 @@ export function AddAgendaForm({
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
+                onPaste={(event) => {
+                  const pasted = event.clipboardData.getData("text").trim();
+                  if (!isGoogleMapsUrl(pasted)) return;
+                  setQuery(pasted);
+                  runSearch(pasted);
+                }}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault();
                     onSearch();
                   }
                 }}
-                placeholder={t("form.searchMap")}
+                placeholder={t("form.searchMapHint")}
                 className={`min-w-0 flex-1 ${fieldClass}`}
               />
               <button

@@ -13,6 +13,7 @@ import { dateKey, tokyoToday, tokyoWallDateTime } from "@/lib/format";
 import { labelType } from "@/lib/i18n/dictionaries";
 import { PLACE_TYPES, type TripDay } from "@/lib/types";
 import type { PlaceSearchHit } from "@/lib/geocode";
+import { isGoogleMapsUrl } from "@/lib/maps-url";
 
 const PlacePreviewMap = nextDynamic(
   () => import("@/components/place-preview-map").then((mod) => mod.PlacePreviewMap),
@@ -81,22 +82,51 @@ export function AddPlaceForm({
     return set;
   }, [days]);
 
-  function onSearch() {
-    setError("");
-    startSearch(async () => {
-      const hits = await searchPlaces(query, city);
-      setResults(hits);
-      if (hits.length === 0) setError(t("form.noMapResults"));
-    });
-  }
-
-  function pick(hit: PlaceSearchHit) {
+  function pick(hit: PlaceSearchHit, opts?: { keepName?: boolean }) {
     setPicked(hit);
-    setName(hit.name);
+    if (!opts?.keepName || !name.trim()) setName(hit.name);
     setMapsUrl(hit.mapsUrl);
     const guessed = guessType(hit);
     if (guessed) setType(guessed);
     setResults([]);
+    setError("");
+  }
+
+  function applyHits(hits: PlaceSearchHit[], raw: string) {
+    if (hits.length === 1 && isGoogleMapsUrl(raw)) {
+      pick(hits[0]);
+      return;
+    }
+    setResults(hits);
+    if (hits.length === 0) {
+      setError(
+        isGoogleMapsUrl(raw) ? t("form.mapsLinkFailed") : t("form.noMapResults"),
+      );
+    }
+  }
+
+  function runSearch(raw = query) {
+    const value = raw.trim();
+    setError("");
+    startSearch(async () => {
+      const hits = await searchPlaces(value, city);
+      applyHits(hits, value);
+    });
+  }
+
+  function onSearch() {
+    runSearch();
+  }
+
+  function resolveMapsField(raw: string) {
+    const value = raw.trim();
+    if (!isGoogleMapsUrl(value)) return;
+    setError("");
+    startSearch(async () => {
+      const hits = await searchPlaces(value, city);
+      if (hits[0]) pick(hits[0], { keepName: true });
+      else setError(t("form.mapsLinkFailed"));
+    });
   }
 
   const shellClass = embedded
@@ -123,6 +153,12 @@ export function AddPlaceForm({
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
+            onPaste={(event) => {
+              const pasted = event.clipboardData.getData("text").trim();
+              if (!isGoogleMapsUrl(pasted)) return;
+              setQuery(pasted);
+              runSearch(pasted);
+            }}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();
@@ -267,6 +303,14 @@ export function AddPlaceForm({
                   type="url"
                   value={mapsUrl}
                   onChange={(event) => setMapsUrl(event.target.value)}
+                  onBlur={(event) => resolveMapsField(event.target.value)}
+                  onPaste={(event) => {
+                    const pasted = event.clipboardData.getData("text").trim();
+                    if (!isGoogleMapsUrl(pasted)) return;
+                    setMapsUrl(pasted);
+                    resolveMapsField(pasted);
+                  }}
+                  placeholder={t("form.mapsUrlHint")}
                   className={fieldClass}
                 />
               </label>

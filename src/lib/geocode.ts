@@ -1,3 +1,9 @@
+import {
+  isGoogleMapsUrl,
+  mapsSearchUrl,
+  parseGoogleMapsLocation,
+} from "@/lib/maps-url";
+
 export type PlaceSearchHit = {
   name: string;
   displayName: string;
@@ -12,10 +18,6 @@ type NominatimHit = {
   name?: string;
   display_name?: string;
 };
-
-function mapsUrl(lat: number, lng: number) {
-  return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-}
 
 const LANDMARKS: { match: RegExp; lat: number; lng: number }[] = [
   { match: /土井活鰻|doi\s*katsu|doikatsuman/i, lat: 34.9679, lng: 135.7709 },
@@ -81,7 +83,7 @@ const LANDMARKS: { match: RegExp; lat: number; lng: number }[] = [
 export function lookupLandmark(name: string) {
   const hit = LANDMARKS.find((item) => item.match.test(name));
   if (!hit) return null;
-  return { lat: hit.lat, lng: hit.lng, mapsUrl: mapsUrl(hit.lat, hit.lng) };
+  return { lat: hit.lat, lng: hit.lng, mapsUrl: mapsSearchUrl(hit.lat, hit.lng) };
 }
 
 export function coordsOfPlace(place: {
@@ -112,9 +114,97 @@ function cleanGeocodeQuery(query: string) {
   return latin || query;
 }
 
+async function followMapsRedirects(start: string, maxHops = 5): Promise<string> {
+  let current = start;
+  for (let hop = 0; hop < maxHops; hop++) {
+    const parsed = parseGoogleMapsLocation(current);
+    if (parsed.lat != null && parsed.lng != null) return current;
+    const response = await fetch(current, {
+      method: "GET",
+      redirect: "manual",
+      headers: { "User-Agent": "japan-trip-app/1.0 (itinerary)" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+    const location = response.headers.get("location");
+    if (
+      location &&
+      (response.status === 301 ||
+        response.status === 302 ||
+        response.status === 303 ||
+        response.status === 307 ||
+        response.status === 308)
+    ) {
+      current = new URL(location, current).href;
+      continue;
+    }
+    return response.url || current;
+  }
+  return current;
+}
+
+function hitFromMaps(
+  lat: number,
+  lng: number,
+  name: string | null,
+  sourceUrl: string,
+): PlaceSearchHit {
+  const label = name?.trim() || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  return {
+    name: label,
+    displayName: name?.trim() || sourceUrl,
+    lat,
+    lng,
+    mapsUrl: sourceUrl,
+  };
+}
+
+/** Resolve a Google Maps share/place URL to coordinates using the URL itself. */
+export async function resolveGoogleMapsUrl(
+  input: string,
+): Promise<PlaceSearchHit | null> {
+  const raw = input.trim();
+  if (!isGoogleMapsUrl(raw)) return null;
+
+  let current = raw;
+  let parsed = parseGoogleMapsLocation(current);
+  if (parsed.lat == null || parsed.lng == null) {
+    try {
+      current = await followMapsRedirects(current);
+      parsed = parseGoogleMapsLocation(current);
+    } catch {
+      parsed = parseGoogleMapsLocation(current);
+    }
+  }
+
+  if (parsed.lat != null && parsed.lng != null) {
+    const stored =
+      isGoogleMapsUrl(current) && current !== raw ? current : raw;
+    return hitFromMaps(parsed.lat, parsed.lng, parsed.name, stored);
+  }
+
+  if (parsed.name) {
+    const geo = await geocodeJapan(parsed.name);
+    if (geo) {
+      return {
+        name: parsed.name,
+        displayName: parsed.name,
+        lat: geo.lat,
+        lng: geo.lng,
+        mapsUrl: raw,
+      };
+    }
+  }
+  return null;
+}
+
 export async function searchPlacesJapan(query: string, city?: string) {
   const q = query.trim();
   if (q.length < 2) return [];
+  if (isGoogleMapsUrl(q)) {
+    const hit = await resolveGoogleMapsUrl(q);
+    return hit ? [hit] : [];
+  }
   const url = new URL("https://nominatim.openstreetmap.org/search");
   url.searchParams.set("q", [q, city, "Japan"].filter(Boolean).join(", "));
   url.searchParams.set("format", "json");
@@ -137,7 +227,7 @@ export async function searchPlacesJapan(query: string, city?: string) {
         displayName: hit.display_name ?? name,
         lat,
         lng,
-        mapsUrl: mapsUrl(lat, lng),
+        mapsUrl: mapsSearchUrl(lat, lng),
       } satisfies PlaceSearchHit;
     })
     .filter((hit): hit is PlaceSearchHit => hit !== null);
