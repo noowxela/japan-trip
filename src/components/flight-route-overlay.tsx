@@ -123,7 +123,7 @@ export function FlightRouteOverlay({
   return (
     <div
       ref={rootRef}
-      className="flight-route-layer pointer-events-none absolute inset-0 z-20 overflow-visible"
+      className="flight-route-layer pointer-events-none absolute inset-0 z-0 overflow-visible"
       aria-hidden
     />
   );

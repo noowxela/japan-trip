@@ -11,6 +11,8 @@ export const SWIPE_VELOCITY_PX_MS = 0.45;
 export const SWIPE_VELOCITY_MIN_OFFSET_PX = 32;
 /** Visual reveal cap before rubber-band. */
 export const SWIPE_REVEAL_PX = 88;
+/** Hold still this long to fire onLongPress. */
+export const LONG_PRESS_MS = 480;
 
 export function decideSwipeAxis(
   dx: number,

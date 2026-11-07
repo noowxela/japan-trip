@@ -3,10 +3,12 @@
 import { useMemo, useRef, useState, useTransition } from "react";
 import {
   confirmPendingPlace,
+  deletePlace,
   movePendingToDay,
   parkPlaceAsPending,
 } from "@/app/actions";
 import { useActionToast } from "@/components/action-form";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { SwipeRow } from "@/components/compact/swipe-row";
 import { useCanEdit } from "@/components/edit-session";
 import {
@@ -21,6 +23,7 @@ import { MapsPinLink } from "@/components/maps-pin-link";
 import { Modal } from "@/components/modal";
 import { useOutbox } from "@/components/outbox-provider";
 import { useToast } from "@/components/toast-provider";
+import { useTrashUndo } from "@/components/use-trash-undo";
 import { haptic } from "@/lib/haptic";
 import {
   formatGapMinutes,
@@ -409,10 +412,12 @@ export function DayAgendaBoard({
   const [busy, startTransition] = useTransition();
   const [over, setOver] = useState<string | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [popId, setPopId] = useState<string | null>(null);
   const [showVisited, setShowVisited] = useState(false);
   const notify = useActionToast();
   const { toast } = useToast();
+  const trashWithUndo = useTrashUndo();
   const canEdit = useCanEdit();
   const hiddenIds = useHiddenMapPinIds();
   const { t, locale } = useT();
@@ -484,6 +489,30 @@ export function DayAgendaBoard({
   const menuHasCoords =
     menuItem != null && menuItem.lat != null && menuItem.lng != null;
   const menuHidden = menuItem != null && hiddenIds.has(menuItem.id);
+  const deleteItem = agenda.find(
+    (item) => item.kind === "place" && item.id === deleteId,
+  );
+
+  function openItemMenu(id: string) {
+    setDeleteId(null);
+    setMenuId(id);
+  }
+
+  function requestDelete(id: string) {
+    setMenuId(null);
+    setDeleteId(id);
+  }
+
+  function confirmDelete() {
+    if (!deleteItem) return;
+    const id = deleteItem.id;
+    const formData = new FormData();
+    formData.set("id", id);
+    setDeleteId(null);
+    startTransition(async () => {
+      await trashWithUndo(await deletePlace(formData), id, "place");
+    });
+  }
 
   return (
     <div
@@ -666,24 +695,18 @@ export function DayAgendaBoard({
                       <SwipeRow
                         className={isFocus ? "rounded-r-lg" : ""}
                         leftReveal={
-                          <span className="flex flex-col items-center gap-0.5">
-                            <span className="font-[ui-serif,Georgia,'Noto Serif JP',serif] text-sm font-bold">
-                              {t("theme.stampVisited")}
-                            </span>
-                            <span className="text-[10px] font-medium opacity-90">
-                              {t("agenda.swipeVisited")}
-                            </span>
-                          </span>
+                          <span aria-hidden>{t("common.edit")}</span>
                         }
+                        leftRevealClassName="bg-ink text-white"
                         rightReveal={
-                          <span aria-hidden>{t("common.more")}</span>
+                          <span aria-hidden>{t("common.delete")}</span>
                         }
-                        onSwipeRight={
-                          canEdit
-                            ? () => setVisited(item.id, !visited)
-                            : undefined
+                        rightRevealClassName="bg-accent text-white"
+                        onSwipeRight={() => openItemMenu(item.id)}
+                        onSwipeLeft={
+                          canEdit ? () => requestDelete(item.id) : undefined
                         }
-                        onSwipeLeft={() => setMenuId(item.id)}
+                        onLongPress={() => openItemMenu(item.id)}
                       >
                         <div
                           draggable={canEdit && !visited}
@@ -695,7 +718,6 @@ export function DayAgendaBoard({
                             );
                             event.dataTransfer.effectAllowed = "move";
                           }}
-                          role={focusable ? "button" : undefined}
                           tabIndex={focusable ? 0 : undefined}
                           aria-label={
                             focusable
@@ -769,7 +791,7 @@ export function DayAgendaBoard({
                             onPointerDown={(event) => event.stopPropagation()}
                             onClick={(event) => {
                               event.stopPropagation();
-                              setMenuId(item.id);
+                              openItemMenu(item.id);
                             }}
                             className="absolute right-0 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted hover:bg-canvas hover:text-ink"
                           >
@@ -918,6 +940,17 @@ export function DayAgendaBoard({
           </div>
         ) : null}
       </Modal>
+      <ConfirmDialog
+        open={deleteItem != null}
+        title={t("agenda.deleteStop")}
+        message={t("agenda.deleteStopMessage", {
+          name: deleteItem?.name ?? "",
+        })}
+        confirmLabel={t("common.delete")}
+        busy={busy}
+        onCancel={() => setDeleteId(null)}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }
