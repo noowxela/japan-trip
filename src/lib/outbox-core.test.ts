@@ -3,6 +3,7 @@ import {
   buildAddSpendPayload,
   buildOfflineSpendCreatedAt,
   buildTogglePrepPayload,
+  buildToggleSkippedPayload,
   buildToggleVisitedPayload,
   decideReplayResult,
   makeOutboxEntry,
@@ -49,6 +50,19 @@ describe("desired-state payloads", () => {
     expect(buildToggleVisitedPayload("abc", false)).toEqual({
       id: "abc",
       visited: false,
+    });
+  });
+
+  it("builds skipped desired state (never flip)", () => {
+    expect(buildToggleSkippedPayload("abc", true, "place")).toEqual({
+      id: "abc",
+      skipped: true,
+      kind: "place",
+    });
+    expect(buildToggleSkippedPayload("abc", false, "transit")).toEqual({
+      id: "abc",
+      skipped: false,
+      kind: "transit",
     });
   });
 

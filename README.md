@@ -18,6 +18,14 @@ npm run migrate:v2
 
 Add a row in the **Editors** Notion database (Name + PIN) for each person who should edit. Everyone else can view without unlocking.
 
+Places and Transit need a checkbox property named exactly `Skipped` (same spelling, next to `Visited`). A one-shot migrate only adds the schema — it does not change row values:
+
+```bash
+npm run migrate:skipped
+```
+
+Live env secrets often cannot be decrypted here. If that command cannot reach Notion, add the checkbox manually in both databases. Until it exists, marking a stop skipped will error and will not save.
+
 ## Run
 
 ```bash

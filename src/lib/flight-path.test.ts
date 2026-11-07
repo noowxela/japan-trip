@@ -53,6 +53,7 @@ const transit = (over: Partial<Transit> & Pick<Transit, "id" | "mode">): Transit
   start: null,
   order: null,
   visited: false,
+  skipped: false,
   ...over,
 });
 

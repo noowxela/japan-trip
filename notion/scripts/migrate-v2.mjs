@@ -99,6 +99,7 @@ patchDataSource(placesId, {
 	Lat: { number: { format: "number" } },
 	Lng: { number: { format: "number" } },
 	Pending: { checkbox: {} },
+	Skipped: { checkbox: {} },
 });
 dropProps(placesId, ["Area", "Order"]);
 
@@ -106,6 +107,7 @@ patchDataSource(transitId, {
 	Start: { date: {} },
 	Order: { number: { format: "number" } },
 	Visited: { checkbox: {} },
+	Skipped: { checkbox: {} },
 });
 
 let spendId = process.env.NOTION_SPEND_DS;

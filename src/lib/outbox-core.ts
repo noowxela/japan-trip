@@ -1,10 +1,16 @@
 export const OUTBOX_MAX_ATTEMPTS = 5;
 
-export type OutboxKind = "toggleVisited" | "addSpend" | "togglePrep";
+export type OutboxKind = "toggleVisited" | "toggleSkipped" | "addSpend" | "togglePrep";
 
 export type ToggleVisitedPayload = {
   id: string;
   visited: boolean;
+};
+
+export type ToggleSkippedPayload = {
+  id: string;
+  skipped: boolean;
+  kind: "place" | "transit";
 };
 
 export type TogglePrepPayload = {
@@ -31,6 +37,7 @@ export type AddSpendPayload = {
 
 export type OutboxPayload =
   | ToggleVisitedPayload
+  | ToggleSkippedPayload
   | TogglePrepPayload
   | AddSpendPayload;
 
@@ -64,6 +71,14 @@ export function buildToggleVisitedPayload(
   visited: boolean,
 ): ToggleVisitedPayload {
   return { id, visited };
+}
+
+export function buildToggleSkippedPayload(
+  id: string,
+  skipped: boolean,
+  kind: "place" | "transit",
+): ToggleSkippedPayload {
+  return { id, skipped, kind };
 }
 
 export function buildTogglePrepPayload(id: string, done: boolean): TogglePrepPayload {

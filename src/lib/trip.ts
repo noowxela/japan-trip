@@ -72,6 +72,7 @@ function parsePlace(page: Awaited<ReturnType<typeof queryAll>>[number]): Place {
     lat: numberOf(page, "Lat"),
     lng: numberOf(page, "Lng"),
     pending: checkboxOf(page, "Pending"),
+    skipped: checkboxOf(page, "Skipped"),
   };
 }
 
@@ -100,6 +101,7 @@ function parseTransit(page: Awaited<ReturnType<typeof queryAll>>[number]): Trans
     start: dateOf(page, "Start") ?? dateOf(page, "Date"),
     order: numberOf(page, "Order"),
     visited: checkboxOf(page, "Visited"),
+    skipped: checkboxOf(page, "Skipped"),
   };
 }
 
@@ -340,6 +342,7 @@ export function unvisitedFromPastDays(
     (place) =>
       !place.visited &&
       !place.pending &&
+      !place.skipped &&
       place.dayIds.some((id) => pastDayIds.has(id)),
   );
 }

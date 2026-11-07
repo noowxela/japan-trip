@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { buildAgenda, nextAgendaItem, tripPhase } from "@/lib/trip-core";
+import { buildAgenda, isAgendaOpen, nextAgendaItem, tripPhase } from "@/lib/trip-core";
 import type { AgendaItem, Place, Transit, TripDay } from "@/lib/types";
 
-const item = (id: string, kind: "place" | "transit", start: string | null, visited = false): AgendaItem => ({
-  id, kind, name: id, chip: null, detail: "", start, order: null, visited,
+const item = (
+  id: string,
+  kind: "place" | "transit",
+  start: string | null,
+  visited = false,
+  skipped = false,
+): AgendaItem => ({
+  id, kind, name: id, chip: null, detail: "", start, order: null, visited, skipped,
 });
 const at = (hhmm: string) => new Date(`2026-10-27T${hhmm}:00+09:00`);
 const agenda = [
@@ -43,6 +49,17 @@ describe("nextAgendaItem", () => {
   });
   it("returns null when everything is visited", () => {
     expect(nextAgendaItem([item("x", "place", null, true)], { now: at("10:00"), isToday: true })).toBeNull();
+  });
+  it("skips skipped places", () => {
+    const a = [item("shrine", "place", agenda[1].start, false, true), agenda[2]];
+    expect(nextAgendaItem(a, { now: at("08:00"), isToday: true })?.item.id).toBe("lunch");
+  });
+  it("skips skipped transit", () => {
+    const a = [item("metro", "transit", agenda[0].start, false, true), agenda[1]];
+    expect(nextAgendaItem(a, { now: at("08:00"), isToday: true })?.item.id).toBe("shrine");
+  });
+  it("returns null when everything is skipped", () => {
+    expect(nextAgendaItem([item("x", "place", null, false, true)], { now: at("10:00"), isToday: true })).toBeNull();
   });
 });
 
@@ -92,6 +109,11 @@ describe("nextAgendaItem: overnight flight (KLIA, 2026-11-06)", () => {
     const visitedFlight = { ...flight, visited: true };
     expect(nextAgendaItem([visitedFlight, day[1], day[2]], { now, isToday: true })?.item.id).toBe("test");
   });
+  it("skips a skipped flight even during the in-flight window", () => {
+    const now = new Date("2026-11-06T01:26:00+08:00");
+    const skippedFlight = { ...flight, skipped: true };
+    expect(nextAgendaItem([skippedFlight, day[1], day[2]], { now, isToday: true })?.item.id).toBe("test");
+  });
 });
 
 describe("buildAgenda visited", () => {
@@ -108,6 +130,7 @@ describe("buildAgenda visited", () => {
       lat: null,
       lng: null,
       pending: false,
+      skipped: false,
     }];
     const transit: Transit[] = [{
       id: "t1",
@@ -121,6 +144,7 @@ describe("buildAgenda visited", () => {
       start: "2026-11-06T02:15:00+09:00",
       order: 1,
       visited: true,
+      skipped: false,
     }];
     const rows = buildAgenda(places, transit);
     expect(rows.find((row) => row.id === "t1")).toMatchObject({
@@ -132,6 +156,51 @@ describe("buildAgenda visited", () => {
     expect(rows.find((row) => row.id === "p1")).toMatchObject({
       kind: "place",
       visited: true,
+      skipped: false,
     });
+  });
+
+  it("copies skipped onto place and transit rows without treating them as visited", () => {
+    const places: Place[] = [{
+      id: "p2",
+      name: "Shop",
+      type: "Shop",
+      mapsUrl: null,
+      notes: "",
+      visited: false,
+      dayIds: [],
+      start: "2026-11-06T11:00:00+09:00",
+      lat: null,
+      lng: null,
+      pending: false,
+      skipped: true,
+    }];
+    const transit: Transit[] = [{
+      id: "t2",
+      name: "Bus",
+      mode: "Bus",
+      from: "A",
+      to: "B",
+      date: "2026-11-06",
+      bookingUrl: null,
+      dayIds: [],
+      start: "2026-11-06T10:00:00+09:00",
+      order: 2,
+      visited: false,
+      skipped: true,
+    }];
+    const rows = buildAgenda(places, transit);
+    expect(rows.find((row) => row.id === "t2")).toMatchObject({
+      kind: "transit",
+      visited: false,
+      skipped: true,
+    });
+    expect(rows.find((row) => row.id === "p2")).toMatchObject({
+      kind: "place",
+      visited: false,
+      skipped: true,
+    });
+    expect(isAgendaOpen(rows[0])).toBe(false);
+    expect(rows.some((row) => row.visited)).toBe(false);
   });
 });

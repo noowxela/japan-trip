@@ -24,11 +24,16 @@ function agendaItemTimeMs(item: AgendaItem): number | null {
   return Number.isNaN(ms) ? null : ms;
 }
 
+/** Still on the to-do list: not visited and not skipped. */
+export function isAgendaOpen(item: Pick<AgendaItem, "visited" | "skipped">) {
+  return !item.visited && !item.skipped;
+}
+
 export function nextAgendaItem(
   agenda: AgendaItem[],
   opts: { now: Date; isToday: boolean },
 ): { item: AgendaItem; status: "now" | "next" } | null {
-  const remaining = agenda.filter((item) => !item.visited);
+  const remaining = agenda.filter(isAgendaOpen);
   if (remaining.length === 0) return null;
 
   if (!opts.isToday) {
@@ -39,7 +44,7 @@ export function nextAgendaItem(
 
   for (let i = 0; i < agenda.length; i++) {
     const item = agenda[i];
-    if (item.visited) continue;
+    if (!isAgendaOpen(item)) continue;
 
     const time = agendaItemTimeMs(item);
     if (time != null && time < nowMs) {
@@ -108,6 +113,7 @@ export function buildAgenda(places: Place[], transit: Transit[]): AgendaItem[] {
           start: place.start,
           order: null,
           visited: place.visited,
+          skipped: place.skipped,
           mapsUrl: place.mapsUrl,
           lat: coords?.lat ?? null,
           lng: coords?.lng ?? null,
@@ -124,6 +130,7 @@ export function buildAgenda(places: Place[], transit: Transit[]): AgendaItem[] {
       start: item.start,
       order: item.order,
       visited: item.visited,
+      skipped: item.skipped,
     })),
   ];
   return items.sort(sortAgenda);

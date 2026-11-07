@@ -105,6 +105,11 @@ notion.database({
 					type: "checkbox",
 				},
 				{
+					resourceId: "places-skipped-prop",
+					name: "Skipped",
+					type: "checkbox",
+				},
+				{
 					resourceId: "places-day-prop",
 					name: "Day",
 					type: "relation",
@@ -189,6 +194,11 @@ notion.database({
 				{
 					resourceId: "transit-visited-prop",
 					name: "Visited",
+					type: "checkbox",
+				},
+				{
+					resourceId: "transit-skipped-prop",
+					name: "Skipped",
 					type: "checkbox",
 				},
 			],

@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import {
   addSpend,
   togglePrepItem,
+  toggleSkipped,
   toggleVisited,
 } from "@/app/actions";
 import { useToast } from "@/components/toast-provider";
@@ -23,6 +24,7 @@ import {
   optimisticSpendFromPayload,
   runAddSpend,
   runTogglePrep,
+  runToggleSkipped,
   runToggleVisited,
   type OfflineEnqueueResult,
 } from "@/lib/offline-actions";
@@ -33,6 +35,7 @@ import {
   type AddSpendPayload,
   type OutboxEntry,
   type TogglePrepPayload,
+  type ToggleSkippedPayload,
   type ToggleVisitedPayload,
 } from "@/lib/outbox-core";
 import {
@@ -50,6 +53,7 @@ type OutboxContextValue = {
   entries: OutboxEntry[];
   pendingCount: number;
   visitedOverlay: Record<string, boolean>;
+  skippedOverlay: Record<string, boolean>;
   prepOverlay: Record<string, boolean>;
   pendingSpend: SpendItem[];
   replaying: boolean;
@@ -59,6 +63,12 @@ type OutboxContextValue = {
   markVisited: (
     id: string,
     visited: boolean,
+    options?: { silent?: boolean },
+  ) => Promise<ActionResult>;
+  markSkipped: (
+    id: string,
+    skipped: boolean,
+    kind: "place" | "transit",
     options?: { silent?: boolean },
   ) => Promise<ActionResult>;
   markPrep: (id: string, done: boolean) => Promise<ActionResult>;
@@ -98,6 +108,9 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
   const [visitedOverlay, setVisitedOverlay] = useState<Record<string, boolean>>(
     {},
   );
+  const [skippedOverlay, setSkippedOverlay] = useState<Record<string, boolean>>(
+    {},
+  );
   const [prepOverlay, setPrepOverlay] = useState<Record<string, boolean>>({});
   const [replaying, setReplaying] = useState(false);
   const replayLock = useRef(false);
@@ -106,17 +119,24 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
     const rows = await listOutbox();
     setEntries(rows);
     const visited: Record<string, boolean> = {};
+    const skipped: Record<string, boolean> = {};
     const prep: Record<string, boolean> = {};
     for (const entry of rows) {
       if (entry.kind === "toggleVisited") {
         const payload = entry.payload as ToggleVisitedPayload;
         visited[payload.id] = payload.visited;
+        if (payload.visited) skipped[payload.id] = false;
+      } else if (entry.kind === "toggleSkipped") {
+        const payload = entry.payload as ToggleSkippedPayload;
+        skipped[payload.id] = payload.skipped;
+        if (payload.skipped) visited[payload.id] = false;
       } else if (entry.kind === "togglePrep") {
         const payload = entry.payload as TogglePrepPayload;
         prep[payload.id] = payload.done;
       }
     }
     setVisitedOverlay(visited);
+    setSkippedOverlay(skipped);
     setPrepOverlay(prep);
   }, []);
 
@@ -138,6 +158,13 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
           formData.set("id", payload.id);
           formData.set("visited", payload.visited ? "true" : "false");
           result = await toggleVisited(formData);
+        } else if (working.kind === "toggleSkipped") {
+          const payload = working.payload as ToggleSkippedPayload;
+          const formData = new FormData();
+          formData.set("id", payload.id);
+          formData.set("skipped", payload.skipped ? "true" : "false");
+          formData.set("kind", payload.kind);
+          result = await toggleSkipped(formData);
         } else if (working.kind === "togglePrep") {
           const payload = working.payload as TogglePrepPayload;
           const formData = new FormData();
@@ -289,6 +316,9 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
       options?: { silent?: boolean },
     ) => {
       setVisitedOverlay((current) => ({ ...current, [id]: visited }));
+      if (visited) {
+        setSkippedOverlay((current) => ({ ...current, [id]: false }));
+      }
       const outcome = await runToggleVisited(id, visited);
       if (options?.silent) {
         if (outcome.status === "error") void notify(outcome.result);
@@ -308,6 +338,46 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
         return outcome.result;
       }
       setVisitedOverlay((current) => {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
+      router.refresh();
+      return outcome.result;
+    },
+    [notify, refresh, router, t, toast],
+  );
+
+  const markSkipped = useCallback(
+    async (
+      id: string,
+      skipped: boolean,
+      kind: "place" | "transit",
+      options?: { silent?: boolean },
+    ) => {
+      setSkippedOverlay((current) => ({ ...current, [id]: skipped }));
+      if (skipped) {
+        setVisitedOverlay((current) => ({ ...current, [id]: false }));
+      }
+      const outcome = await runToggleSkipped(id, skipped, kind);
+      if (options?.silent) {
+        if (outcome.status === "error") void notify(outcome.result);
+      } else {
+        applyEnqueueToast(outcome, toast, t, notify);
+      }
+      if (outcome.status === "queued") {
+        await refresh();
+        return { ok: true as const };
+      }
+      if (outcome.status === "error") {
+        setSkippedOverlay((current) => {
+          const next = { ...current };
+          delete next[id];
+          return next;
+        });
+        return outcome.result;
+      }
+      setSkippedOverlay((current) => {
         const next = { ...current };
         delete next[id];
         return next;
@@ -377,6 +447,7 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
       entries,
       pendingCount: entries.length,
       visitedOverlay,
+      skippedOverlay,
       prepOverlay,
       pendingSpend,
       replaying,
@@ -384,6 +455,7 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
       replay,
       retryEntry,
       markVisited,
+      markSkipped,
       markPrep,
       submitSpend,
     }),
@@ -391,6 +463,7 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
       online,
       entries,
       visitedOverlay,
+      skippedOverlay,
       prepOverlay,
       pendingSpend,
       replaying,
@@ -398,6 +471,7 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
       replay,
       retryEntry,
       markVisited,
+      markSkipped,
       markPrep,
       submitSpend,
     ],

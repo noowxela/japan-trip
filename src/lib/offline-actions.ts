@@ -1,6 +1,7 @@
 import {
   addSpend,
   togglePrepItem,
+  toggleSkipped,
   toggleVisited,
 } from "@/app/actions";
 import type { ActionResult } from "@/lib/action-result";
@@ -9,12 +10,14 @@ import {
   buildAddSpendPayload,
   buildOfflineSpendCreatedAt,
   buildTogglePrepPayload,
+  buildToggleSkippedPayload,
   buildToggleVisitedPayload,
   isNetworkFailure,
   shouldDedupeSpendReplay,
   type AddSpendPayload,
   type OutboxEntry,
   type TogglePrepPayload,
+  type ToggleSkippedPayload,
   type ToggleVisitedPayload,
 } from "@/lib/outbox-core";
 import { enqueueOutbox } from "@/lib/outbox";
@@ -27,8 +30,12 @@ export type OfflineEnqueueResult =
   | {
       status: "queued";
       entryId: string;
-      kind: "toggleVisited" | "addSpend" | "togglePrep";
-      payload: ToggleVisitedPayload | TogglePrepPayload | AddSpendPayload;
+      kind: "toggleVisited" | "toggleSkipped" | "addSpend" | "togglePrep";
+      payload:
+        | ToggleVisitedPayload
+        | ToggleSkippedPayload
+        | TogglePrepPayload
+        | AddSpendPayload;
     }
   | { status: "error"; result: ActionResult };
 
@@ -133,6 +140,33 @@ export async function runToggleVisited(
     if (!isNetworkFailure(error)) throw error;
     const entry = await enqueueOutbox("toggleVisited", payload);
     return { status: "queued", entryId: entry.id, kind: "toggleVisited", payload };
+  }
+}
+
+export async function runToggleSkipped(
+  id: string,
+  skipped: boolean,
+  kind: "place" | "transit",
+): Promise<OfflineEnqueueResult> {
+  const payload = buildToggleSkippedPayload(id, skipped, kind);
+  const formData = new FormData();
+  formData.set("id", id);
+  formData.set("skipped", skipped ? "true" : "false");
+  formData.set("kind", kind);
+
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    const entry = await enqueueOutbox("toggleSkipped", payload);
+    return { status: "queued", entryId: entry.id, kind: "toggleSkipped", payload };
+  }
+
+  try {
+    const result = await toggleSkipped(formData);
+    if (!result.ok) return { status: "error", result };
+    return { status: "synced", result };
+  } catch (error) {
+    if (!isNetworkFailure(error)) throw error;
+    const entry = await enqueueOutbox("toggleSkipped", payload);
+    return { status: "queued", entryId: entry.id, kind: "toggleSkipped", payload };
   }
 }
 

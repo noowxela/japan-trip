@@ -61,7 +61,12 @@ export function sightNumbersById(
 export function sightNumbersFromAgenda(agenda: AgendaItem[]): Map<string, number> {
   return sightNumbersById(
     agenda.flatMap((item) => {
-      if (item.kind !== "place" || item.lat == null || item.lng == null) {
+      if (
+        item.kind !== "place" ||
+        item.lat == null ||
+        item.lng == null ||
+        item.skipped
+      ) {
         return [];
       }
       return [{ id: item.id, kind: pinKind(item.chip) }];

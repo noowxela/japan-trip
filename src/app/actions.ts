@@ -32,6 +32,34 @@ function bump(...tags: string[]) {
   for (const tag of tags) updateTag(tag);
 }
 
+/**
+ * Write required Notion properties, plus optional extras when the live schema
+ * has them. Skipped may be missing until Alex adds the checkbox; Pending exists
+ * on Places but not Transit. A missing optional field must not block the
+ * required write (visited / pending).
+ */
+async function updatePageProperties(
+  id: string,
+  required: Record<string, unknown>,
+  optional: Record<string, unknown> = {},
+) {
+  const notion = getNotion();
+  const write = (properties: Record<string, unknown>) =>
+    notion.pages.update({
+      page_id: id,
+      properties: properties as never,
+    });
+  if (Object.keys(optional).length === 0) {
+    await write(required);
+    return;
+  }
+  try {
+    await write({ ...required, ...optional });
+  } catch {
+    await write(required);
+  }
+}
+
 /** Days `City` may be select (fresh setup) or multi-select (live workspace). */
 async function dayCityValue(city: string, pageId?: string) {
   const notion = getNotion();
@@ -303,13 +331,35 @@ export async function toggleVisited(formData: FormData): Promise<ActionResult> {
   const id = String(formData.get("id") ?? "");
   const visited = String(formData.get("visited") ?? "") === "true";
   if (!id) return actionErr(await actionT("action.missingPlace"));
-  const notion = getNotion();
-  await notion.pages.update({
-    page_id: id,
-    properties: { Visited: { checkbox: visited } },
-  });
+  // Marking visited clears Skipped so the two flags cannot both be true.
+  await updatePageProperties(
+    id,
+    { Visited: { checkbox: visited } },
+    visited ? { Skipped: { checkbox: false } } : {},
+  );
   bump(TRIP_TAGS.places, TRIP_TAGS.transit);
   return actionOk(await actionT(visited ? "action.markedVisited" : "action.markedUnvisited"));
+}
+
+export async function toggleSkipped(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
+  const id = String(formData.get("id") ?? "");
+  const skipped = String(formData.get("skipped") ?? "") === "true";
+  const kind = String(formData.get("kind") ?? "").trim();
+  if (!id) return actionErr(await actionT("action.missingPlace"));
+  // Skipped is not visited and not pending. Clear those when skipping so the
+  // item leaves the active agenda without landing in the pending list.
+  const optional: Record<string, unknown> = {};
+  if (skipped) {
+    optional.Visited = { checkbox: false };
+    if (kind === "place") optional.Pending = { checkbox: false };
+  }
+  await updatePageProperties(id, { Skipped: { checkbox: skipped } }, optional);
+  bump(TRIP_TAGS.places, TRIP_TAGS.transit);
+  return actionOk(
+    await actionT(skipped ? "action.markedSkipped" : "action.markedUnskipped"),
+  );
 }
 
 export async function updatePlaceNotes(formData: FormData): Promise<ActionResult> {
@@ -451,15 +501,17 @@ export async function parkPlaceAsPending(formData: FormData): Promise<ActionResu
   const id = String(formData.get("id") ?? "").trim();
   const dayId = String(formData.get("dayId") ?? "").trim();
   if (!id) return actionErr(await actionT("action.missingPlace"));
-  const notion = getNotion();
-  await notion.pages.update({
-    page_id: id,
-    properties: {
+  // Parking to pending clears Skipped: an item cannot be both parked for later
+  // and written off as unvisitable this trip.
+  await updatePageProperties(
+    id,
+    {
       Pending: { checkbox: true },
       ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
       Start: startProp(null),
     },
-  });
+    { Skipped: { checkbox: false } },
+  );
   bump(TRIP_TAGS.places);
   return actionOk(await actionT("action.movedToPending"));
 }

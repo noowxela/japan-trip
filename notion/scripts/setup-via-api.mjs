@@ -169,6 +169,7 @@ const places = createDatabase("Places", "📍", {
 	"Maps URL": { url: {} },
 	Notes: { rich_text: {} },
 	Visited: { checkbox: {} },
+	Skipped: { checkbox: {} },
 	Day: {
 		relation: {
 			data_source_id: days.dataSourceId,
@@ -208,6 +209,7 @@ const transit = createDatabase("Transit", "🚆", {
 		},
 	},
 	Visited: { checkbox: {} },
+	Skipped: { checkbox: {} },
 });
 
 const editors = createDatabase("Editors", "🔑", {

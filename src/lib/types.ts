@@ -18,6 +18,7 @@ export type Place = {
   lat: number | null;
   lng: number | null;
   pending: boolean;
+  skipped: boolean;
 };
 
 export type Stay = {
@@ -42,6 +43,7 @@ export type Transit = {
   start: string | null;
   order: number | null;
   visited: boolean;
+  skipped: boolean;
 };
 
 export const SPEND_CURRENCIES = ["Yen", "RM"] as const;
@@ -80,6 +82,7 @@ export type AgendaItem = {
   start: string | null;
   order: number | null;
   visited?: boolean;
+  skipped?: boolean;
   mapsUrl?: string | null;
   lat?: number | null;
   lng?: number | null;

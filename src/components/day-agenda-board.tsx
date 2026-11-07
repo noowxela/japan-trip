@@ -106,12 +106,14 @@ function TimelineMark({
   number,
   food,
   visited,
+  skipped,
   transit,
   current = false,
 }: {
   number?: number;
   food: boolean;
   visited: boolean;
+  skipped?: boolean;
   transit?: boolean;
   current?: boolean;
 }) {
@@ -129,6 +131,19 @@ function TimelineMark({
             aria-hidden
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="m5 12 5 5L19 7" />
+          </svg>
+        </span>
+      ) : skipped ? (
+        <span className="flex h-4 w-4 items-center justify-center rounded-full bg-ink-muted text-white">
+          <svg
+            viewBox="0 0 24 24"
+            className="h-2.5 w-2.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={3}
+            aria-hidden
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6 6 18" />
           </svg>
         </span>
       ) : transit ? (
@@ -448,17 +463,23 @@ export function DayAgendaBoard({
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [popId, setPopId] = useState<string | null>(null);
   const [showVisited, setShowVisited] = useState(false);
+  const [showSkipped, setShowSkipped] = useState(false);
   const notify = useActionToast();
   const { toast } = useToast();
   const trashWithUndo = useTrashUndo();
   const canEdit = useCanEdit();
   const hiddenIds = useHiddenMapPinIds();
   const { t, locale } = useT();
-  const { markVisited, visitedOverlay } = useOutbox();
+  const { markVisited, markSkipped, visitedOverlay, skippedOverlay } = useOutbox();
+  const isSkipped = (item: AgendaItem) => {
+    return skippedOverlay[item.id] ?? Boolean(item.skipped);
+  };
   const isVisited = (item: AgendaItem) => {
+    if (isSkipped(item)) return false;
     return visitedOverlay[item.id] ?? Boolean(item.visited);
   };
   const visitedCount = agenda.filter((item) => isVisited(item)).length;
+  const skippedCount = agenda.filter((item) => isSkipped(item)).length;
   const sightNumbers = sightNumbersFromAgenda(agenda);
   const listRef = useRef<HTMLOListElement>(null);
   const flightLinks = useMemo(() => flightListLinks(agenda), [agenda]);
@@ -515,6 +536,30 @@ export function DayAgendaBoard({
     });
   }
 
+  function setSkipped(item: AgendaItem, skipped: boolean) {
+    setMenuId(null);
+    haptic("success");
+    startTransition(async () => {
+      const result = await markSkipped(item.id, skipped, item.kind, {
+        silent: true,
+      });
+      if (!result.ok) return;
+      toast(
+        result.message == null
+          ? t("offline.savedQueued")
+          : skipped
+            ? t("action.markedSkipped")
+            : t("action.markedUnskipped"),
+        {
+          actionLabel: t("common.undo"),
+          onAction: () => {
+            void markSkipped(item.id, !skipped, item.kind, { silent: true });
+          },
+        },
+      );
+    });
+  }
+
   const menuItem = agenda.find((item) => item.id === menuId);
   const menuHasCoords =
     menuItem != null && menuItem.lat != null && menuItem.lng != null;
@@ -551,15 +596,29 @@ export function DayAgendaBoard({
       className={`grid gap-2 ${showPending ? "lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start" : "max-w-2xl"} ${busy ? "opacity-70" : ""}`}
     >
       <div>
-        {visitedCount > 0 ? (
-          <button
-            type="button"
-            aria-expanded={showVisited}
-            onClick={() => setShowVisited((value) => !value)}
-            className="mb-1.5 inline-flex min-h-9 items-center rounded-lg px-1 text-xs text-ink-muted"
-          >
-            {t("agenda.doneExpand", { n: visitedCount })}
-          </button>
+        {visitedCount > 0 || skippedCount > 0 ? (
+          <div className="mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+            {visitedCount > 0 ? (
+              <button
+                type="button"
+                aria-expanded={showVisited}
+                onClick={() => setShowVisited((value) => !value)}
+                className="inline-flex min-h-9 items-center rounded-lg px-1 text-xs text-ink-muted"
+              >
+                {t("agenda.doneExpand", { n: visitedCount })}
+              </button>
+            ) : null}
+            {skippedCount > 0 ? (
+              <button
+                type="button"
+                aria-expanded={showSkipped}
+                onClick={() => setShowSkipped((value) => !value)}
+                className="inline-flex min-h-9 items-center rounded-lg px-1 text-xs text-ink-muted"
+              >
+                {t("agenda.skippedExpand", { n: skippedCount })}
+              </button>
+            ) : null}
+          </div>
         ) : null}
         {agenda.length === 0 ? (
           <div
@@ -584,8 +643,12 @@ export function DayAgendaBoard({
           <ol ref={listRef}>
             {agenda.map((item, index) => {
               const food = item.kind === "place" && isFoodChip(item.chip);
+              const skipped = isSkipped(item);
               const visited = isVisited(item);
               if (visited && !showVisited && item.id !== highlightId) {
+                return null;
+              }
+              if (skipped && !showSkipped && item.id !== highlightId) {
                 return null;
               }
               const transit = item.kind === "transit";
@@ -625,10 +688,17 @@ export function DayAgendaBoard({
                 item.detail ? item.detail : null,
                 pinHidden ? t("agenda.hiddenOnMap") : null,
               ].filter(Boolean);
-              const visibleItems = agenda.filter(
-                (row) =>
-                  !isVisited(row) || showVisited || row.id === highlightId,
-              );
+              const visibleItems = agenda.filter((row) => {
+                const rowVisited = isVisited(row);
+                const rowSkipped = isSkipped(row);
+                if (rowVisited && !showVisited && row.id !== highlightId) {
+                  return false;
+                }
+                if (rowSkipped && !showSkipped && row.id !== highlightId) {
+                  return false;
+                }
+                return true;
+              });
               const visibleIndex = visibleItems.findIndex(
                 (row) => row.id === item.id,
               );
@@ -694,6 +764,7 @@ export function DayAgendaBoard({
                           number={sightNo}
                           food={food}
                           visited={visited}
+                          skipped={skipped}
                           transit={transit}
                           current={isFocus}
                         />
@@ -732,6 +803,14 @@ export function DayAgendaBoard({
                                 >
                                   {t("theme.stampVisited")}
                                 </HankoStamp>
+                              ) : skipped ? (
+                                <HankoStamp
+                                  variant="muted"
+                                  size="sm"
+                                  className="shrink-0"
+                                >
+                                  {t("theme.stampSkipped")}
+                                </HankoStamp>
                               ) : null}
                               {categoryLabel ? (
                                 <span className="inline-flex shrink-0 items-center rounded bg-transit-soft px-1 py-px text-[10px] font-medium text-transit">
@@ -743,7 +822,7 @@ export function DayAgendaBoard({
                               ) : null}
                               <span
                                 className={`truncate font-medium ${
-                                  visited
+                                  visited || skipped
                                     ? "text-ink-muted line-through decoration-line"
                                     : "text-ink"
                                 }`}
@@ -764,9 +843,9 @@ export function DayAgendaBoard({
                         </div>
                       ) : (
                         <div
-                          draggable={canEdit && !visited}
+                          draggable={canEdit && !visited && !skipped}
                           onDragStart={(event) => {
-                            if (visited) return;
+                            if (visited || skipped) return;
                             event.dataTransfer.setData(
                               "text/plain",
                               JSON.stringify({ id: item.id, from: "agenda" }),
@@ -814,6 +893,14 @@ export function DayAgendaBoard({
                                 >
                                   {t("theme.stampVisited")}
                                 </HankoStamp>
+                              ) : skipped ? (
+                                <HankoStamp
+                                  variant="muted"
+                                  size="sm"
+                                  className="shrink-0"
+                                >
+                                  {t("theme.stampSkipped")}
+                                </HankoStamp>
                               ) : null}
                               {categoryLabel ? (
                                 <span className="inline-flex shrink-0 items-center rounded bg-ink/5 px-1 py-px text-[10px] font-medium text-ink-muted">
@@ -822,7 +909,7 @@ export function DayAgendaBoard({
                               ) : null}
                               <span
                                 className={`truncate font-medium ${
-                                  visited
+                                  visited || skipped
                                     ? "text-ink-muted line-through decoration-line"
                                     : "text-ink"
                                 }`}
@@ -908,6 +995,19 @@ export function DayAgendaBoard({
                 {isVisited(menuItem)
                   ? t("agenda.markUnvisited")
                   : t("agenda.markVisited")}
+              </button>
+            ) : null}
+            {canEdit ? (
+              <button
+                type="button"
+                disabled={busy}
+                data-haptic="manual"
+                onClick={() => setSkipped(menuItem, !isSkipped(menuItem))}
+                className="notebook-btn min-h-11 w-full border border-line bg-surface px-4 py-3 text-left text-sm font-medium text-ink-muted disabled:opacity-60"
+              >
+                {isSkipped(menuItem)
+                  ? t("agenda.markUnskipped")
+                  : t("agenda.markSkipped")}
               </button>
             ) : null}
             {canEdit && menuItem.kind === "place" && !isVisited(menuItem) ? (

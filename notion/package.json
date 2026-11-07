@@ -9,7 +9,8 @@
     "setup:api": "node scripts/setup-via-api.mjs",
     "migrate:v2": "node scripts/migrate-v2.mjs",
     "sync:place-maps": "node scripts/sync-place-maps.mjs",
-    "add:transit-visited": "node scripts/add-transit-visited.mjs"
+    "add:transit-visited": "node scripts/add-transit-visited.mjs",
+    "add:skipped": "node scripts/add-skipped.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

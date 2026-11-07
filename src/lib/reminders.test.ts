@@ -29,6 +29,7 @@ function transit(
     start: null,
     order: null,
     visited: false,
+    skipped: false,
     ...partial,
   };
 }
