@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { buildAgenda, isAgendaOpen, nextAgendaItem, tripPhase } from "@/lib/trip-core";
+import {
+  agendaStartSortKey,
+  buildAgenda,
+  compareAgendaItems,
+  isAgendaOpen,
+  nextAgendaItem,
+  tripPhase,
+} from "@/lib/trip-core";
 import type { AgendaItem, Place, Transit, TripDay } from "@/lib/types";
 
 const item = (
@@ -202,5 +209,82 @@ describe("buildAgenda visited", () => {
     });
     expect(isAgendaOpen(rows[0])).toBe(false);
     expect(rows.some((row) => row.visited)).toBe(false);
+  });
+});
+
+describe("agendaStartSortKey", () => {
+  it("treats date-only and missing starts as untimed", () => {
+    expect(agendaStartSortKey(null)).toBe("9999");
+    expect(agendaStartSortKey(undefined)).toBe("9999");
+    expect(agendaStartSortKey("2026-11-06")).toBe("9999");
+    expect(agendaStartSortKey("2026-11-06T09:00:00+09:00")).toBe(
+      "2026-11-06T09:00:00+09:00",
+    );
+  });
+});
+
+describe("buildAgenda sort", () => {
+  const place = (
+    id: string,
+    start: string | null,
+    name = id,
+  ): Place => ({
+    id,
+    name,
+    type: "Sight",
+    mapsUrl: null,
+    notes: "",
+    visited: false,
+    dayIds: [],
+    start,
+    lat: null,
+    lng: null,
+    pending: false,
+    skipped: false,
+  });
+
+  const transit = (
+    id: string,
+    start: string | null,
+    order: number | null = null,
+  ): Transit => ({
+    id,
+    name: id,
+    mode: "Metro",
+    from: "",
+    to: "",
+    date: "2026-11-06",
+    bookingUrl: null,
+    dayIds: [],
+    start,
+    order,
+    visited: false,
+    skipped: false,
+  });
+
+  it("keeps date-only late adds after timed stops (not before them)", () => {
+    const rows = buildAgenda(
+      [
+        place("late-add", "2026-11-06", "Late add"),
+        place("lunch", "2026-11-06T13:00:00+09:00", "Lunch"),
+        place("no-time", null, "No time"),
+      ],
+      [transit("flight", "2026-11-06T02:15:00+09:00", 1)],
+    );
+    expect(rows.map((row) => row.id)).toEqual([
+      "flight",
+      "lunch",
+      "late-add",
+      "no-time",
+    ]);
+  });
+
+  it("orders untimed ties by transit Order then name", () => {
+    expect(
+      compareAgendaItems(
+        { start: "2026-11-06", order: 2, name: "B" },
+        { start: null, order: 1, name: "A" },
+      ),
+    ).toBeGreaterThan(0);
   });
 });

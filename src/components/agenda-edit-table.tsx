@@ -12,6 +12,7 @@ import { useActionToast } from "@/components/action-form";
 import { useT } from "@/components/i18n-provider";
 import { useTrashUndo } from "@/components/use-trash-undo";
 import { dateKey, formatTime } from "@/lib/format";
+import { compareAgendaItems } from "@/lib/trip-core";
 import { labelMode, labelType } from "@/lib/i18n/dictionaries";
 import {
   PLACE_TYPES,
@@ -119,14 +120,20 @@ export function AgendaEditTable({
       .filter((place) => !place.pending)
       .map((place) => ({ kind: "place" as const, place })),
     ...transit.map((item) => ({ kind: "transit" as const, transit: item })),
-  ].sort((a, b) => {
-    const startA = (a.kind === "place" ? a.place.start : a.transit.start) ?? "9999";
-    const startB = (b.kind === "place" ? b.place.start : b.transit.start) ?? "9999";
-    if (startA !== startB) return startA.localeCompare(startB);
-    const orderA = a.kind === "transit" ? (a.transit.order ?? 9999) : 9999;
-    const orderB = b.kind === "transit" ? (b.transit.order ?? 9999) : 9999;
-    return orderA - orderB;
-  });
+  ].sort((a, b) =>
+    compareAgendaItems(
+      {
+        start: a.kind === "place" ? a.place.start : a.transit.start,
+        order: a.kind === "transit" ? a.transit.order : null,
+        name: a.kind === "place" ? a.place.name : a.transit.name,
+      },
+      {
+        start: b.kind === "place" ? b.place.start : b.transit.start,
+        order: b.kind === "transit" ? b.transit.order : null,
+        name: b.kind === "place" ? b.place.name : b.transit.name,
+      },
+    ),
+  );
 
   if (rows.length === 0) {
     return (

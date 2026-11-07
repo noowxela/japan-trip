@@ -135,12 +135,10 @@ export function AddPlaceForm({
       ? "grid w-full gap-3 notebook-card p-4"
       : `${formShellClass} grid gap-3 notebook-card p-4`;
 
+  // Date alone must not become Start: day linkage uses the Day relation, and a
+  // date-only Start sorts ahead of every timed stop (see compareAgendaItems).
   const startValue =
-    startDate && startTime
-      ? tokyoWallDateTime(startDate, startTime)
-      : startDate
-        ? startDate
-        : "";
+    startDate && startTime ? tokyoWallDateTime(startDate, startTime) : "";
 
   return (
     <div className={shellClass}>

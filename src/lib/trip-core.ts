@@ -88,14 +88,31 @@ export function staysForDate(stays: Stay[], date: string | null) {
   });
 }
 
-function sortAgenda(a: AgendaItem, b: AgendaItem) {
-  const startA = a.start ?? "9999";
-  const startB = b.start ?? "9999";
+/**
+ * Timed starts sort chronologically. Date-only or missing Start is "untimed"
+ * (UI shows "—") and must sort AFTER timed items — never before them.
+ * Lexicographic compare wrongly puts "2026-11-06" ahead of "2026-11-06T09:00…".
+ */
+export function agendaStartSortKey(start: string | null | undefined): string {
+  if (!start || !start.includes("T")) return "9999";
+  return start;
+}
+
+export function compareAgendaItems(
+  a: Pick<AgendaItem, "start" | "order" | "name">,
+  b: Pick<AgendaItem, "start" | "order" | "name">,
+) {
+  const startA = agendaStartSortKey(a.start);
+  const startB = agendaStartSortKey(b.start);
   if (startA !== startB) return startA.localeCompare(startB);
   const orderA = a.order ?? 9999;
   const orderB = b.order ?? 9999;
   if (orderA !== orderB) return orderA - orderB;
   return a.name.localeCompare(b.name);
+}
+
+function sortAgenda(a: AgendaItem, b: AgendaItem) {
+  return compareAgendaItems(a, b);
 }
 
 export function buildAgenda(places: Place[], transit: Transit[]): AgendaItem[] {
