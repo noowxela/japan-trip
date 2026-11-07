@@ -201,7 +201,7 @@ function PlaceEditRow({
         <TimeField defaultValue={formatTime(place.start) ?? ""} />
       </Field>
       <div className="hidden lg:block" />
-      <Field label={t("form.kind")} className="col-span-2 lg:col-span-1">
+      <Field label={t("form.kind")} className="lg:col-span-1">
         <select name="type" defaultValue={place.type ?? "Sight"} className={cell}>
           {PLACE_TYPES.map((type) => (
             <option key={type} value={type}>
@@ -270,10 +270,10 @@ function TransitEditRow({
         type="hidden"
         value={dateKey(item.date) ?? dateKey(dayDate) ?? ""}
       />
-      <Field label={t("form.time")}>
+      <Field label={t("form.time")} className="order-1 lg:order-none">
         <TimeField defaultValue={formatTime(item.start) ?? ""} />
       </Field>
-      <Field label="#">
+      <Field label="#" className="order-3 lg:order-none">
         <input
           name="order"
           type="number"
@@ -281,7 +281,7 @@ function TransitEditRow({
           className={cell}
         />
       </Field>
-      <Field label={t("form.kind")} className="col-span-2 lg:col-span-1">
+      <Field label={t("form.kind")} className="order-2 lg:order-none">
         <select name="mode" defaultValue={item.mode ?? "Metro"} className={cell}>
           {TRANSIT_MODES.map((mode) => (
             <option key={mode} value={mode}>
@@ -290,10 +290,10 @@ function TransitEditRow({
           ))}
         </select>
       </Field>
-      <Field label={t("form.name")} className="col-span-2 lg:col-span-1">
+      <Field label={t("form.name")} className="order-4 col-span-2 lg:order-none lg:col-span-1">
         <input name="name" required defaultValue={item.name} className={cell} />
       </Field>
-      <Field label={t("form.fromTo")} className="col-span-2 lg:col-span-1">
+      <Field label={t("form.fromTo")} className="order-5 col-span-2 lg:order-none lg:col-span-1">
         <div className="grid grid-cols-2 gap-1">
           <input
             name="from"
@@ -309,7 +309,7 @@ function TransitEditRow({
           />
         </div>
       </Field>
-      <div className="col-span-2 flex w-full min-w-0 justify-end gap-2 lg:col-span-1">
+      <div className="order-6 col-span-2 flex w-full min-w-0 justify-end gap-2 lg:order-none lg:col-span-1">
         <SaveButton pending={pending} />
         <DeleteButton
           onDelete={async () => {
