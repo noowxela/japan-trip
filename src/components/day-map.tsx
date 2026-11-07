@@ -20,7 +20,7 @@ import {
 } from "@/lib/map-pin-icons";
 import { FlightMapArcs } from "@/components/flight-map-arc";
 import type { FlightRoute } from "@/lib/flight-path";
-import { sightNumbersById } from "@/lib/schedule-pins";
+import { isNumberedMapStop, sightNumbersById } from "@/lib/schedule-pins";
 import { CITY_COORDS } from "@/lib/types";
 import { googleMapsHref } from "@/lib/maps";
 import { useT } from "@/components/i18n-provider";
@@ -263,7 +263,7 @@ export default function DayMap({
   const sightPath = labeled
     ? []
     : visiblePins
-        .filter((pin) => pin.kind === "sight")
+        .filter((pin) => isNumberedMapStop(pin.kind))
         .map((pin) => [pin.lat, pin.lng] as [number, number]);
   const { id: styleId, pick, tiles } = useMapStyle();
   const [hideLabels, setHideLabels] = useState(false);
@@ -328,7 +328,7 @@ export default function DayMap({
             ? labelPinIcon(pin.label)
             : pin.kind === "food"
               ? foodPinIcon()
-              : pin.kind === "sight"
+              : isNumberedMapStop(pin.kind)
                 ? sightNumberIcon(sightNumbers.get(pin.id) ?? 0)
                 : otherPinIcon();
           return (

@@ -46,13 +46,18 @@ export function pinKind(type: string | null): SchedulePin["kind"] {
   return "other";
 }
 
+/** Day-map 1..n stops: Sight plus Shop/Other (food/stay keep their own icons). */
+export function isNumberedMapStop(kind: string): boolean {
+  return kind === "sight" || kind === "other";
+}
+
 export function sightNumbersById(
   pins: { id: string; kind: string; label?: string }[],
 ): Map<string, number> {
   const numbers = new Map<string, number>();
   let n = 0;
   for (const pin of pins) {
-    if (pin.label || pin.kind !== "sight") continue;
+    if (pin.label || !isNumberedMapStop(pin.kind)) continue;
     numbers.set(pin.id, ++n);
   }
   return numbers;

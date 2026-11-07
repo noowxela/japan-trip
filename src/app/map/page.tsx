@@ -6,7 +6,7 @@ import { coordsOfPlace } from "@/lib/geocode";
 import { t } from "@/lib/i18n/dictionaries";
 import { getLocale } from "@/lib/i18n/server";
 import { notionReady } from "@/lib/notion";
-import { pinKind } from "@/lib/schedule-pins";
+import { isNumberedMapStop, pinKind } from "@/lib/schedule-pins";
 import { cityHops, getDays, getPlaces, hopPathCoords } from "@/lib/trip";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +37,7 @@ function buildTripPins(
   return withCoords.map(({ place, coords, dayId }) => {
     const kind = pinKind(place.type);
     let sightNumber: number | null = null;
-    if (kind === "sight" && dayId) {
+    if (isNumberedMapStop(kind) && dayId) {
       const next = (counters.get(dayId) ?? 0) + 1;
       counters.set(dayId, next);
       sightNumber = next;
