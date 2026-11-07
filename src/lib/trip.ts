@@ -99,6 +99,7 @@ function parseTransit(page: Awaited<ReturnType<typeof queryAll>>[number]): Trans
     dayIds: relationIdsOf(page, "Day"),
     start: dateOf(page, "Start") ?? dateOf(page, "Date"),
     order: numberOf(page, "Order"),
+    visited: checkboxOf(page, "Visited"),
   };
 }
 

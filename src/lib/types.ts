@@ -41,6 +41,7 @@ export type Transit = {
   dayIds: string[];
   start: string | null;
   order: number | null;
+  visited: boolean;
 };
 
 export const SPEND_CURRENCIES = ["Yen", "RM"] as const;

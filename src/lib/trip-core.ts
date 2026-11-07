@@ -28,9 +28,7 @@ export function nextAgendaItem(
   agenda: AgendaItem[],
   opts: { now: Date; isToday: boolean },
 ): { item: AgendaItem; status: "now" | "next" } | null {
-  const remaining = agenda.filter(
-    (item) => item.kind !== "place" || !item.visited,
-  );
+  const remaining = agenda.filter((item) => !item.visited);
   if (remaining.length === 0) return null;
 
   if (!opts.isToday) {
@@ -41,7 +39,7 @@ export function nextAgendaItem(
 
   for (let i = 0; i < agenda.length; i++) {
     const item = agenda[i];
-    if (item.kind === "place" && item.visited) continue;
+    if (item.visited) continue;
 
     const time = agendaItemTimeMs(item);
     if (time != null && time < nowMs) {
@@ -125,6 +123,7 @@ export function buildAgenda(places: Place[], transit: Transit[]): AgendaItem[] {
       to: item.to,
       start: item.start,
       order: item.order,
+      visited: item.visited,
     })),
   ];
   return items.sort(sortAgenda);

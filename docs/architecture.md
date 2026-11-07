@@ -69,7 +69,7 @@ Pages are `export const dynamic = "force-dynamic"`. No webhooks, no poll, no mul
 | `NOTION_DAYS_DS` | Trip days (date, city, status). Live `City` is **multi-select** (travel days list two); the app reads select, else the first value; day writes match the column type (`src/lib/day-city.ts`) |
 | `NOTION_PLACES_DS` | Stops (type, start, lat/lng, visited, pending) |
 | `NOTION_STAYS_DS` | Hotels (check-in/out, address) |
-| `NOTION_TRANSIT_DS` | Legs (mode, from/to, start) |
+| `NOTION_TRANSIT_DS` | Legs (mode, from/to, start, visited) |
 | `NOTION_SPEND_DS` | Expenses (Yen/RM, category, paid by, `Split with` multi-select; empty = everyone) |
 | `NOTION_EDITORS_DS` | Optional editor name + PIN |
 | `NOTION_PREP_DS` | Optional packing/checklist |

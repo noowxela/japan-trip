@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { nextAgendaItem, tripPhase } from "@/lib/trip-core";
-import type { AgendaItem, TripDay } from "@/lib/types";
+import { buildAgenda, nextAgendaItem, tripPhase } from "@/lib/trip-core";
+import type { AgendaItem, Place, Transit, TripDay } from "@/lib/types";
 
 const item = (id: string, kind: "place" | "transit", start: string | null, visited = false): AgendaItem => ({
-  id, kind, name: id, chip: null, detail: "", start, order: null, ...(kind === "place" ? { visited } : {}),
+  id, kind, name: id, chip: null, detail: "", start, order: null, visited,
 });
 const at = (hhmm: string) => new Date(`2026-10-27T${hhmm}:00+09:00`);
 const agenda = [
@@ -29,6 +29,10 @@ describe("nextAgendaItem", () => {
   it("skips visited places", () => {
     const a = [agenda[0], item("shrine", "place", agenda[1].start, true), agenda[2]];
     expect(nextAgendaItem(a, { now: at("09:10"), isToday: true })?.item.id).toBe("lunch");
+  });
+  it("skips visited transit", () => {
+    const a = [item("metro", "transit", agenda[0].start, true), agenda[1]];
+    expect(nextAgendaItem(a, { now: at("08:00"), isToday: true })?.item.id).toBe("shrine");
   });
   it("falls through to untimed items late in the day", () => {
     const a = [agenda[0], agenda[3]];
@@ -82,5 +86,52 @@ describe("nextAgendaItem: overnight flight (KLIA, 2026-11-06)", () => {
   it("moves on after the in-flight window even with no later start", () => {
     const now = new Date("2026-11-06T11:00:00+09:00");
     expect(nextAgendaItem([flight, item("untimed", "place", null)], { now, isToday: true })?.item.id).toBe("untimed");
+  });
+  it("skips a visited flight even during the in-flight window", () => {
+    const now = new Date("2026-11-06T01:26:00+08:00");
+    const visitedFlight = { ...flight, visited: true };
+    expect(nextAgendaItem([visitedFlight, day[1], day[2]], { now, isToday: true })?.item.id).toBe("test");
+  });
+});
+
+describe("buildAgenda visited", () => {
+  it("copies visited onto place and transit rows", () => {
+    const places: Place[] = [{
+      id: "p1",
+      name: "Shrine",
+      type: "Sight",
+      mapsUrl: null,
+      notes: "",
+      visited: true,
+      dayIds: [],
+      start: "2026-11-06T09:00:00+09:00",
+      lat: null,
+      lng: null,
+      pending: false,
+    }];
+    const transit: Transit[] = [{
+      id: "t1",
+      name: "DEpart",
+      mode: "Flight",
+      from: "KLIA",
+      to: "KIX",
+      date: "2026-11-06",
+      bookingUrl: null,
+      dayIds: [],
+      start: "2026-11-06T02:15:00+09:00",
+      order: 1,
+      visited: true,
+    }];
+    const rows = buildAgenda(places, transit);
+    expect(rows.find((row) => row.id === "t1")).toMatchObject({
+      kind: "transit",
+      visited: true,
+      from: "KLIA",
+      to: "KIX",
+    });
+    expect(rows.find((row) => row.id === "p1")).toMatchObject({
+      kind: "place",
+      visited: true,
+    });
   });
 });

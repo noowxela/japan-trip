@@ -66,6 +66,7 @@ function tr(p: Partial<Transit> & { id: string }): Transit {
     dayIds: [],
     start: null,
     order: null,
+    visited: false,
     ...p,
   };
 }

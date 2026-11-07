@@ -43,6 +43,7 @@ function transit(
     dayIds: [],
     start: null,
     order: null,
+    visited: false,
     ...partial,
   };
 }

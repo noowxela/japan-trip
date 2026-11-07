@@ -4,6 +4,7 @@ import { useMemo, useRef, useState, useTransition } from "react";
 import {
   confirmPendingPlace,
   deletePlace,
+  deleteTransit,
   movePendingToDay,
   parkPlaceAsPending,
 } from "@/app/actions";
@@ -144,6 +145,38 @@ function TimelineMark({
         <span className={`h-2 w-2 rounded-full ring-2 ring-surface ${numbered}`} />
       )}
     </span>
+  );
+}
+
+function ItemMenuButton({
+  name,
+  onOpen,
+}: {
+  name: string;
+  onOpen: () => void;
+}) {
+  const { t } = useT();
+  return (
+    <button
+      type="button"
+      data-no-swipe=""
+      aria-label={t("agenda.actionsFor", {
+        name,
+      })}
+      draggable={false}
+      onPointerDown={(event) => event.stopPropagation()}
+      onClick={(event) => {
+        event.stopPropagation();
+        onOpen();
+      }}
+      className="absolute right-0 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted hover:bg-canvas hover:text-ink"
+    >
+      <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
+        <circle cx="6" cy="12" r="1.5" fill="currentColor" />
+        <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+        <circle cx="18" cy="12" r="1.5" fill="currentColor" />
+      </svg>
+    </button>
   );
 }
 
@@ -423,7 +456,6 @@ export function DayAgendaBoard({
   const { t, locale } = useT();
   const { markVisited, visitedOverlay } = useOutbox();
   const isVisited = (item: AgendaItem) => {
-    if (item.kind !== "place") return false;
     return visitedOverlay[item.id] ?? Boolean(item.visited);
   };
   const visitedCount = agenda.filter((item) => isVisited(item)).length;
@@ -483,15 +515,11 @@ export function DayAgendaBoard({
     });
   }
 
-  const menuItem = agenda.find(
-    (item) => item.kind === "place" && item.id === menuId,
-  );
+  const menuItem = agenda.find((item) => item.id === menuId);
   const menuHasCoords =
     menuItem != null && menuItem.lat != null && menuItem.lng != null;
   const menuHidden = menuItem != null && hiddenIds.has(menuItem.id);
-  const deleteItem = agenda.find(
-    (item) => item.kind === "place" && item.id === deleteId,
-  );
+  const deleteItem = agenda.find((item) => item.id === deleteId);
 
   function openItemMenu(id: string) {
     setDeleteId(null);
@@ -510,7 +538,11 @@ export function DayAgendaBoard({
     formData.set("id", id);
     setDeleteId(null);
     startTransition(async () => {
-      await trashWithUndo(await deletePlace(formData), id, "place");
+      if (deleteItem.kind === "transit") {
+        await trashWithUndo(await deleteTransit(formData), id, "transit");
+      } else {
+        await trashWithUndo(await deletePlace(formData), id, "place");
+      }
     });
   }
 
@@ -667,47 +699,68 @@ export function DayAgendaBoard({
                         />
                       </span>
                     </TimelineRail>
-                    {transit ? (
-                      <div
-                        className={`flex min-h-11 min-w-0 items-center gap-1.5 py-1.5 pr-1 ${
-                          isFocus ? "border-l-2 border-accent pl-2 -ml-0.5" : ""
-                        }`}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[13px] leading-4 text-ink">
-                            <span className="mr-1.5 inline-block rounded bg-transit-soft px-1 py-px text-[10px] font-medium text-transit align-middle">
-                              {modeLabel}
-                              {item.chip === "Flight" ? (
-                                <FlightPlaneIcon className="ml-0.5" />
+                    <SwipeRow
+                      className={isFocus ? "rounded-r-lg" : ""}
+                      leftReveal={
+                        <span aria-hidden>{t("common.edit")}</span>
+                      }
+                      leftRevealClassName="bg-ink text-white"
+                      rightReveal={
+                        <span aria-hidden>{t("common.delete")}</span>
+                      }
+                      rightRevealClassName="bg-accent text-white"
+                      onSwipeRight={() => openItemMenu(item.id)}
+                      onSwipeLeft={
+                        canEdit ? () => requestDelete(item.id) : undefined
+                      }
+                      onLongPress={() => openItemMenu(item.id)}
+                    >
+                      {transit ? (
+                        <div
+                          className={`relative flex min-h-11 min-w-0 items-center gap-1.5 bg-canvas py-1.5 pr-9 ${
+                            isFocus ? "border-l-2 border-accent pl-2 -ml-0.5" : ""
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="flex min-w-0 items-center gap-1.5 truncate text-[13px] leading-4">
+                              {visited ? (
+                                <HankoStamp
+                                  variant="ok"
+                                  size="sm"
+                                  pop={popId === item.id}
+                                  className="shrink-0"
+                                >
+                                  {t("theme.stampVisited")}
+                                </HankoStamp>
                               ) : null}
-                            </span>
-                            <span className="font-medium">{item.name}</span>
-                            {item.detail ? (
-                              <span className="text-ink-muted">
-                                {" "}
-                                · {item.detail}
+                              <span className="inline-flex shrink-0 items-center rounded bg-transit-soft px-1 py-px text-[10px] font-medium text-transit">
+                                {modeLabel}
+                                {item.chip === "Flight" ? (
+                                  <FlightPlaneIcon className="ml-0.5" />
+                                ) : null}
                               </span>
-                            ) : null}
-                          </p>
+                              <span
+                                className={`truncate font-medium ${
+                                  visited
+                                    ? "text-ink-muted line-through decoration-line"
+                                    : "text-ink"
+                                }`}
+                              >
+                                {item.name}
+                              </span>
+                              {item.detail ? (
+                                <span className="truncate text-ink-muted">
+                                  · {item.detail}
+                                </span>
+                              ) : null}
+                            </p>
+                          </div>
+                          <ItemMenuButton
+                            name={item.name}
+                            onOpen={() => openItemMenu(item.id)}
+                          />
                         </div>
-                      </div>
-                    ) : (
-                      <SwipeRow
-                        className={isFocus ? "rounded-r-lg" : ""}
-                        leftReveal={
-                          <span aria-hidden>{t("common.edit")}</span>
-                        }
-                        leftRevealClassName="bg-ink text-white"
-                        rightReveal={
-                          <span aria-hidden>{t("common.delete")}</span>
-                        }
-                        rightRevealClassName="bg-accent text-white"
-                        onSwipeRight={() => openItemMenu(item.id)}
-                        onSwipeLeft={
-                          canEdit ? () => requestDelete(item.id) : undefined
-                        }
-                        onLongPress={() => openItemMenu(item.id)}
-                      >
+                      ) : (
                         <div
                           draggable={canEdit && !visited}
                           onDragStart={(event) => {
@@ -781,48 +834,13 @@ export function DayAgendaBoard({
                               </p>
                             ) : null}
                           </div>
-                          <button
-                            type="button"
-                            data-no-swipe=""
-                            aria-label={t("agenda.actionsFor", {
-                              name: item.name,
-                            })}
-                            draggable={false}
-                            onPointerDown={(event) => event.stopPropagation()}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              openItemMenu(item.id);
-                            }}
-                            className="absolute right-0 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted hover:bg-canvas hover:text-ink"
-                          >
-                            <svg
-                              viewBox="0 0 24 24"
-                              className="h-4 w-4"
-                              aria-hidden
-                            >
-                              <circle
-                                cx="6"
-                                cy="12"
-                                r="1.5"
-                                fill="currentColor"
-                              />
-                              <circle
-                                cx="12"
-                                cy="12"
-                                r="1.5"
-                                fill="currentColor"
-                              />
-                              <circle
-                                cx="18"
-                                cy="12"
-                                r="1.5"
-                                fill="currentColor"
-                              />
-                            </svg>
-                          </button>
+                          <ItemMenuButton
+                            name={item.name}
+                            onOpen={() => openItemMenu(item.id)}
+                          />
                         </div>
-                      </SwipeRow>
-                    )}
+                      )}
+                    </SwipeRow>
                   </div>
                 </li>
               );
@@ -890,7 +908,7 @@ export function DayAgendaBoard({
                   : t("agenda.markVisited")}
               </button>
             ) : null}
-            {canEdit && !isVisited(menuItem) ? (
+            {canEdit && menuItem.kind === "place" && !isVisited(menuItem) ? (
               <button
                 type="button"
                 disabled={busy}

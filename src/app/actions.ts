@@ -308,7 +308,7 @@ export async function toggleVisited(formData: FormData): Promise<ActionResult> {
     page_id: id,
     properties: { Visited: { checkbox: visited } },
   });
-  bump(TRIP_TAGS.places);
+  bump(TRIP_TAGS.places, TRIP_TAGS.transit);
   return actionOk(await actionT(visited ? "action.markedVisited" : "action.markedUnvisited"));
 }
 

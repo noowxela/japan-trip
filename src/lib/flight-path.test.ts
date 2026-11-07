@@ -52,6 +52,7 @@ const transit = (over: Partial<Transit> & Pick<Transit, "id" | "mode">): Transit
   dayIds: [],
   start: null,
   order: null,
+  visited: false,
   ...over,
 });
 
