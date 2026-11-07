@@ -18,7 +18,6 @@ import {
 import { DirectionsLink } from "@/components/directions-link";
 import { HankoStamp } from "@/components/hanko-stamp";
 import { useT } from "@/components/i18n-provider";
-import { FlightPlaneIcon } from "@/components/flight-plane-icon";
 import { FlightRouteOverlay } from "@/components/flight-route-overlay";
 import { MapsPinLink } from "@/components/maps-pin-link";
 import { Modal } from "@/components/modal";
@@ -34,6 +33,7 @@ import {
 } from "@/lib/format";
 import { walkLabelBetween } from "@/lib/geo";
 import { toggleHiddenMapPin } from "@/lib/hidden-map-pins";
+import { categoryEmoji } from "@/lib/category-icon";
 import { labelMode, labelType } from "@/lib/i18n/dictionaries";
 import { flightListLinks } from "@/lib/flight-path";
 import { isMapFocusable, sightNumbersFromAgenda } from "@/lib/schedule-pins";
@@ -813,11 +813,13 @@ export function DayAgendaBoard({
                                 </HankoStamp>
                               ) : null}
                               {categoryLabel ? (
-                                <span className="inline-flex shrink-0 items-center rounded bg-transit-soft px-1 py-px text-[10px] font-medium text-transit">
-                                  {categoryLabel}
-                                  {item.chip === "Flight" ? (
-                                    <FlightPlaneIcon className="ml-0.5" />
-                                  ) : null}
+                                <span
+                                  role="img"
+                                  aria-label={categoryLabel}
+                                  title={categoryLabel}
+                                  className="shrink-0 text-[14px] leading-none"
+                                >
+                                  {categoryEmoji("transit", item.chip)}
                                 </span>
                               ) : null}
                               <span
@@ -903,8 +905,13 @@ export function DayAgendaBoard({
                                 </HankoStamp>
                               ) : null}
                               {categoryLabel ? (
-                                <span className="inline-flex shrink-0 items-center rounded bg-ink/5 px-1 py-px text-[10px] font-medium text-ink-muted">
-                                  {categoryLabel}
+                                <span
+                                  role="img"
+                                  aria-label={categoryLabel}
+                                  title={categoryLabel}
+                                  className="shrink-0 text-[14px] leading-none"
+                                >
+                                  {categoryEmoji("place", item.chip)}
                                 </span>
                               ) : null}
                               <span
