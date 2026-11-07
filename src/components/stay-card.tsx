@@ -15,10 +15,12 @@ import {
 import { CopyButton } from "@/components/copy-button";
 import { useCanEdit } from "@/components/edit-session";
 import { useT } from "@/components/i18n-provider";
+import { ClearableInput } from "@/components/clearable-input";
 import { MapsPinLink } from "@/components/maps-pin-link";
 import { useTrashUndo } from "@/components/use-trash-undo";
 import { btnGhostClass, btnPrimaryClass } from "@/components/page-shell";
 import { formatTabDate, nightsBetween } from "@/lib/format";
+import { clearMapsFieldState } from "@/lib/clear-maps-field";
 import { coordsOfStay } from "@/lib/geocode";
 import { isGoogleMapsUrl } from "@/lib/maps-url";
 import type { Stay } from "@/lib/types";
@@ -77,6 +79,14 @@ export function StayCard({ stay }: { stay: Stay }) {
     });
   }
 
+  function clearMapsLink() {
+    const cleared = clearMapsFieldState();
+    setMapsUrl(cleared.mapsUrl);
+    setLat(cleared.lat);
+    setLng(cleared.lng);
+    setMapsError("");
+  }
+
   if (editing) {
     return (
       <ActionForm
@@ -133,7 +143,7 @@ export function StayCard({ stay }: { stay: Stay }) {
         </label>
         <label className={`block ${compactLabelClass}`}>
           {t("form.mapsUrl")}
-          <input
+          <ClearableInput
             name="mapsUrl"
             type="url"
             value={mapsUrl}
@@ -145,8 +155,11 @@ export function StayCard({ stay }: { stay: Stay }) {
               setMapsUrl(pasted);
               resolveMapsField(pasted);
             }}
+            onClear={clearMapsLink}
+            clearLabel={t("form.clearMapsLink")}
             placeholder={t("form.mapsUrlHint")}
-            className={`mt-1 ${compactFieldClass}`}
+            className={compactFieldClass}
+            wrapperClassName="mt-1"
           />
         </label>
         {mapsError ? <p className="text-xs text-ink-muted">{mapsError}</p> : null}

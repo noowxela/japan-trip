@@ -4,6 +4,7 @@ import nextDynamic from "next/dynamic";
 import { useMemo, useState, useTransition } from "react";
 import { addPlace, searchPlaces } from "@/app/actions";
 import { ActionForm } from "@/components/action-form";
+import { ClearableInput } from "@/components/clearable-input";
 import { ChipGroup } from "@/components/chip-group";
 import { DatePicker } from "@/components/date-picker";
 import { useT } from "@/components/i18n-provider";
@@ -134,6 +135,18 @@ export function AddPlaceForm({
     });
   }
 
+  function clearSearch() {
+    setQuery("");
+    setResults([]);
+    setError("");
+  }
+
+  function clearMapsLink() {
+    setMapsUrl("");
+    setPicked(null);
+    setError("");
+  }
+
   const shellClass = embedded
     ? "grid gap-3"
     : compact
@@ -153,7 +166,7 @@ export function AddPlaceForm({
           {t("form.searchPlaces")}
         </span>
         <div className="flex gap-2">
-          <input
+          <ClearableInput
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onPaste={(event) => {
@@ -168,8 +181,11 @@ export function AddPlaceForm({
                 onSearch();
               }
             }}
+            onClear={clearSearch}
+            clearLabel={t("form.clearMapsLink")}
             placeholder={t("form.searchMapHint")}
-            className={`min-w-0 flex-1 ${fieldClass}`}
+            className={fieldClass}
+            wrapperClassName="min-w-0 flex-1"
           />
           <button
             type="button"
@@ -301,7 +317,7 @@ export function AddPlaceForm({
                 <span className="text-[12px] font-medium text-ink-muted">
                   {t("form.mapsUrl")}
                 </span>
-                <input
+                <ClearableInput
                   name="mapsUrl"
                   type="url"
                   value={mapsUrl}
@@ -313,6 +329,8 @@ export function AddPlaceForm({
                     setMapsUrl(pasted);
                     resolveMapsField(pasted);
                   }}
+                  onClear={clearMapsLink}
+                  clearLabel={t("form.clearMapsLink")}
                   placeholder={t("form.mapsUrlHint")}
                   className={fieldClass}
                 />

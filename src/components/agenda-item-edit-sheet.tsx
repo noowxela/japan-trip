@@ -10,6 +10,7 @@ import {
 } from "@/app/actions";
 import { useActionToast } from "@/components/action-form";
 import { ChipGroup } from "@/components/chip-group";
+import { ClearableInput } from "@/components/clearable-input";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useT } from "@/components/i18n-provider";
 import { Modal } from "@/components/modal";
@@ -121,6 +122,11 @@ function AgendaItemEditForm({
         setMapsError(t("form.mapsLinkFailed"));
       }
     });
+  }
+
+  function clearMapsLink() {
+    setMapsUrl("");
+    setMapsError("");
   }
 
   function onSave() {
@@ -259,7 +265,7 @@ function AgendaItemEditForm({
             <span className="text-xs font-medium text-ink-muted">
               {t("form.mapsUrl")}
             </span>
-            <input
+            <ClearableInput
               type="url"
               value={mapsUrl}
               onChange={(event) => setMapsUrl(event.target.value)}
@@ -270,6 +276,8 @@ function AgendaItemEditForm({
                 setMapsUrl(pasted);
                 resolveMapsField(pasted);
               }}
+              onClear={clearMapsLink}
+              clearLabel={t("form.clearMapsLink")}
               placeholder={t("form.mapsUrlHint")}
               className={fieldClass}
             />

@@ -7,8 +7,10 @@ import { ActionForm } from "@/components/action-form";
 import { DatePicker } from "@/components/date-picker";
 import { useT } from "@/components/i18n-provider";
 import { useListAddSheetClose } from "@/components/list-add-sheet";
+import { ClearableInput } from "@/components/clearable-input";
 import { btnPrimaryClass, fieldClass, formShellClass } from "@/components/page-shell";
 import { tokyoToday } from "@/lib/format";
+import { clearMapsFieldState } from "@/lib/clear-maps-field";
 import { isGoogleMapsUrl } from "@/lib/maps-url";
 
 const PlacePreviewMap = nextDynamic(
@@ -65,6 +67,14 @@ export function AddStayForm({
       if (hits[0]) applyMapsHit(hits[0], { keepName: true });
       else setMapsError(t("form.mapsLinkFailed"));
     });
+  }
+
+  function clearMapsLink() {
+    const cleared = clearMapsFieldState();
+    setMapsUrl(cleared.mapsUrl);
+    setLat(cleared.lat);
+    setLng(cleared.lng);
+    setMapsError("");
   }
 
   return (
@@ -126,7 +136,7 @@ export function AddStayForm({
         <span className="text-[12px] font-medium text-ink-muted">
           {t("form.mapsUrl")}
         </span>
-        <input
+        <ClearableInput
           name="mapsUrl"
           type="url"
           value={mapsUrl}
@@ -138,6 +148,8 @@ export function AddStayForm({
             setMapsUrl(pasted);
             resolveMapsField(pasted);
           }}
+          onClear={clearMapsLink}
+          clearLabel={t("form.clearMapsLink")}
           placeholder={t("form.mapsUrlHint")}
           className={fieldClass}
         />
