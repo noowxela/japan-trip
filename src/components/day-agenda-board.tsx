@@ -620,9 +620,9 @@ export function DayAgendaBoard({
                 item.kind === "transit"
                   ? labelMode(locale, item.chip) ?? t("mode.Transit")
                   : null;
-              const primaryMeta = [typeLabel].filter(Boolean);
+              const categoryLabel = transit ? modeLabel : typeLabel;
               const secondaryBits = [
-                item.kind === "place" && item.detail ? item.detail : null,
+                item.detail ? item.detail : null,
                 pinHidden ? t("agenda.hiddenOnMap") : null,
               ].filter(Boolean);
               const visibleItems = agenda.filter(
@@ -733,12 +733,14 @@ export function DayAgendaBoard({
                                   {t("theme.stampVisited")}
                                 </HankoStamp>
                               ) : null}
-                              <span className="inline-flex shrink-0 items-center rounded bg-transit-soft px-1 py-px text-[10px] font-medium text-transit">
-                                {modeLabel}
-                                {item.chip === "Flight" ? (
-                                  <FlightPlaneIcon className="ml-0.5" />
-                                ) : null}
-                              </span>
+                              {categoryLabel ? (
+                                <span className="inline-flex shrink-0 items-center rounded bg-transit-soft px-1 py-px text-[10px] font-medium text-transit">
+                                  {categoryLabel}
+                                  {item.chip === "Flight" ? (
+                                    <FlightPlaneIcon className="ml-0.5" />
+                                  ) : null}
+                                </span>
+                              ) : null}
                               <span
                                 className={`truncate font-medium ${
                                   visited
@@ -748,12 +750,12 @@ export function DayAgendaBoard({
                               >
                                 {item.name}
                               </span>
-                              {item.detail ? (
-                                <span className="truncate text-ink-muted">
-                                  · {item.detail}
-                                </span>
-                              ) : null}
                             </p>
+                            {secondaryBits.length > 0 ? (
+                              <p className="mt-0.5 truncate text-[11px] leading-3 text-ink-muted">
+                                {secondaryBits.join(" · ")}
+                              </p>
+                            ) : null}
                           </div>
                           <ItemMenuButton
                             name={item.name}
@@ -813,6 +815,11 @@ export function DayAgendaBoard({
                                   {t("theme.stampVisited")}
                                 </HankoStamp>
                               ) : null}
+                              {categoryLabel ? (
+                                <span className="inline-flex shrink-0 items-center rounded bg-ink/5 px-1 py-px text-[10px] font-medium text-ink-muted">
+                                  {categoryLabel}
+                                </span>
+                              ) : null}
                               <span
                                 className={`truncate font-medium ${
                                   visited
@@ -822,11 +829,6 @@ export function DayAgendaBoard({
                               >
                                 {item.name}
                               </span>
-                              {primaryMeta.length > 0 ? (
-                                <span className="truncate text-ink-muted">
-                                  · {primaryMeta.join(" · ")}
-                                </span>
-                              ) : null}
                             </p>
                             {secondaryBits.length > 0 ? (
                               <p className="mt-0.5 truncate text-[11px] leading-3 text-ink-muted">
