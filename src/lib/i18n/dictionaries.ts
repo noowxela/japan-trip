@@ -238,6 +238,9 @@ const en = {
   "action.staySaved": "Stay saved",
   "action.missingStay": "Missing stay",
   "action.stayDeleted": "Stay deleted",
+  "action.stayMapsSchemaMissing":
+    "Notion stays needs Maps URL / Lat / Lng. Run npm run migrate:stay-maps, then try again.",
+  "action.staySaveFailed": "Couldn't save this stay. {detail}",
   "action.transitAdded": "Transit added",
   "action.spendNameRequired": "Spend name is required",
   "action.amountRequired": "Amount is required",
@@ -934,6 +937,9 @@ const zh: Record<DictKey, string> = {
   "action.staySaved": "住宿已保存",
   "action.missingStay": "缺少住宿",
   "action.stayDeleted": "住宿已删除",
+  "action.stayMapsSchemaMissing":
+    "Notion 住宿库还没有 Maps URL / Lat / Lng。请先运行 npm run migrate:stay-maps，再试一次。",
+  "action.staySaveFailed": "住宿没有保存。{detail}",
   "action.transitAdded": "交通已添加",
   "action.spendNameRequired": "需要填写花费名称",
   "action.amountRequired": "需要填写金额",

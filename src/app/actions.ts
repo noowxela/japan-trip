@@ -18,7 +18,7 @@ import { isLocale } from "@/lib/i18n/dictionaries";
 import { LANG_COOKIE, LANG_MAX_AGE_SEC } from "@/lib/i18n/server";
 import { ds, getNotion, textProp, titleProp } from "@/lib/notion";
 import { notionStartProperty } from "@/lib/notion-date";
-import { notionErrorCode } from "@/lib/notion-error";
+import { isStayMapsSchemaError, notionErrorCode } from "@/lib/notion-error";
 import { parseSpendCurrency } from "@/lib/spend";
 import {
   THEME_COOKIE,
@@ -135,6 +135,58 @@ function spendStartValue(formData: FormData) {
 
 function startProp(start: string | null) {
   return notionStartProperty(start);
+}
+
+
+/** Turn a thrown Notion stay failure into a toast instead of React #441. */
+async function stayActionError(error: unknown): Promise<ActionResult> {
+  console.error("stay write failed", error);
+  if (isStayMapsSchemaError(error)) {
+    return actionErr(await actionT("action.stayMapsSchemaMissing"));
+  }
+  const raw = APIResponseError.isAPIResponseError(error)
+    ? error.message
+    : error instanceof Error
+      ? error.message
+      : "";
+  const code = notionErrorCode(raw);
+  if (code) {
+    return actionErr(await actionT("action.spendNotionCode", { code }));
+  }
+  const detail = raw.replace(/\s+/g, " ").trim().slice(0, 180);
+  return actionErr(
+    await actionT("action.staySaveFailed", {
+      detail: detail || "Notion request failed",
+    }),
+  );
+}
+
+/**
+ * Write stay properties; Maps URL / Lat / Lng are optional until
+ * `npm run migrate:stay-maps`. If the user pasted a Maps link and the schema
+ * is missing those columns, return a clear toast instead of throwing #441.
+ */
+async function writeStayProperties(
+  write: (properties: Record<string, unknown>) => Promise<unknown>,
+  required: Record<string, unknown>,
+  maps: Record<string, unknown>,
+  wantsMaps: boolean,
+): Promise<ActionResult | null> {
+  if (Object.keys(maps).length === 0) {
+    await write(required);
+    return null;
+  }
+  try {
+    await write({ ...required, ...maps });
+    return null;
+  } catch (error) {
+    if (!isStayMapsSchemaError(error)) throw error;
+    if (wantsMaps) {
+      return actionErr(await actionT("action.stayMapsSchemaMissing"));
+    }
+    if (Object.keys(required).length > 0) await write(required);
+    return null;
+  }
 }
 
 /** Turn a thrown Notion failure into a toast instead of crashing the sheet. */
@@ -598,52 +650,84 @@ export async function addStay(formData: FormData): Promise<ActionResult> {
       ? { lat, lng }
       : null;
   if (!name) return actionErr(await actionT("action.stayNameRequired"));
-  const notion = getNotion();
-  const page = await notion.pages.create({
-    parent: { data_source_id: ds("STAYS") },
-    properties: {
+  try {
+    const notion = getNotion();
+    const required: Record<string, unknown> = {
       Name: titleProp(name),
       ...(checkIn ? { "Check-in": { date: { start: checkIn } } } : {}),
       ...(checkOut ? { "Check-out": { date: { start: checkOut } } } : {}),
       ...(address ? { Address: textProp(address) } : {}),
       ...(bookingUrl ? { "Booking URL": { url: bookingUrl } } : {}),
       ...(confirmation ? { Confirmation: textProp(confirmation) } : {}),
+    };
+    const maps: Record<string, unknown> = {
       ...(mapsUrl ? { "Maps URL": { url: mapsUrl } } : {}),
       ...(picked
         ? { Lat: { number: picked.lat }, Lng: { number: picked.lng } }
         : {}),
-    },
-  });
+    };
+    const wantsMaps = Boolean(mapsUrl || picked);
+    let page: { id: string } | null = null;
+    const created = await writeStayProperties(
+      async (properties) => {
+        page = await notion.pages.create({
+          parent: { data_source_id: ds("STAYS") },
+          properties: properties as never,
+        });
+      },
+      required,
+      maps,
+      wantsMaps,
+    );
+    if (created) return created;
+    if (!page) throw new Error("Stay create returned no page");
 
-  if (!picked) {
-    const fromMaps = mapsUrl ? await resolveGoogleMapsUrl(mapsUrl) : null;
-    if (fromMaps) {
-      await notion.pages.update({
-        page_id: page.id,
-        properties: {
-          Lat: { number: fromMaps.lat },
-          Lng: { number: fromMaps.lng },
-          "Maps URL": { url: fromMaps.mapsUrl || mapsUrl },
-        },
-      });
-    } else {
-      const query = [address, name].filter(Boolean).join(" ");
-      if (query) {
-        const coords = await geocodeJapan(query);
-        if (coords) {
-          await notion.pages.update({
-            page_id: page.id,
-            properties: {
-              Lat: { number: coords.lat },
-              Lng: { number: coords.lng },
-              ...(coords.mapsUrl || mapsUrl
-                ? { "Maps URL": { url: coords.mapsUrl || mapsUrl } }
-                : {}),
-            },
-          });
+    if (!picked) {
+      const fromMaps = mapsUrl ? await resolveGoogleMapsUrl(mapsUrl) : null;
+      if (fromMaps) {
+        const followUp = await writeStayProperties(
+          (properties) =>
+            notion.pages.update({
+              page_id: page!.id,
+              properties: properties as never,
+            }),
+          {},
+          {
+            Lat: { number: fromMaps.lat },
+            Lng: { number: fromMaps.lng },
+            "Maps URL": { url: fromMaps.mapsUrl || mapsUrl },
+          },
+          true,
+        );
+        if (followUp) return followUp;
+      } else {
+        const query = [address, name].filter(Boolean).join(" ");
+        if (query) {
+          const coords = await geocodeJapan(query);
+          if (coords) {
+            const followUp = await writeStayProperties(
+              (properties) =>
+                notion.pages.update({
+                  page_id: page!.id,
+                  properties: properties as never,
+                }),
+              {},
+              {
+                Lat: { number: coords.lat },
+                Lng: { number: coords.lng },
+                ...(coords.mapsUrl || mapsUrl
+                  ? { "Maps URL": { url: coords.mapsUrl || mapsUrl } }
+                  : {}),
+              },
+              Boolean(coords.mapsUrl || mapsUrl),
+            );
+            if (followUp) return followUp;
+          }
         }
       }
     }
+  } catch (error) {
+    return stayActionError(error);
   }
   bump(TRIP_TAGS.stays);
   return actionOk(await actionT("action.stayAdded"));
@@ -669,17 +753,19 @@ export async function updateStay(formData: FormData): Promise<ActionResult> {
       ? { lat, lng }
       : null;
   if (!id || !name) return actionErr(await actionT("action.stayNameRequired"));
-  const notion = getNotion();
-  const fromMaps = !picked && mapsUrl ? await resolveGoogleMapsUrl(mapsUrl) : null;
-  await notion.pages.update({
-    page_id: id,
-    properties: {
+  try {
+    const notion = getNotion();
+    const fromMaps =
+      !picked && mapsUrl ? await resolveGoogleMapsUrl(mapsUrl) : null;
+    const required: Record<string, unknown> = {
       Name: titleProp(name),
       "Check-in": { date: checkIn ? { start: checkIn } : null },
       "Check-out": { date: checkOut ? { start: checkOut } : null },
       Address: textProp(address),
       "Booking URL": { url: bookingUrl || null },
       Confirmation: textProp(confirmation),
+    };
+    const maps: Record<string, unknown> = {
       "Maps URL": {
         url: fromMaps?.mapsUrl || mapsUrl || null,
       },
@@ -688,23 +774,45 @@ export async function updateStay(formData: FormData): Promise<ActionResult> {
         : fromMaps
           ? { Lat: { number: fromMaps.lat }, Lng: { number: fromMaps.lng } }
           : {}),
-    },
-  });
-  if (!picked && !fromMaps && !mapsUrl) {
-    const query = [address, name].filter(Boolean).join(" ");
-    if (query) {
-      const coords = await geocodeJapan(query);
-      if (coords) {
-        await notion.pages.update({
+    };
+    const wantsMaps = Boolean(mapsUrl || picked || fromMaps);
+    const schemaErr = await writeStayProperties(
+      (properties) =>
+        notion.pages.update({
           page_id: id,
-          properties: {
-            Lat: { number: coords.lat },
-            Lng: { number: coords.lng },
-            "Maps URL": { url: coords.mapsUrl },
-          },
-        });
+          properties: properties as never,
+        }),
+      required,
+      maps,
+      wantsMaps,
+    );
+    if (schemaErr) return schemaErr;
+
+    if (!picked && !fromMaps && !mapsUrl) {
+      const query = [address, name].filter(Boolean).join(" ");
+      if (query) {
+        const coords = await geocodeJapan(query);
+        if (coords) {
+          const followUp = await writeStayProperties(
+            (properties) =>
+              notion.pages.update({
+                page_id: id,
+                properties: properties as never,
+              }),
+            {},
+            {
+              Lat: { number: coords.lat },
+              Lng: { number: coords.lng },
+              "Maps URL": { url: coords.mapsUrl },
+            },
+            false,
+          );
+          if (followUp) return followUp;
+        }
       }
     }
+  } catch (error) {
+    return stayActionError(error);
   }
   bump(TRIP_TAGS.stays);
   return actionOk(await actionT("action.staySaved"));

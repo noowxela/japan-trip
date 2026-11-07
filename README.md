@@ -32,7 +32,7 @@ Stays need `Maps URL` (url) plus `Lat` / `Lng` (number) to paste a Google Maps l
 npm run migrate:stay-maps
 ```
 
-If secrets cannot decrypt here, add those three properties manually on the Stays database. Until they exist, saving a stay with a Maps link will error.
+If secrets cannot decrypt here, add those three properties manually on the Stays database. Until they exist, saving a stay with a Maps link shows a toast pointing at this migrate (it no longer surfaces as React #441).
 
 ## Run
 
