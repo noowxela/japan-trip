@@ -63,7 +63,12 @@ export function AddPlaceForm({
   const [name, setName] = useState("");
   const [mapsUrl, setMapsUrl] = useState("");
   const [type, setType] = useState<(typeof PLACE_TYPES)[number]>("Sight");
-  const [startDate, setStartDate] = useState(tokyoToday());
+  const [startDate, setStartDate] = useState(() => {
+    const matched = defaultDayId
+      ? days.find((day) => day.id === defaultDayId)
+      : undefined;
+    return dateKey(matched?.date ?? null) ?? tokyoToday();
+  });
   const [startTime, setStartTime] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
   const [error, setError] = useState("");

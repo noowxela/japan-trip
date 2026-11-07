@@ -217,9 +217,12 @@ describe("agendaStartSortKey", () => {
     expect(agendaStartSortKey(null)).toBe("9999");
     expect(agendaStartSortKey(undefined)).toBe("9999");
     expect(agendaStartSortKey("2026-11-06")).toBe("9999");
-    expect(agendaStartSortKey("2026-11-06T09:00:00+09:00")).toBe(
-      "2026-11-06T09:00:00+09:00",
-    );
+    expect(agendaStartSortKey("2026-11-06T09:00:00+09:00")).toBe("09:00");
+  });
+
+  it("normalizes Z and +09:00 to the same Tokyo wall clock", () => {
+    expect(agendaStartSortKey("2026-11-06T01:00:00.000Z")).toBe("10:00");
+    expect(agendaStartSortKey("2026-11-06T10:00:00+09:00")).toBe("10:00");
   });
 });
 
@@ -286,5 +289,23 @@ describe("buildAgenda sort", () => {
         { start: null, order: 1, name: "A" },
       ),
     ).toBeGreaterThan(0);
+  });
+
+  it("orders by Tokyo wall clock even when Start calendar dates differ", () => {
+    const rows = buildAgenda(
+      [
+        place("late", "2026-11-08T10:00:00+09:00", "Late add with today date"),
+        place("afternoon", "2026-11-06T15:00:00+09:00", "Afternoon"),
+        place("morning", "2026-11-06T09:00:00+09:00", "Morning"),
+        place("utc-noon", "2026-11-06T03:00:00.000Z", "UTC noon JST"),
+      ],
+      [],
+    );
+    expect(rows.map((row) => row.id)).toEqual([
+      "morning",
+      "late",
+      "utc-noon",
+      "afternoon",
+    ]);
   });
 });

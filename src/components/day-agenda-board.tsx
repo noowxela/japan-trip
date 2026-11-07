@@ -40,6 +40,7 @@ import { categoryEmoji } from "@/lib/category-icon";
 import { labelMode, labelType } from "@/lib/i18n/dictionaries";
 import { flightListLinks } from "@/lib/flight-path";
 import { isMapFocusable, sightNumbersFromAgenda } from "@/lib/schedule-pins";
+import { compareAgendaItems } from "@/lib/trip-core";
 import type { AgendaItem, Place } from "@/lib/types";
 
 type DragPayload = { id: string; from: "pending" | "agenda" };
@@ -487,9 +488,18 @@ export function DayAgendaBoard({
   };
   const visitedCount = agenda.filter((item) => isVisited(item)).length;
   const skippedCount = agenda.filter((item) => isSkipped(item)).length;
-  const sightNumbers = sightNumbersFromAgenda(agenda);
+  // Re-sort client-side so visited/completed rows keep wall-clock order even if
+  // a cached slice or late-edit left Start dates inconsistent with the day.
+  const orderedAgenda = useMemo(
+    () => [...agenda].sort(compareAgendaItems),
+    [agenda],
+  );
+  const sightNumbers = sightNumbersFromAgenda(orderedAgenda);
   const listRef = useRef<HTMLOListElement>(null);
-  const flightLinks = useMemo(() => flightListLinks(agenda), [agenda]);
+  const flightLinks = useMemo(
+    () => flightListLinks(orderedAgenda),
+    [orderedAgenda],
+  );
 
   function dropOnAgenda(before: AgendaItem | null) {
     return (event: React.DragEvent) => {
@@ -657,7 +667,7 @@ export function DayAgendaBoard({
         ) : (
           <div className="relative">
           <ol ref={listRef}>
-            {agenda.map((item, index) => {
+            {orderedAgenda.map((item, index) => {
               const food = item.kind === "place" && isFoodChip(item.chip);
               const skipped = isSkipped(item);
               const visited = isVisited(item);
@@ -672,7 +682,7 @@ export function DayAgendaBoard({
                 item.kind === "place" ? sightNumbers.get(item.id) : undefined;
               const timeLabel = formatTime(item.start) ?? "—";
               const dropId = `before-${item.id}`;
-              const previous = index > 0 ? agenda[index - 1] : null;
+              const previous = index > 0 ? orderedAgenda[index - 1] : null;
               const gapMins =
                 previous && item.start
                   ? minutesBetweenStarts(previous.start, item.start)
@@ -704,7 +714,7 @@ export function DayAgendaBoard({
                 item.detail ? item.detail : null,
                 pinHidden ? t("agenda.hiddenOnMap") : null,
               ].filter(Boolean);
-              const visibleItems = agenda.filter((row) => {
+              const visibleItems = orderedAgenda.filter((row) => {
                 const rowVisited = isVisited(row);
                 const rowSkipped = isSkipped(row);
                 if (rowVisited && !showVisited && row.id !== highlightId) {

@@ -1,4 +1,4 @@
-import { dateKey } from "@/lib/format";
+import { dateKey, formatTime } from "@/lib/format";
 import { coordsOfPlace } from "@/lib/geocode";
 import type { AgendaItem, Place, Stay, Transit, TripDay } from "@/lib/types";
 
@@ -89,13 +89,14 @@ export function staysForDate(stays: Stay[], date: string | null) {
 }
 
 /**
- * Timed starts sort chronologically. Date-only or missing Start is "untimed"
- * (UI shows "—") and must sort AFTER timed items — never before them.
- * Lexicographic compare wrongly puts "2026-11-06" ahead of "2026-11-06T09:00…".
+ * Timed starts sort by Asia/Tokyo wall-clock time (HH:mm), matching formatTime.
+ * Date-only or missing Start is "untimed" (UI shows "—") and sorts AFTER timed
+ * items. Do not localeCompare raw ISO strings: a late-add whose Start date is
+ * "today" (or a Z vs +09:00 mix) would scramble clock order on a single day list.
  */
 export function agendaStartSortKey(start: string | null | undefined): string {
   if (!start || !start.includes("T")) return "9999";
-  return start;
+  return formatTime(start) ?? "9999";
 }
 
 export function compareAgendaItems(
