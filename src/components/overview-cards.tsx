@@ -50,7 +50,7 @@ export async function NextStopBanner({
     return (
       <Link
         href={done && nextDayHref ? nextDayHref : href}
-        className="flex min-h-12 items-center gap-2 rounded-xl border border-line border-l-[3px] border-l-accent bg-surface px-3 py-2 text-inherit no-underline"
+        className="flex min-h-12 min-w-0 w-full items-center gap-2 rounded-xl border border-line border-l-[3px] border-l-accent bg-surface px-3 py-2 text-inherit no-underline"
       >
         <div className="min-w-0 flex-1">
           <p className="truncate text-[14px] font-medium leading-5 text-ink">
@@ -85,7 +85,7 @@ export async function NextStopBanner({
   const time = formatTime(item.start) ?? t(locale, "common.anytime");
 
   return (
-    <div className="flex min-h-12 items-center gap-1 rounded-xl border border-line border-l-[3px] border-l-accent bg-surface py-1 pl-3 pr-1">
+    <div className="flex min-h-12 min-w-0 w-full items-center gap-1 rounded-xl border border-line border-l-[3px] border-l-accent bg-surface py-1 pl-3 pr-1">
       <Link href={href} className="min-w-0 flex-1 text-inherit no-underline">
         <p className="truncate text-[14px] font-medium leading-5 text-ink">
           <span className="text-accent">{label}</span>
@@ -193,7 +193,7 @@ export async function TonightStayRows({
       {stays.map((stay) => {
         const coords = coordsOfStay(stay);
         return (
-          <li key={stay.id} className="flex items-center">
+          <li key={stay.id} className="flex min-w-0 w-full items-center">
             <div className="min-w-0 flex-1">
               <CompactRow
                 href="/stays"

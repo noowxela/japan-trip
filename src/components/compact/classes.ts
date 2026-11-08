@@ -39,4 +39,4 @@ export const compactGroupClass =
   "overflow-hidden rounded-xl border border-line/80 bg-surface";
 
 export const compactPageGapClass =
-  "mx-auto flex w-full min-w-0 max-w-xl flex-col gap-3 px-4 py-4 pb-[calc(var(--tab-bar-height,4.25rem)+1.25rem)] pt-[max(1rem,env(safe-area-inset-top))] md:max-w-5xl md:px-8";
+  "mx-auto flex w-full min-w-0 max-w-xl flex-col gap-3 overflow-x-hidden px-4 py-4 pb-[calc(var(--tab-bar-height,4.25rem)+1.25rem)] pt-[max(1rem,env(safe-area-inset-top))] md:max-w-5xl md:px-8";

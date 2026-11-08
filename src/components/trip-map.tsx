@@ -18,6 +18,7 @@ import {
   ScaleControl,
   useMap,
 } from "react-leaflet";
+import { MapAttribution } from "@/components/map-attribution";
 import "leaflet/dist/leaflet.css";
 import { CityKanji } from "@/components/city-kanji";
 import { useVisibleMapPins } from "@/components/hide-map-pin-button";
@@ -578,6 +579,7 @@ export default function TripMap({ hops, hopPoints, pins, days }: Props) {
       }
     >
       <MapContainer
+        attributionControl={false}
         center={mapCenter}
         zoom={6}
         className="h-full w-full"
@@ -599,6 +601,7 @@ export default function TripMap({ hops, hopPoints, pins, days }: Props) {
           padBottomRight={padBottomRight}
         />
         <MapTiles styleId={styleId} tiles={tiles} />
+        <MapAttribution />
         {hopCoords.length > 1 ? (
           <Polyline
             positions={hopCoords}

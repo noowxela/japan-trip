@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import L from "leaflet";
 import { MapContainer, Marker, ZoomControl, useMap } from "react-leaflet";
+import { MapAttribution } from "@/components/map-attribution";
 import "leaflet/dist/leaflet.css";
 import { MapStyleSwitch, useMapStyle } from "@/components/map-style-switch";
 import { MapTiles } from "@/components/map-tiles";
@@ -29,6 +30,7 @@ export function PlacePreviewMap({ lat, lng }: { lat: number; lng: number }) {
   return (
     <div className="relative h-72 w-full overflow-hidden rounded-xl border border-line">
       <MapContainer
+        attributionControl={false}
         key={`${lat}-${lng}`}
         center={[lat, lng]}
         zoom={16}
@@ -40,6 +42,7 @@ export function PlacePreviewMap({ lat, lng }: { lat: number; lng: number }) {
         <ZoomControl position="bottomright" />
         <InvalidateSize />
         <MapTiles styleId={styleId} tiles={tiles} />
+        <MapAttribution />
         <Marker position={[lat, lng]} />
       </MapContainer>
       <MapStyleSwitch id={styleId} onChange={pick} />

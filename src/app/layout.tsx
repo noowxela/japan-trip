@@ -89,7 +89,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang={locale === "zh" ? "zh-CN" : "en"}
-      className={`${nunito.variable} h-full antialiased`}
+      className={`${nunito.variable} h-full overflow-x-hidden antialiased`}
       {...(dataTheme ? { "data-theme": dataTheme } : {})}
       suppressHydrationWarning
     >

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { categoryEmoji } from "@/lib/category-icon";
+import { categoryEmoji, spendCategoryEmoji } from "@/lib/category-icon";
 
 describe("categoryEmoji", () => {
   it("uses the requested food icon", () => {
@@ -20,5 +20,21 @@ describe("categoryEmoji", () => {
 
   it("omits a place icon when there is no type", () => {
     expect(categoryEmoji("place", null)).toBeNull();
+  });
+});
+
+describe("spendCategoryEmoji", () => {
+  it("matches Schedule emoji for shared Food/Shop categories", () => {
+    expect(spendCategoryEmoji("Food")).toBe("🍽️");
+    expect(spendCategoryEmoji("Shop")).toBe("🛍️");
+  });
+
+  it("maps spend-only categories and falls back", () => {
+    expect(spendCategoryEmoji("Transit")).toBe("🚆");
+    expect(spendCategoryEmoji("Stay")).toBe("🏨");
+    expect(spendCategoryEmoji("Ticket")).toBe("🎫");
+    expect(spendCategoryEmoji("Other")).toBe("📦");
+    expect(spendCategoryEmoji(null)).toBe("📦");
+    expect(spendCategoryEmoji("Weird")).toBe("📦");
   });
 });

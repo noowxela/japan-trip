@@ -5,7 +5,9 @@ import { useRef, type MouseEvent, type PointerEvent } from "react";
 import { useT } from "@/components/i18n-provider";
 import { SpendCategoryIcon } from "@/components/spend-category-icon";
 import { yenForMyr } from "@/lib/exchange";
+import { spendCategoryEmoji } from "@/lib/category-icon";
 import { formatRm, formatSpend, formatYen } from "@/lib/format";
+import { labelCategory } from "@/lib/i18n/dictionaries";
 import {
   captureGestureOrigin,
   gestureWasScroll,
@@ -28,7 +30,7 @@ export function SpendItemCard({
   /** Optional time shown before the icon on compact rows (no leading bullet). */
   timeLabel?: string | null;
 }) {
-  const { t } = useT();
+  const { t, locale } = useT();
   const gesture = useRef<GestureOrigin | null>(null);
   const pendingSync = item.id.startsWith("outbox:");
 
@@ -52,16 +54,26 @@ export function SpendItemCard({
     }
   };
 
+  const categoryLabel = labelCategory(locale, item.category);
+  const emoji = spendCategoryEmoji(item.category);
+
   const body = compact ? (
     <>
       {timeLabel ? (
-        <span className="w-9 shrink-0 text-right text-[11px] font-medium tabular-nums text-ink-muted">
+        <span className="w-10 shrink-0 text-right text-[11px] font-semibold tabular-nums leading-4 text-ink">
           {timeLabel}
         </span>
       ) : null}
-      <SpendCategoryIcon category={item.category} size="sm" />
       <div className="min-w-0 flex-1">
         <p className="flex min-w-0 items-center gap-1.5 truncate text-[13px] leading-4">
+          <span
+            role="img"
+            aria-label={categoryLabel ?? undefined}
+            title={categoryLabel ?? undefined}
+            className="shrink-0 text-[14px] leading-none"
+          >
+            {emoji}
+          </span>
           <span className="truncate font-medium">{item.name}</span>
           {pendingSync ? (
             <span className="shrink-0 rounded-full bg-maybe-soft px-1.5 py-px text-[10px] font-medium text-maybe">

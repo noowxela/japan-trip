@@ -197,6 +197,8 @@ const en = {
   "more.tripDaysCountPlural": "{n} itinerary days",
   "more.aboutBody":
     "Mobile-first itinerary companion synced with Notion. Prep checklist syncs with the Prep database.",
+  "more.mapCredits":
+    "Maps use Leaflet. Street tiles © OpenStreetMap contributors (openstreetmap.org/copyright). Soft/Light/Dark/Sat tiles © Esri.",
   "more.appName": "Japan Trip",
   "more.applePay": "Apple Pay",
   "more.applePayBody":
@@ -567,6 +569,8 @@ const en = {
   "budget.filterAll": "All",
   "budget.categoryFilter": "Filter by category",
   "budget.tabSplit": "Split",
+  "budget.expandDay": "Expand {date}",
+  "budget.collapseDay": "Collapse {date}",
   "settle.transfersTitle": "Settle up · {n} transfer(s)",
   "settle.allSettled": "Everyone is square",
   "settle.balancesTitle": "Per person",
@@ -929,6 +933,8 @@ const zh: Record<DictKey, string> = {
   "more.tripDaysCountPlural": "{n} 个行程日",
   "more.aboutBody":
     "以手机为先的行程助手，与 Notion 同步。准备清单同步 Prep 数据库。",
+  "more.mapCredits":
+    "地图使用 Leaflet。街道图块 © OpenStreetMap 贡献者（openstreetmap.org/copyright）。柔和/浅色/深色/卫星图块 © Esri。",
   "more.appName": "日本行程",
   "more.applePay": "Apple Pay",
   "more.applePayBody":
@@ -1296,6 +1302,8 @@ const zh: Record<DictKey, string> = {
   "budget.filterAll": "全部",
   "budget.categoryFilter": "按分类筛选",
   "budget.tabSplit": "分账",
+  "budget.expandDay": "展开 {date}",
+  "budget.collapseDay": "收起 {date}",
   "settle.transfersTitle": "结算建议 · {n} 笔转账即可结清",
   "settle.allSettled": "已经两清，无需转账",
   "settle.balancesTitle": "每人",

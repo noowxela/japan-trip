@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Marker as LeafletMarker } from "leaflet";
 import { MapContainer, Marker, Popup, Polyline, ScaleControl, Tooltip, useMap } from "react-leaflet";
+import { MapAttribution } from "@/components/map-attribution";
 import "leaflet/dist/leaflet.css";
 import { useVisibleMapPins } from "@/components/hide-map-pin-button";
 import { MapStyleSwitch, useMapStyle } from "@/components/map-style-switch";
@@ -375,6 +376,7 @@ export default function DayMap({
       }
     >
       <MapContainer
+        attributionControl={false}
         center={fallback}
         zoom={12}
         className="h-full w-full"
@@ -388,6 +390,7 @@ export default function DayMap({
         <FocusPin focus={focus} markers={markersRef} />
         <FlightMapArcs flights={flights} pins={pins} />
         <MapTiles styleId={styleId} tiles={tiles} />
+        <MapAttribution />
         {sightPath.length > 1 ? (
           <Polyline
             positions={sightPath}

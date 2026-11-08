@@ -247,6 +247,9 @@ export default async function SettingsPage() {
             {t(locale, "more.appName")}
           </p>
           <p className="mt-0.5">{t(locale, "more.aboutBody")}</p>
+          <p className="mt-1.5 text-[11px] leading-snug text-ink-muted">
+            {t(locale, "more.mapCredits")}
+          </p>
           <p className="mt-1.5 text-[11px] tabular-nums text-ink-muted">
             {formatAppVersion()}
           </p>

@@ -7,15 +7,15 @@ export type MapStyleDef = {
   overlayUrl?: string;
 };
 
-const ESRI_ATTR =
-  'Tiles &copy; Esri — Esri, HERE, Garmin, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+/** Minimal on-map credit; fuller copy is in Settings → About. */
+const ESRI_ATTR = 'Tiles &copy; Esri';
 
 export const MAP_STYLES = {
   streets: {
     label: "Streets",
     url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
   },
   voyager: {
     label: "Soft",

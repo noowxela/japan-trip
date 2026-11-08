@@ -21,7 +21,7 @@ function RowBody({
   return (
     <>
       {leading != null ? (
-        <div className="flex w-16 shrink-0 flex-col items-end justify-center self-stretch text-right text-[12px] font-semibold leading-4 tabular-nums text-ink">
+        <div className="flex w-16 shrink-0 flex-col items-end justify-center self-stretch overflow-hidden text-right text-[12px] font-semibold leading-4 tabular-nums text-ink">
           {leading}
         </div>
       ) : null}
@@ -63,7 +63,7 @@ export function CompactRow({
   className?: string;
   muted?: boolean;
 }) {
-  const rowClass = `flex min-h-11 w-full min-w-0 items-center gap-2 border-b border-line/70 px-1 last:border-b-0 ${
+  const rowClass = `flex min-h-11 w-full min-w-0 max-w-full items-center gap-2 border-b border-line/70 px-1 last:border-b-0 ${
     muted ? "opacity-70" : ""
   } ${className}`.trim();
 
