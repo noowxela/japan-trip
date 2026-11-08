@@ -65,6 +65,7 @@ export function MapStyleSwitch({
   className,
   compact = false,
   size = "md",
+  menuAbove = false,
 }: {
   id: MapStyleId;
   onChange: (id: MapStyleId) => void;
@@ -74,6 +75,8 @@ export function MapStyleSwitch({
   compact?: boolean;
   /** Compact stack size: `sm` = 36px (schedule map). */
   size?: "md" | "sm";
+  /** Open the style menu above the button (bottom-right stacks). */
+  menuAbove?: boolean;
 }) {
   const { t } = useT();
   const [open, setOpen] = useState(false);
@@ -128,7 +131,11 @@ export function MapStyleSwitch({
           id={menuId}
           role="menu"
           aria-label={t("map.layers")}
-          className="absolute right-0 mt-2 min-w-[11rem] overflow-hidden rounded-2xl border border-line bg-surface py-1 shadow-lg"
+          className={
+            menuAbove
+              ? "absolute right-0 bottom-full mb-2 min-w-[11rem] overflow-hidden rounded-2xl border border-line bg-surface py-1 shadow-lg"
+              : "absolute right-0 mt-2 min-w-[11rem] overflow-hidden rounded-2xl border border-line bg-surface py-1 shadow-lg"
+          }
         >
           {MAP_STYLE_IDS.map((style) => {
             const active = style === id;

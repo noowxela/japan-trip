@@ -187,13 +187,15 @@ function DayMapCornerStack({
   return (
     <>
       <UserLocationMarker fix={fix} />
-      <div className="pointer-events-none absolute right-2 top-[max(0.5rem,env(safe-area-inset-top,0px))] z-[1100]">
+      {/* Bottom-right above attribution + home indicator; layers menu opens upward. */}
+      <div className="pointer-events-none absolute right-2 bottom-[max(2.75rem,calc(env(safe-area-inset-bottom,0px)+1.5rem))] z-[1100]">
         <div className="pointer-events-auto flex flex-col items-end gap-1.5">
           <MapStyleSwitch
             id={styleId}
             onChange={onStyleChange}
             compact
             size="sm"
+            menuAbove
             className="relative"
           />
           <MapFullscreenButton active={fullscreen} onToggle={onToggleFullscreen} />
