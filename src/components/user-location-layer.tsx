@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Circle, Marker, useMap } from "react-leaflet";
 import { useT } from "@/components/i18n-provider";
 import { MAP_CORNER_BTN_SM } from "@/components/map-zoom-buttons";
@@ -24,11 +24,12 @@ export function useUserLocationWatch(): {
   status: UserLocationStatus;
 } {
   const [fix, setFix] = useState<UserLocationFix | null>(null);
-  const [status, setStatus] = useState<UserLocationStatus>("pending");
+  const [status, setStatus] = useState<UserLocationStatus>(() =>
+    isGeolocationAvailable() ? "pending" : "unavailable",
+  );
 
   useEffect(() => {
     if (!isGeolocationAvailable()) {
-      setStatus("unavailable");
       return;
     }
 
@@ -59,7 +60,7 @@ export function useUserLocationWatch(): {
 
 /** Blue-dot + optional accuracy ring. Does not move the map camera. */
 export function UserLocationMarker({ fix }: { fix: UserLocationFix | null }) {
-  const iconRef = useRef(userLocationIcon());
+  const icon = useMemo(() => userLocationIcon(), []);
   if (!fix) return null;
 
   const radius = accuracyRadiusMeters(fix.accuracy);
@@ -82,7 +83,7 @@ export function UserLocationMarker({ fix }: { fix: UserLocationFix | null }) {
       ) : null}
       <Marker
         position={[fix.lat, fix.lng]}
-        icon={iconRef.current}
+        icon={icon}
         interactive={false}
         keyboard={false}
         zIndexOffset={800}
