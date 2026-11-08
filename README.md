@@ -95,6 +95,7 @@ npx web-push generate-vapid-keys
 | `VAPID_SUBJECT` | e.g. `mailto:you@example.com` |
 | `CRON_SECRET` | e.g. `openssl rand -hex 32` (Vercel Cron sends `Authorization: Bearer …`) |
 | `SPEND_INGEST_SECRET` | e.g. `openssl rand -hex 32` (Shortcuts / Apple Pay `POST /api/spend`; do not reuse `CRON_SECRET`) |
+| `NEXT_PUBLIC_APPLE_PAY_SHORTCUT_URL` | Optional iCloud Shortcuts share URL for one-tap Install on Settings → Apple Pay |
 | `KV_REST_API_URL` | Upstash Redis REST URL (preferred store) |
 | `KV_REST_API_TOKEN` | Upstash Redis REST token |
 | `UPSTASH_REDIS_REST_URL` | Alt name for the same URL (either pair works) |

@@ -217,6 +217,11 @@ const en = {
   "more.applePayAuth": "Authorization",
   "more.applePaySecretHint":
     "Replace SPEND_INGEST_SECRET with the value set in Vercel. Never commit the real secret.",
+  "more.applePayDetail": "Shortcuts setup for Wallet taps",
+  "more.applePayInstall": "Install Shortcut",
+  "more.applePayInstallPending":
+    "Install link isn't ready yet. Share the Shortcut from an iPhone or Mac (iCloud link), then set NEXT_PUBLIC_APPLE_PAY_SHORTCUT_URL. Use the steps below for now.",
+  "more.applePayManualTitle": "Or set it up by hand",
 
   "notion.notReady": "Notion is not configured",
   "notion.back": "Back",
@@ -943,6 +948,11 @@ const zh: Record<DictKey, string> = {
   "more.applePayAuth": "Authorization",
   "more.applePaySecretHint":
     "把 SPEND_INGEST_SECRET 换成 Vercel 里设置的密钥。不要把真实密钥提交到 git。",
+  "more.applePayDetail": "Wallet 刷卡捷径设置",
+  "more.applePayInstall": "安装捷径",
+  "more.applePayInstallPending":
+    "安装链接还没准备好。请先在 iPhone / Mac 的「快捷指令」里分享出 iCloud 链接，再设置 NEXT_PUBLIC_APPLE_PAY_SHORTCUT_URL。现在可先按下面步骤手装。",
+  "more.applePayManualTitle": "或按步骤手装",
 
   "notion.notReady": "尚未配置 Notion",
   "notion.back": "返回",
