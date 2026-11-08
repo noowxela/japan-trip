@@ -1,4 +1,6 @@
+import { headers } from "next/headers";
 import { setLocale, setTheme } from "@/app/actions";
+import { ApplePayShortcutsCard } from "@/components/apple-pay-shortcuts-card";
 import { AppVersionCard } from "@/components/app-version-card";
 import {
   CompactRow,
@@ -20,6 +22,19 @@ import { getDays } from "@/lib/trip";
 
 export const dynamic = "force-dynamic";
 
+async function requestOrigin() {
+  const headerList = await headers();
+  const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
+  const proto =
+    headerList.get("x-forwarded-proto") ??
+    (host?.startsWith("localhost") || host?.startsWith("127.0.0.1")
+      ? "http"
+      : "https");
+  if (host) return `${proto}://${host}`;
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  return vercel ? `https://${vercel}` : "";
+}
+
 function Chevron() {
   return (
     <span className="pr-1 text-[12px] text-ink-muted" aria-hidden>
@@ -38,6 +53,8 @@ export default async function SettingsPage() {
     process.env.VAPID_PUBLIC_KEY?.trim() ||
     "";
   const pushStoreWritable = isPushStoreWritable();
+  const origin = await requestOrigin();
+  const spendIngestUrl = `${origin || ""}/api/spend`;
 
   const tripLinks = [
     {
@@ -214,6 +231,11 @@ export default async function SettingsPage() {
             vapidPublicKey={vapidPublicKey}
             storeWritable={pushStoreWritable}
           />
+        </section>
+
+        <section className="space-y-1.5">
+          <SectionHeader title={t(locale, "more.applePay")} />
+          <ApplePayShortcutsCard locale={locale} postUrl={spendIngestUrl} />
         </section>
 
         <section className="space-y-1.5">

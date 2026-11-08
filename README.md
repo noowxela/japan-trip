@@ -94,6 +94,7 @@ npx web-push generate-vapid-keys
 | `VAPID_PRIVATE_KEY` | Private key (server only) |
 | `VAPID_SUBJECT` | e.g. `mailto:you@example.com` |
 | `CRON_SECRET` | e.g. `openssl rand -hex 32` (Vercel Cron sends `Authorization: Bearer …`) |
+| `SPEND_INGEST_SECRET` | e.g. `openssl rand -hex 32` (Shortcuts / Apple Pay `POST /api/spend`; do not reuse `CRON_SECRET`) |
 | `KV_REST_API_URL` | Upstash Redis REST URL (preferred store) |
 | `KV_REST_API_TOKEN` | Upstash Redis REST token |
 | `UPSTASH_REDIS_REST_URL` | Alt name for the same URL (either pair works) |

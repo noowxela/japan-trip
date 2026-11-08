@@ -19,6 +19,7 @@ import {
   urlOf,
 } from "@/lib/notion";
 import { spendDuplicateMatches } from "@/lib/outbox-core";
+import { ingestDuplicateMatches } from "@/lib/spend-ingest";
 import { parseSpendCurrency } from "@/lib/spend";
 import type {
   Place,
@@ -259,6 +260,39 @@ export async function findSpendDuplicate(input: {
       continue;
     }
     return item;
+  }
+  return null;
+}
+
+/** Uncached spend scan for Apple Pay / Shortcuts ingest retries. */
+export async function findIngestDuplicate(input: {
+  name: string;
+  amount: number;
+  currency: string;
+  dayId: string;
+  nowMs?: number;
+}): Promise<SpendItem | null> {
+  const pages = await queryAll(ds("SPEND"));
+  for (const page of pages) {
+    const item = parseSpend(page);
+    if (
+      ingestDuplicateMatches({
+        name: input.name,
+        amount: input.amount,
+        currency: input.currency,
+        dayId: input.dayId,
+        nowMs: input.nowMs,
+        candidate: {
+          name: item.name,
+          amount: item.amount,
+          currency: item.currency,
+          dayIds: item.dayIds,
+          createdTime: page.created_time,
+        },
+      })
+    ) {
+      return item;
+    }
   }
   return null;
 }

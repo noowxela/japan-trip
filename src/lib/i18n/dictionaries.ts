@@ -198,6 +198,25 @@ const en = {
   "more.aboutBody":
     "Mobile-first itinerary companion synced with Notion. Prep checklist syncs with the Prep database.",
   "more.appName": "Japan Trip",
+  "more.applePay": "Apple Pay",
+  "more.applePayBody":
+    "Wallet taps on Suica or Wise can be saved automatically, then a notification opens so you can change the category.",
+  "more.applePayDefaults":
+    "Suica is saved as Transit (yen). Wise is saved as Other (yen). Both are Actual, paid by the first person on the editors list, on today's Tokyo day.",
+  "more.applePayStep1":
+    "In Shortcuts, create a Personal Automation → Transaction, and pick Suica. Make a second automation for Wise.",
+  "more.applePayStep2":
+    "Turn on Run Immediately so iPhone doesn't ask each time.",
+  "more.applePayStep3":
+    "Add Get Contents of URL. Method POST, the URL below, JSON request, header Authorization as shown.",
+  "more.applePayStep4":
+    "Map Wallet fields to JSON: Amount → amount, Merchant → merchant, Card → card.",
+  "more.applePayStep5":
+    "Add Show Notification and open editUrl from the JSON response so you can change the category.",
+  "more.applePayUrl": "POST URL",
+  "more.applePayAuth": "Authorization",
+  "more.applePaySecretHint":
+    "Replace SPEND_INGEST_SECRET with the value set in Vercel. Never commit the real secret.",
 
   "notion.notReady": "Notion is not configured",
   "notion.back": "Back",
@@ -906,6 +925,24 @@ const zh: Record<DictKey, string> = {
   "more.aboutBody":
     "以手机为先的行程助手，与 Notion 同步。准备清单同步 Prep 数据库。",
   "more.appName": "日本行程",
+  "more.applePay": "Apple Pay",
+  "more.applePayBody":
+    "用 Suica 或 Wise 在 Wallet 刷卡后，可自动记一笔支出，再通知你去改分类。",
+  "more.applePayDefaults":
+    "Suica 记为交通（日元），Wise 记为其他（日元）。都是实际支出，付款人取编辑者列表的第一人，并挂到东京时区的今天。",
+  "more.applePayStep1":
+    "打开「快捷指令」→ 自动化 → 创建个人自动化 → 交易，选 Suica。Wise 再做一条同样的自动化。",
+  "more.applePayStep2": "打开「立即运行」，这样每次刷卡不用确认。",
+  "more.applePayStep3":
+    "添加「获取 URL 内容」：方法选 POST，地址用下面的 POST URL，请求体选 JSON，请求头填 Authorization（如下所示）。",
+  "more.applePayStep4":
+    "把 Wallet 变量对应到 JSON：Amount → amount，Merchant → merchant，Card → card。",
+  "more.applePayStep5":
+    "添加「显示通知」，打开返回 JSON 里的 editUrl，就可以改分类。",
+  "more.applePayUrl": "POST 地址",
+  "more.applePayAuth": "Authorization",
+  "more.applePaySecretHint":
+    "把 SPEND_INGEST_SECRET 换成 Vercel 里设置的密钥。不要把真实密钥提交到 git。",
 
   "notion.notReady": "尚未配置 Notion",
   "notion.back": "返回",
