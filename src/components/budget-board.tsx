@@ -9,7 +9,7 @@ import { categoryColor } from "@/components/spend-category-icon";
 import { SpendItemCard } from "@/components/spend-item-card";
 import { SpendTimeline, formatAmount } from "@/components/spend-timeline";
 import { labelCategory } from "@/lib/i18n/dictionaries";
-import { categoryBreakdown, settleUp, topSpend } from "@/lib/spend";
+import { categoryBreakdown, settleUp, topSpend, toRm } from "@/lib/spend";
 import { SPEND_CATEGORIES, type SpendItem, type TripDay } from "@/lib/types";
 
 type Tab = "timeline" | "category" | "top" | "split";
@@ -201,6 +201,7 @@ export function BudgetBoard({
       {tab === "category" ? (
         <CategorySummary
           rows={categories}
+          items={mergedActuals}
           totalRm={spentRm}
           displayYen={yen}
           jpyPerRm={jpyPerRm}
@@ -400,8 +401,23 @@ function CategoryChip({
   );
 }
 
+function itemsForCategory(
+  items: SpendItem[],
+  category: (typeof SPEND_CATEGORIES)[number],
+) {
+  return items.filter((item) => {
+    const key = SPEND_CATEGORIES.includes(
+      item.category as (typeof SPEND_CATEGORIES)[number],
+    )
+      ? (item.category as (typeof SPEND_CATEGORIES)[number])
+      : "Other";
+    return key === category;
+  });
+}
+
 function CategorySummary({
   rows,
+  items,
   totalRm,
   displayYen,
   jpyPerRm,
@@ -409,44 +425,124 @@ function CategorySummary({
   totalLabel,
 }: {
   rows: ReturnType<typeof categoryBreakdown>;
+  items: SpendItem[];
   totalRm: number;
   displayYen: boolean;
   jpyPerRm: number;
   locale: ReturnType<typeof useT>["locale"];
   totalLabel: string;
 }) {
+  const { t } = useT();
+  const largest = useMemo(() => {
+    let best: (typeof SPEND_CATEGORIES)[number] | null = null;
+    let bestAmt = 0;
+    for (const row of rows) {
+      if (row.amountRm > bestAmt) {
+        bestAmt = row.amountRm;
+        best = row.category;
+      }
+    }
+    return bestAmt > 0 ? best : null;
+  }, [rows]);
+  const [openCategory, setOpenCategory] = useState<
+    (typeof SPEND_CATEGORIES)[number] | null
+  >(largest);
+
   return (
     <ul className="divide-y divide-line/80 md:max-w-xl">
-      {rows.map((row) => (
-        <li key={row.category} className="py-1.5">
-          <div className="flex items-center justify-between gap-2 text-[13px]">
-            <span className="flex min-w-0 items-center gap-1.5">
-              <span
-                className="h-2 w-2 shrink-0 rounded-full"
-                style={{ backgroundColor: categoryColor(row.category) }}
-              />
-              <span className="truncate font-medium">
-                {labelCategory(locale, row.category)}
-              </span>
-              <span className="text-[11px] text-ink-muted tabular-nums">
-                {row.percent}%
-              </span>
-            </span>
-            <span className="shrink-0 font-medium tabular-nums">
-              {formatAmount(row.amountRm, displayYen, jpyPerRm)}
-            </span>
-          </div>
-          <div className="mt-1 h-1 overflow-hidden rounded-full bg-canvas">
-            <div
-              className="h-full rounded-full"
-              style={{
-                width: `${row.percent}%`,
-                backgroundColor: categoryColor(row.category),
+      {rows.map((row) => {
+        const label = labelCategory(locale, row.category) ?? row.category;
+        const groupItems = itemsForCategory(items, row.category)
+          .slice()
+          .sort(
+            (a, b) =>
+              toRm(b.amount, b.currency, jpyPerRm) -
+              toRm(a.amount, a.currency, jpyPerRm),
+          );
+        const canOpen = groupItems.length > 0;
+        const open = canOpen && openCategory === row.category;
+        return (
+          <li key={row.category} className="py-1.5">
+            <button
+              type="button"
+              disabled={!canOpen}
+              aria-expanded={canOpen ? open : undefined}
+              aria-label={
+                canOpen
+                  ? open
+                    ? t("budget.collapseCategory", { category: label })
+                    : t("budget.expandCategory", { category: label })
+                  : undefined
+              }
+              onClick={() => {
+                if (!canOpen) return;
+                setOpenCategory((prev) =>
+                  prev === row.category ? null : row.category,
+                );
               }}
-            />
-          </div>
-        </li>
-      ))}
+              className={`flex w-full flex-col gap-1 text-left ${
+                canOpen ? "" : "cursor-default opacity-60"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2 text-[13px]">
+                <span className="flex min-w-0 items-center gap-1.5">
+                  {canOpen ? (
+                    <span
+                      aria-hidden
+                      className="shrink-0 text-[10px] text-ink-muted"
+                    >
+                      {open ? "▾" : "▸"}
+                    </span>
+                  ) : (
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: categoryColor(row.category) }}
+                      aria-hidden
+                    />
+                  )}
+                  {canOpen ? (
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: categoryColor(row.category) }}
+                      aria-hidden
+                    />
+                  ) : null}
+                  <span className="truncate font-medium">{label}</span>
+                  <span className="text-[11px] text-ink-muted tabular-nums">
+                    {row.percent}%
+                  </span>
+                </span>
+                <span className="shrink-0 font-medium tabular-nums">
+                  {formatAmount(row.amountRm, displayYen, jpyPerRm)}
+                </span>
+              </div>
+              <div className="h-1 overflow-hidden rounded-full bg-canvas">
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${row.percent}%`,
+                    backgroundColor: categoryColor(row.category),
+                  }}
+                />
+              </div>
+            </button>
+            {open ? (
+              <ul className="mt-1 divide-y divide-line/70">
+                {groupItems.map((item) => (
+                  <li key={item.id} className="min-w-0">
+                    <SpendItemCard
+                      item={item}
+                      jpyPerRm={jpyPerRm}
+                      displayYen={displayYen}
+                      compact
+                    />
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </li>
+        );
+      })}
       <li className="py-1.5">
         <div className="flex items-center justify-between gap-2 text-[13px]">
           <span className="flex items-center gap-1.5">
