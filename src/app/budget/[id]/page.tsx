@@ -18,8 +18,10 @@ export const dynamic = "force-dynamic";
 
 export default async function ExpenseDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ focus?: string }>;
 }) {
   if (!notionReady()) {
     return <NotionNotReady />;
@@ -27,6 +29,8 @@ export default async function ExpenseDetailPage({
 
   const locale = await getLocale();
   const { id } = await params;
+  const focus = await searchParams;
+  const focusCategory = focus.focus === "category";
   if (id === "new") redirect("/budget");
   const [item, days, editor, fx, people] = await Promise.all([
     getSpendItem(id),
@@ -70,7 +74,12 @@ export default async function ExpenseDetailPage({
       </div>
 
       {editor.canEdit ? (
-        <SpendForm item={item} days={days} people={people} />
+        <SpendForm
+          item={item}
+          days={days}
+          people={people}
+          focusCategory={focusCategory}
+        />
       ) : (
         <div className="overflow-hidden rounded-xl border border-line/80 bg-surface">
           <div className="flex min-h-9 items-center justify-between gap-3 border-b border-line/70 px-3">

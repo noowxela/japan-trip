@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { deleteSpend, updateSpend } from "@/app/actions";
 import { ActionForm } from "@/components/action-form";
@@ -50,14 +50,18 @@ export function SpendForm({
   people = [],
   defaultDayId = "",
   onSuccess,
+  focusCategory = false,
 }: {
   item?: SpendItem;
   days: TripDay[];
   people?: string[];
   defaultDayId?: string;
   onSuccess?: () => void;
+  /** Highlight category chips (Apple Pay notification deep link). */
+  focusCategory?: boolean;
 }) {
   const router = useRouter();
+  const categoryRef = useRef<HTMLDivElement>(null);
   const slide = useSlideIn();
   const { editorName } = useEditSession();
   const { t, locale } = useT();
@@ -76,6 +80,11 @@ export function SpendForm({
   const [splitWith, setSplitWith] = useState<string[]>(item?.splitWith ?? []);
   const dayId = dayIdForDate(days, dayDate);
   const matchedDay = days.find((day) => day.id === dayId);
+  useEffect(() => {
+    if (!focusCategory) return;
+    categoryRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [focusCategory]);
+
   const tripDates = useMemo(() => {
     const dates = new Set<string>();
     for (const day of days) {
@@ -135,6 +144,14 @@ export function SpendForm({
           <p className="-mt-2 truncate text-xs text-ink-muted">{matchedDay.name}</p>
         ) : null}
 
+        <div
+          ref={categoryRef}
+          className={
+            focusCategory
+              ? "rounded-xl ring-2 ring-accent ring-offset-2 ring-offset-canvas"
+              : undefined
+          }
+        >
         <ChipGroup
           name="category"
           label={t("form.category")}
@@ -151,6 +168,7 @@ export function SpendForm({
             label: labelCategory(locale, value) ?? value,
           }))}
         />
+        </div>
 
         <label className="grid gap-1">
           <span className="text-[12px] font-medium text-ink-muted">

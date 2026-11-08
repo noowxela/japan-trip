@@ -71,7 +71,7 @@ function rscNetworkFirst(cacheName: string) {
     plugins: [
       rscCacheKey,
       notifyServedFromCache,
-      new ExpirationPlugin({ maxEntries: 64, maxAgeSeconds: 7 * 86400 }),
+      new ExpirationPlugin({ maxEntries: 96, maxAgeSeconds: 14 * 86400 }),
     ],
   });
 }
@@ -116,6 +116,38 @@ const pagesNetworkFirst = new NetworkFirst({
 
 const rscPrefetchNetworkFirst = rscNetworkFirst("pages-rsc-prefetch");
 const rscNavNetworkFirst = rscNetworkFirst("pages-rsc");
+
+
+/** Shells that should survive subway rides after one online visit. */
+const KEY_OFFLINE_SHELLS = [
+  "/",
+  "/schedule",
+  "/budget",
+  "/map",
+  "/phrases",
+  "/prep",
+  "/settings",
+  "/~offline",
+];
+
+async function warmKeyShells() {
+  await Promise.all(
+    KEY_OFFLINE_SHELLS.map(async (path) => {
+      try {
+        const response = await fetch(path, {
+          credentials: "same-origin",
+          headers: { "X-Japan-Trip-Warm": "1" },
+        });
+        if (!response.ok) return;
+        const cache = await caches.open("pages");
+        await cache.put(path, response.clone());
+        await warmRscPayload(new URL(path, self.location.origin).toString());
+      } catch {
+        // ignore
+      }
+    }),
+  );
+}
 
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
@@ -165,6 +197,15 @@ const serwist = new Serwist({
       },
     ],
   },
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    (async () => {
+      await self.clients.claim();
+      await warmKeyShells();
+    })(),
+  );
 });
 
 self.addEventListener("message", (event) => {

@@ -26,7 +26,7 @@ function requestOrigin(request: Request): string {
 }
 
 function editUrlFor(request: Request, id: string): string {
-  return `${requestOrigin(request)}/budget/${id}`;
+  return `${requestOrigin(request)}/budget/${id}?focus=category`;
 }
 
 function rememberClientId(clientId: string, id: string) {

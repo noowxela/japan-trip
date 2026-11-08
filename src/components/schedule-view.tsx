@@ -15,6 +15,7 @@ import { FlightPlaneIcon } from "@/components/flight-plane-icon";
 import { DayMapLoader } from "@/components/day-map-loader";
 import type { DayMapFocus } from "@/components/day-map";
 import { DayQuickFab } from "@/components/day-quick-fab";
+import { ShareDayButton } from "@/components/share-day-button";
 import { DirectionsLink } from "@/components/directions-link";
 import { useCanEdit } from "@/components/edit-session";
 import { EditorLockButton } from "@/components/editor-lock-button";
@@ -605,6 +606,7 @@ export function ScheduleView({
                       : null}
                   </div>
                   <div className="flex shrink-0 items-center gap-0.5">
+                    <ShareDayButton day={selectedDay} items={agenda} />
                     <Link
                       href="/phrases"
                       aria-label={t("phrases.navAria")}

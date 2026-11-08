@@ -5,6 +5,10 @@ import { addTransit } from "@/app/actions";
 import { ActionForm } from "@/components/action-form";
 import { ChipGroup } from "@/components/chip-group";
 import { DatePicker } from "@/components/date-picker";
+import {
+  FlightLookupField,
+  type FlightLookupFill,
+} from "@/components/flight-lookup-field";
 import { useT } from "@/components/i18n-provider";
 import { useListAddSheetClose } from "@/components/list-add-sheet";
 import { btnPrimaryClass, fieldClass, formShellClass } from "@/components/page-shell";
@@ -32,6 +36,10 @@ export function AddTransitForm({
     return dateKey(matched?.date ?? null) ?? tokyoToday();
   });
   const [time, setTime] = useState("");
+  const [name, setName] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [bookingUrl, setBookingUrl] = useState("");
   const tripDates = useMemo(() => {
     const set = new Set<string>();
     for (const day of days) {
@@ -58,6 +66,8 @@ export function AddTransitForm({
         <input
           name="name"
           required
+          value={name}
+          onChange={(event) => setName(event.target.value)}
           placeholder={t("form.transitExample")}
           className={fieldClass}
         />
@@ -72,6 +82,20 @@ export function AddTransitForm({
           label: labelMode(locale, value) ?? value,
         }))}
       />
+      {mode === "Flight" ? (
+        <FlightLookupField
+          onFill={(fill: FlightLookupFill) => {
+            setName(fill.name);
+            setFrom(fill.from);
+            setTo(fill.to);
+            setBookingUrl(fill.bookingUrl);
+            if (fill.date) setDate(fill.date);
+            if (fill.time) setTime(fill.time);
+            const matched = days.find((day) => dateKey(day.date) === fill.date);
+            if (matched) setDayId(matched.id);
+          }}
+        />
+      ) : null}
       <DatePicker
         name="date"
         value={date}
@@ -82,18 +106,34 @@ export function AddTransitForm({
       <div className="grid grid-cols-2 gap-3">
         <label className="grid gap-1">
           <span className="text-xs font-medium text-ink-muted">{t("form.from")}</span>
-          <input name="from" className={fieldClass} />
+          <input
+            name="from"
+            value={from}
+            onChange={(event) => setFrom(event.target.value)}
+            className={fieldClass}
+          />
         </label>
         <label className="grid gap-1">
           <span className="text-xs font-medium text-ink-muted">{t("form.to")}</span>
-          <input name="to" className={fieldClass} />
+          <input
+            name="to"
+            value={to}
+            onChange={(event) => setTo(event.target.value)}
+            className={fieldClass}
+          />
         </label>
       </div>
       <label className="grid gap-1">
         <span className="text-xs font-medium text-ink-muted">
           {t("form.bookingUrl")}
         </span>
-        <input name="bookingUrl" type="url" className={fieldClass} />
+        <input
+          name="bookingUrl"
+          type="url"
+          value={bookingUrl}
+          onChange={(event) => setBookingUrl(event.target.value)}
+          className={fieldClass}
+        />
       </label>
       {days.length > 0 ? (
         <ChipGroup
