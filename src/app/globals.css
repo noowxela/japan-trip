@@ -185,6 +185,57 @@ fieldset:disabled [data-haptic-overlay],
   border: none;
 }
 
+.user-location-marker {
+  background: none;
+  border: none;
+}
+
+.user-location-dot {
+  position: relative;
+  display: block;
+  width: 22px;
+  height: 22px;
+}
+
+.user-location-core {
+  position: absolute;
+  inset: 5px;
+  border-radius: 9999px;
+  background: #1a73e8;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+.user-location-pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: rgba(26, 115, 232, 0.28);
+  animation: user-location-pulse 2.4s ease-out infinite;
+}
+
+@keyframes user-location-pulse {
+  0% {
+    transform: scale(0.55);
+    opacity: 0.7;
+  }
+  70% {
+    transform: scale(1);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .user-location-pulse {
+    animation: none;
+    opacity: 0.35;
+  }
+}
+
 .leaflet-container:not(.day-map-named) .leaflet-tooltip.day-map-pin-name,
 .day-map-labels-off .leaflet-tooltip.day-map-pin-name {
   display: none;

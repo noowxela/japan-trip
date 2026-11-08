@@ -12,6 +12,11 @@ import {
   MapZoomButtons,
 } from "@/components/map-zoom-buttons";
 import {
+  MapLocateMeButton,
+  UserLocationMarker,
+  useUserLocationWatch,
+} from "@/components/user-location-layer";
+import {
   foodPinIcon,
   labelPinIcon,
   otherPinIcon,
@@ -161,8 +166,10 @@ function DayMapCornerStack({
   fullscreen: boolean;
   onToggleFullscreen: () => void;
 }) {
+  const { fix, status } = useUserLocationWatch();
   return (
     <>
+      <UserLocationMarker fix={fix} />
       <div className="pointer-events-none absolute right-2 top-[max(0.5rem,env(safe-area-inset-top,0px))] z-[1100]">
         <div className="pointer-events-auto flex flex-col items-end gap-1.5">
           <MapStyleSwitch
@@ -174,6 +181,7 @@ function DayMapCornerStack({
           />
           <MapFullscreenButton active={fullscreen} onToggle={onToggleFullscreen} />
           <MapLabelsButton hidden={hideLabels} onToggle={onToggleLabels} />
+          <MapLocateMeButton fix={fix} status={status} />
         </div>
       </div>
       {/* Joined ± above scale (bottom-left); hidden on coarse pointers (pinch zoom). */}

@@ -138,3 +138,13 @@ export function clusterCountIcon(count: number) {
     popupAnchor: [0, -16],
   });
 }
+
+/** Standard blue-dot for the device's current location (schedule day map). */
+export function userLocationIcon() {
+  return L.divIcon({
+    className: "user-location-marker",
+    html: `<span class="user-location-dot" aria-hidden="true"><span class="user-location-pulse"></span><span class="user-location-core"></span></span>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 11],
+  });
+}
