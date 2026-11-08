@@ -195,20 +195,6 @@ export default async function OverviewPage() {
 
         <FlightInfoList flights={flights} dayNames={dayNames} />
 
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[12px]">
-          <Link href="/schedule" className="font-medium text-ink-muted no-underline">
-            {t(locale, "common.openSchedule")}
-          </Link>
-          <Link href="/lists" className="font-medium text-ink-muted no-underline">
-            {t(locale, "lists.title")}
-          </Link>
-          <Link href="/prep" className="font-medium text-ink-muted no-underline">
-            {t(locale, "prep.title")}
-          </Link>
-          <Link href="/phrases" className="font-medium text-ink-muted no-underline">
-            {t(locale, "phrases.title")}
-          </Link>
-        </div>
       </PageShell>
       <OverviewExpenseFab
         days={days}

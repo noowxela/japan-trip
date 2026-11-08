@@ -534,6 +534,8 @@ const en = {
   "flight.dateTbd": "Date TBD",
   "flight.routeTbd": "Route TBD",
   "flight.viewBooking": "View booking",
+  "flight.track": "Track",
+  "flight.trackAria": "Open {name} on FlightAware or Google Flights",
 
   "budget.noNotes": "No notes.",
   "budget.addHint": "Saved to Notion and listed on the timeline.",
@@ -1269,6 +1271,8 @@ const zh: Record<DictKey, string> = {
   "flight.dateTbd": "日期待定",
   "flight.routeTbd": "路线待定",
   "flight.viewBooking": "查看预订",
+  "flight.track": "航班动态",
+  "flight.trackAria": "在 FlightAware 或 Google Flights 打开 {name}",
 
   "budget.noNotes": "没有备注。",
   "budget.addHint": "保存到 Notion，并显示在时间线。",

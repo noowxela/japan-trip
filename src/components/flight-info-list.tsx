@@ -5,6 +5,7 @@ import {
   SectionHeader,
 } from "@/components/compact";
 import { formatDay, formatTime } from "@/lib/format";
+import { flightExternalHref } from "@/lib/flight-lookup";
 import { labelMode, t } from "@/lib/i18n/dictionaries";
 import { getLocale } from "@/lib/i18n/server";
 import type { Transit } from "@/lib/types";
@@ -77,16 +78,29 @@ export async function FlightInfoList({ flights, dayNames }: FlightInfoListProps)
                 meta={route}
                 secondary={[when, dayLabel].filter(Boolean).join(" · ")}
                 trailing={
-                  flight.bookingUrl ? (
+                  <span className="flex shrink-0 items-center gap-2 pr-2">
                     <a
-                      href={flight.bookingUrl}
-                      className="pr-2 text-[11px] font-medium text-ink-muted no-underline"
+                      href={flightExternalHref(flight)}
+                      className="text-[11px] font-medium text-ink-muted no-underline"
                       target="_blank"
                       rel="noreferrer"
+                      aria-label={t(locale, "flight.trackAria", {
+                        name: flight.name,
+                      })}
                     >
-                      {t(locale, "flight.viewBooking")}
+                      {t(locale, "flight.track")}
                     </a>
-                  ) : null
+                    {flight.bookingUrl ? (
+                      <a
+                        href={flight.bookingUrl}
+                        className="text-[11px] font-medium text-ink-muted no-underline"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {t(locale, "flight.viewBooking")}
+                      </a>
+                    ) : null}
+                  </span>
                 }
               />
             </li>
