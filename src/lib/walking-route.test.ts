@@ -5,6 +5,8 @@ import {
   fetchWalkingRoute,
   formatWalkEta,
   getCachedWalkingRoute,
+  isAbsurdWalkingDetour,
+  OSRM_WALKING_URL,
   parseOsrmRouteResponse,
   positionsFromOsrmLngLat,
   quantizeCoord,
@@ -84,12 +86,57 @@ describe("straight / osrm parse", () => {
     );
     expect(parseOsrmRouteResponse(null, from, to).source).toBe("straight");
   });
+
+  it("falls back to straight on absurd car-graph detours", () => {
+    // ~73 m crow-flies across Midosuji; demo OSRM car graph returns ~1 km.
+    const near = { lat: 34.66865, lng: 135.5012 };
+    const across = { lat: 34.6687, lng: 135.502 };
+    const result = parseOsrmRouteResponse(
+      {
+        code: "Ok",
+        routes: [
+          {
+            distance: 1027.3,
+            duration: 123.7,
+            geometry: {
+              coordinates: [
+                [135.500335, 34.668654],
+                [135.499, 34.67],
+                [135.501986, 34.669441],
+              ],
+            },
+          },
+        ],
+      },
+      near,
+      across,
+    );
+    expect(result.source).toBe("straight");
+    expect(result.positions).toEqual([
+      [near.lat, near.lng],
+      [across.lat, across.lng],
+    ]);
+  });
+});
+
+describe("isAbsurdWalkingDetour", () => {
+  it("flags short-hop car detours and high ratios", () => {
+    expect(isAbsurdWalkingDetour(1027, 73)).toBe(true);
+    expect(isAbsurdWalkingDetour(80, 73)).toBe(false);
+    expect(isAbsurdWalkingDetour(800, 200)).toBe(true); // 4x > 3.5
+    expect(isAbsurdWalkingDetour(600, 400)).toBe(false); // 1.5x
+  });
 });
 
 describe("buildOsrmUrl", () => {
-  it("uses lng,lat order", () => {
+  it("uses FOSSGIS foot base and lng,lat order", () => {
+    expect(OSRM_WALKING_URL).toContain("routing.openstreetmap.de/routed-foot");
+    expect(OSRM_WALKING_URL).toMatch(/\/foot$/);
     expect(buildOsrmUrl(from, to)).toContain(
       "/135.5013,34.6687;135.5063,34.6525?",
+    );
+    expect(buildOsrmUrl(from, to)).toMatch(
+      /^https:\/\/routing\.openstreetmap\.de\/routed-foot\/route\/v1\/foot\//,
     );
   });
 });
@@ -161,5 +208,33 @@ describe("fetchWalkingRoute", () => {
     });
     expect(result.source).toBe("straight");
     expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("caches straight when OSRM returns an absurd detour", async () => {
+    const near = { lat: 34.66865, lng: 135.5012 };
+    const across = { lat: 34.6687, lng: 135.502 };
+    const fetchImpl = vi.fn(async () =>
+      Response.json({
+        code: "Ok",
+        routes: [
+          {
+            distance: 1027.3,
+            duration: 123.7,
+            geometry: {
+              coordinates: [
+                [135.500335, 34.668654],
+                [135.501986, 34.669441],
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    const result = await fetchWalkingRoute(near, across, { fetchImpl });
+    expect(result.source).toBe("straight");
+    expect(fetchImpl).toHaveBeenCalledOnce();
+    const cached = await fetchWalkingRoute(near, across, { fetchImpl });
+    expect(cached.source).toBe("straight");
+    expect(fetchImpl).toHaveBeenCalledOnce();
   });
 });

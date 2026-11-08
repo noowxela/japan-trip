@@ -94,7 +94,7 @@ export function useWalkingNavRoute(
   return route;
 }
 
-/** Draw walking geometry (OSRM or straight). */
+/** Draw walking geometry (foot OSRM or straight). */
 export function WalkingNavLayer({
   dest,
   route,

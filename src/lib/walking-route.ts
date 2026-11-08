@@ -1,4 +1,4 @@
-/** Walking directions helpers for schedule day-map (OSRM + straight fallback). */
+/** Walking directions helpers for schedule day-map (OSRM foot + straight fallback). */
 
 export type LatLng = { lat: number; lng: number };
 
@@ -10,8 +10,28 @@ export type WalkingRouteResult = {
   source: "osrm" | "straight";
 };
 
+/**
+ * FOSSGIS routed-foot (real pedestrian graph). The public demo at
+ * router.project-osrm.org only ships a car graph — its /walking and /foot
+ * profiles return the same car routes and detour wildly for short Japan walks
+ * (e.g. 73 m cross-street → ~1 km).
+ */
 export const OSRM_WALKING_URL =
+  "https://routing.openstreetmap.de/routed-foot/route/v1/foot";
+
+/** Legacy car-graph demo — kept for tests / comparisons only. */
+export const OSRM_DEMO_CAR_URL =
   "https://router.project-osrm.org/route/v1/walking";
+
+/**
+ * Reject OSRM geometry when route ≫ crow-flies (bad snap / car graph / ferry).
+ * Short hops: also reject large absolute extras (cross-street car detours).
+ */
+export const MAX_DETOUR_RATIO = 3.5;
+/** Below this crow distance, use absolute slack instead of ratio alone. */
+export const SHORT_HOP_CROW_M = 120;
+/** Max allowed (route − crow) for short hops. */
+export const SHORT_HOP_EXTRA_M = 200;
 
 /** ~45 m: ignore small GPS jitter before refetching. */
 export const ORIGIN_REFETCH_METERS = 45;
@@ -28,7 +48,7 @@ type CacheEntry = {
 
 const memoryCache = new Map<string, CacheEntry>();
 const MAX_MEMORY = 40;
-const SESSION_PREFIX = "jt:walk:";
+const SESSION_PREFIX = "jt:walk:v2:";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 6;
 
 function toRad(degrees: number) {
@@ -88,6 +108,33 @@ export function straightWalkingRoute(from: LatLng, to: LatLng): WalkingRouteResu
   };
 }
 
+/**
+ * True when routed distance is absurd vs crow-flies (prefer straight instead).
+ */
+export function isAbsurdWalkingDetour(
+  routeMeters: number,
+  crowMeters: number,
+  opts: {
+    maxRatio?: number;
+    shortHopCrowM?: number;
+    shortHopExtraM?: number;
+  } = {},
+): boolean {
+  if (!Number.isFinite(routeMeters) || !Number.isFinite(crowMeters)) return false;
+  if (routeMeters <= 0) return false;
+  const maxRatio = opts.maxRatio ?? MAX_DETOUR_RATIO;
+  const shortCrow = opts.shortHopCrowM ?? SHORT_HOP_CROW_M;
+  const shortExtra = opts.shortHopExtraM ?? SHORT_HOP_EXTRA_M;
+  const crow = Math.max(0, crowMeters);
+  if (crow < 1) return routeMeters > shortExtra;
+  if (crow <= shortCrow) {
+    return (
+      routeMeters > crow * maxRatio || routeMeters - crow > shortExtra
+    );
+  }
+  return routeMeters > crow * maxRatio;
+}
+
 /** OSRM GeoJSON coordinates are [lng, lat]; Leaflet wants [lat, lng]. */
 export function positionsFromOsrmLngLat(
   coords: readonly (readonly number[])[],
@@ -126,12 +173,17 @@ export function parseOsrmRouteResponse(
   if (!Array.isArray(coords) || coords.length < 2) return fallback;
   const positions = positionsFromOsrmLngLat(coords);
   if (positions.length < 2) return fallback;
+  const distanceMeters =
+    typeof route.distance === "number" && Number.isFinite(route.distance)
+      ? route.distance
+      : fallback.distanceMeters ?? 0;
+  const crow = fallback.distanceMeters ?? haversineMeters(fallbackFrom, fallbackTo);
+  if (isAbsurdWalkingDetour(distanceMeters, crow)) {
+    return fallback;
+  }
   return {
     positions,
-    distanceMeters:
-      typeof route.distance === "number" && Number.isFinite(route.distance)
-        ? route.distance
-        : fallback.distanceMeters,
+    distanceMeters,
     durationSeconds:
       typeof route.duration === "number" && Number.isFinite(route.duration)
         ? route.duration
@@ -252,7 +304,7 @@ export async function fetchWalkingRoute(
     }
     const json: unknown = await res.json();
     const parsed = parseOsrmRouteResponse(json, from, to);
-    // Cache OSRM and parsed straight (NoRoute) so remounts stay quiet.
+    // Cache OSRM and parsed straight (NoRoute / absurd detour) so remounts stay quiet.
     remember(key, parsed);
     return parsed;
   } catch {
