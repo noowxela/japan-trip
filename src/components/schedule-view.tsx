@@ -730,6 +730,7 @@ export function ScheduleView({
               pending={pending}
               dayId={selectedDay.id}
               dayDate={selectedDay.date}
+              presentation="modal"
             />
           </div>
         </Modal>

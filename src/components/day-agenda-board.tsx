@@ -282,16 +282,34 @@ function PendingCard({
   );
 }
 
+/** Shell classes for PendingPanel. Modal must stay visible on all breakpoints —
+ * Schedule's pending sheet is the only place today's own pending list appears on
+ * phone (other days' pending surface via CarryOverBanner instead). */
+export function pendingPanelShellClass(
+  presentation: "sidebar" | "sheet" | "modal",
+): string {
+  if (presentation === "modal") {
+    return "rounded-2xl border border-line bg-surface p-3";
+  }
+  if (presentation === "sheet") {
+    return "rounded-2xl border border-line bg-surface p-4 lg:hidden";
+  }
+  return "hidden rounded-2xl border border-line bg-surface p-3 lg:sticky lg:top-20 lg:block";
+}
+
 export function PendingPanel({
   pending,
   dayId,
   dayDate,
   mobileSheet = false,
+  presentation,
 }: {
   pending: Place[];
   dayId: string;
   dayDate: string | null;
   mobileSheet?: boolean;
+  /** Prefer over mobileSheet. `modal` = always visible (Schedule pending Modal). */
+  presentation?: "sidebar" | "sheet" | "modal";
 }) {
   const [busy, startTransition] = useTransition();
   const [over, setOver] = useState(false);
@@ -318,9 +336,9 @@ export function PendingPanel({
     startTransition(async () => notify(await confirmPendingPlace(formData)));
   }
 
-  const shellClass = mobileSheet
-    ? "rounded-2xl border border-line bg-surface p-4 lg:hidden"
-    : "hidden rounded-2xl border border-line bg-surface p-3 lg:sticky lg:top-20 lg:block";
+  const resolved =
+    presentation ?? (mobileSheet ? "sheet" : "sidebar");
+  const shellClass = pendingPanelShellClass(resolved);
 
   return (
     <aside
