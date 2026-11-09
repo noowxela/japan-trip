@@ -8,6 +8,7 @@ import {
 } from "@/components/compact";
 import { HapticToggle } from "@/components/haptic-toggle";
 import { PushRemindersCard } from "@/components/push-reminders-card";
+import { ShareTodayCard } from "@/components/share-today-card";
 import { UnlockEditorCard } from "@/components/unlock-editor-card";
 import { PageShell, settingsGroupClass } from "@/components/page-shell";
 import { formatAppVersion } from "@/lib/app-version";
@@ -15,8 +16,10 @@ import { t } from "@/lib/i18n/dictionaries";
 import { getLocale } from "@/lib/i18n/server";
 import { notionReady } from "@/lib/notion";
 import { isPushStoreWritable } from "@/lib/push-store";
+import { resolveTodayDayId } from "@/lib/schedule-pins";
 import { getThemePreference } from "@/lib/theme-server";
-import { getDays } from "@/lib/trip";
+import { buildAgenda } from "@/lib/trip-core";
+import { getDays, getPlaces, getTransit } from "@/lib/trip";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +35,19 @@ export default async function SettingsPage() {
   const locale = await getLocale();
   const themePreference = await getThemePreference();
   const ready = notionReady();
-  const days = ready ? await getDays() : [];
+  const [days, places, transit] = ready
+    ? await Promise.all([getDays(), getPlaces(), getTransit()])
+    : [[], [], []];
+  const todayDayId = resolveTodayDayId(days);
+  const todayDay = todayDayId
+    ? (days.find((day) => day.id === todayDayId) ?? null)
+    : null;
+  const todayAgenda = todayDay
+    ? buildAgenda(
+        places.filter((place) => place.dayIds.includes(todayDay.id)),
+        transit.filter((item) => item.dayIds.includes(todayDay.id)),
+      )
+    : [];
   const vapidPublicKey =
     process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim() ||
     process.env.VAPID_PUBLIC_KEY?.trim() ||
@@ -209,6 +224,7 @@ export default async function SettingsPage() {
 
         <section className="space-y-1.5">
           <SectionHeader title={t(locale, "more.device")} />
+          <ShareTodayCard day={todayDay} items={todayAgenda} />
           <HapticToggle />
           <PushRemindersCard
             vapidPublicKey={vapidPublicKey}

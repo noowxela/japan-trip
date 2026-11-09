@@ -15,7 +15,6 @@ import { FlightPlaneIcon } from "@/components/flight-plane-icon";
 import { DayMapLoader } from "@/components/day-map-loader";
 import type { DayMapFocus } from "@/components/day-map";
 import { DayQuickFab } from "@/components/day-quick-fab";
-import { ShareDayButton } from "@/components/share-day-button";
 import { DirectionsLink } from "@/components/directions-link";
 import { useCanEdit } from "@/components/edit-session";
 import { EditorLockButton } from "@/components/editor-lock-button";
@@ -541,33 +540,48 @@ export function ScheduleView({
                     <h2 className="truncate text-[15px] font-semibold tracking-tight text-ink">
                       {selectedDay.name}
                     </h2>
-                    <p className="mt-0.5 flex min-w-0 items-center gap-1 overflow-hidden text-[11px] leading-4 text-ink-muted">
+                    <p className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 text-[11px] leading-4 text-ink-muted">
                       {formatDay(selectedDay.date, locale) ? (
                         <span className="shrink-0 whitespace-nowrap tabular-nums">
                           {formatDay(selectedDay.date, locale)}
                         </span>
                       ) : null}
                       {selectedDay.city ? (
-                        <span className="inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap">
-                          <span aria-hidden>·</span>
-                          <span>{selectedDay.city}</span>
+                        <span className="inline-flex min-w-0 max-w-full items-center gap-0.5">
+                          <span aria-hidden className="shrink-0">
+                            ·
+                          </span>
+                          <span className="min-w-0 truncate">
+                            {selectedDay.city}
+                          </span>
                           <CityKanji
                             city={selectedDay.city}
-                            className="text-[11px]"
+                            className="shrink-0 text-[11px]"
                           />
                         </span>
                       ) : null}
                       {dayWeather ? (
                         <span
-                          className="inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap tabular-nums"
+                          className="inline-flex min-w-0 max-w-full items-center gap-0.5 tabular-nums"
                           title={
-                            weatherAt
-                              ? t("weather.asOf", { time: formatCachedAt(weatherAt) })
-                              : undefined
+                            [
+                              weatherShort(dayWeather),
+                              weatherAt
+                                ? t("weather.asOf", {
+                                    time: formatCachedAt(weatherAt),
+                                  })
+                                : null,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")
                           }
                         >
-                          <span aria-hidden>·</span>
-                          <span aria-hidden>{weatherShort(dayWeather)}</span>
+                          <span aria-hidden className="shrink-0">
+                            ·
+                          </span>
+                          <span aria-hidden className="min-w-0 truncate">
+                            {weatherShort(dayWeather)}
+                          </span>
                           <span className="sr-only">
                             {t("weather.aria", {
                               kind: t(`weather.${weatherKind(dayWeather.code)}`),
@@ -579,11 +593,11 @@ export function ScheduleView({
                         </span>
                       ) : null}
                       {lodging[0] ? (
-                        <span className="inline-flex min-w-0 flex-1 items-center overflow-hidden">
+                        <span className="inline-flex min-w-0 max-w-full flex-1 basis-[8rem] items-center">
                           <span aria-hidden className="shrink-0">
                             · 🏨{" "}
                           </span>
-                          <span className="min-w-0 truncate">
+                          <span className="min-w-0 truncate" title={lodging[0].name}>
                             {lodging[0].name}
                           </span>
                         </span>
@@ -606,7 +620,6 @@ export function ScheduleView({
                       : null}
                   </div>
                   <div className="flex shrink-0 items-center gap-0.5">
-                    <ShareDayButton day={selectedDay} items={agenda} />
                     <Link
                       href="/phrases"
                       aria-label={t("phrases.navAria")}
