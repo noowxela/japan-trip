@@ -3,8 +3,13 @@ import { ApplePayShortcutsCard } from "@/components/apple-pay-shortcuts-card";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { PageHeader } from "@/components/compact";
 import { PageShell } from "@/components/page-shell";
+import { SpendIngestLogCard } from "@/components/spend-ingest-log-card";
 import { t } from "@/lib/i18n/dictionaries";
 import { getLocale } from "@/lib/i18n/server";
+import {
+  isSpendIngestLogWritable,
+  listSpendIngestAttempts,
+} from "@/lib/spend-ingest-log";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +32,8 @@ export default async function ApplePaySettingsPage() {
   const spendIngestUrl = `${origin || ""}/api/spend`;
   const shortcutUrl =
     process.env.NEXT_PUBLIC_APPLE_PAY_SHORTCUT_URL?.trim() || "";
+  const writable = isSpendIngestLogWritable();
+  const attempts = await listSpendIngestAttempts();
 
   return (
     <PageShell>
@@ -40,11 +47,18 @@ export default async function ApplePaySettingsPage() {
         eyebrow={t(locale, "more.eyebrow")}
         title={t(locale, "more.applePay")}
       />
-      <ApplePayShortcutsCard
-        locale={locale}
-        postUrl={spendIngestUrl}
-        shortcutUrl={shortcutUrl}
-      />
+      <div className="space-y-3">
+        <SpendIngestLogCard
+          locale={locale}
+          rows={attempts}
+          writable={writable}
+        />
+        <ApplePayShortcutsCard
+          locale={locale}
+          postUrl={spendIngestUrl}
+          shortcutUrl={shortcutUrl}
+        />
+      </div>
     </PageShell>
   );
 }

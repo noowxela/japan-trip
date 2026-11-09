@@ -6,9 +6,11 @@ import { authorizeSpendIngest } from "@/lib/spend-ingest-auth";
 import {
   INGEST_DEDUPE_WINDOW_MS,
   parseIngestBody,
+  parseWalletAmount,
   planSpendIngest,
   todayDayId,
 } from "@/lib/spend-ingest";
+import { recordSpendIngestAttempt } from "@/lib/spend-ingest-log";
 import {
   findIngestDuplicate,
   getDays,
@@ -49,25 +51,94 @@ function recalledClientId(clientId: string): string | null {
   return hit.id;
 }
 
-export async function POST(request: Request) {
-  if (!authorizeSpendIngest(request)) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
+function authMeta(request: Request) {
+  const header = request.headers.get("authorization") ?? "";
+  const authPresent = /^Bearer\s+\S+/i.test(header.trim());
+  const authOk = authorizeSpendIngest(request);
+  return { authPresent, authOk };
+}
 
-  let body: Record<string, unknown>;
+function peekAmountMerchantCard(body: Record<string, unknown>) {
+  const lower = new Map(
+    Object.entries(body).map(([key, value]) => [key.toLowerCase(), value]),
+  );
+  const amount = parseWalletAmount(lower.get("amount"));
+  const merchantRaw = lower.get("merchant");
+  const cardRaw = lower.get("card");
+  const merchant =
+    typeof merchantRaw === "string"
+      ? merchantRaw.trim().slice(0, 80)
+      : merchantRaw == null
+        ? undefined
+        : String(merchantRaw).trim().slice(0, 80);
+  const card =
+    typeof cardRaw === "string"
+      ? cardRaw.trim().slice(0, 40)
+      : cardRaw == null
+        ? undefined
+        : String(cardRaw).trim().slice(0, 40);
+  return { amount, merchant: merchant || undefined, card: card || undefined };
+}
+
+export async function POST(request: Request) {
+  const { authPresent, authOk } = authMeta(request);
+
+  let body: Record<string, unknown> = {};
   try {
     body = await parseIngestBody(request);
   } catch {
+    await recordSpendIngestAttempt({
+      ok: false,
+      status: 400,
+      error: "Invalid request body",
+      amount: null,
+      authPresent,
+      authOk,
+    });
     return Response.json({ error: "Invalid request body" }, { status: 400 });
+  }
+
+  const peeked = peekAmountMerchantCard(body);
+
+  if (!authOk) {
+    await recordSpendIngestAttempt({
+      ok: false,
+      status: 401,
+      error: authPresent
+        ? "Unauthorized (Bearer token mismatch)"
+        : "Unauthorized (missing Authorization Bearer header)",
+      ...peeked,
+      authPresent,
+      authOk: false,
+    });
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const planned = planSpendIngest(body);
   if (!planned.ok) {
+    await recordSpendIngestAttempt({
+      ok: false,
+      status: planned.status,
+      error: planned.error,
+      ...peeked,
+      authPresent,
+      authOk: true,
+    });
     return Response.json({ error: planned.error }, { status: planned.status });
   }
   const { plan } = planned;
 
   if (!notionReady()) {
+    await recordSpendIngestAttempt({
+      ok: false,
+      status: 503,
+      error: "Notion is not configured",
+      amount: plan.amount,
+      merchant: plan.merchant || undefined,
+      card: plan.card || undefined,
+      authPresent,
+      authOk: true,
+    });
     return Response.json(
       { error: "Notion is not configured" },
       { status: 503 },
@@ -77,6 +148,17 @@ export async function POST(request: Request) {
   if (plan.clientId) {
     const cachedId = recalledClientId(plan.clientId);
     if (cachedId) {
+      await recordSpendIngestAttempt({
+        ok: true,
+        status: 200,
+        amount: plan.amount,
+        merchant: plan.merchant || undefined,
+        card: plan.card || undefined,
+        authPresent,
+        authOk: true,
+        expenseId: cachedId,
+        duplicate: true,
+      });
       return Response.json({
         ok: true,
         id: cachedId,
@@ -99,6 +181,17 @@ export async function POST(request: Request) {
   });
   if (existing) {
     if (plan.clientId) rememberClientId(plan.clientId, existing.id);
+    await recordSpendIngestAttempt({
+      ok: true,
+      status: 200,
+      amount: plan.amount,
+      merchant: plan.merchant || undefined,
+      card: plan.card || undefined,
+      authPresent,
+      authOk: true,
+      expenseId: existing.id,
+      duplicate: true,
+    });
     return Response.json({
       ok: true,
       id: existing.id,
@@ -137,6 +230,16 @@ export async function POST(request: Request) {
       error instanceof Error
         ? error.message.replace(/\s+/g, " ").trim().slice(0, 180)
         : "";
+    await recordSpendIngestAttempt({
+      ok: false,
+      status: 502,
+      error: detail || "Failed to save expense",
+      amount: plan.amount,
+      merchant: plan.merchant || undefined,
+      card: plan.card || undefined,
+      authPresent,
+      authOk: true,
+    });
     return Response.json(
       { error: detail || "Failed to save expense" },
       { status: 502 },
@@ -145,6 +248,17 @@ export async function POST(request: Request) {
 
   updateTag(TRIP_TAGS.spend);
   if (plan.clientId) rememberClientId(plan.clientId, created.id);
+
+  await recordSpendIngestAttempt({
+    ok: true,
+    status: 200,
+    amount: plan.amount,
+    merchant: plan.merchant || undefined,
+    card: plan.card || undefined,
+    authPresent,
+    authOk: true,
+    expenseId: created.id,
+  });
 
   return Response.json({
     ok: true,

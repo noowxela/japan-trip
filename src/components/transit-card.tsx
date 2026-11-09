@@ -2,6 +2,10 @@
 
 import Link from "next/link";
 import { FlightPlaneIcon } from "@/components/flight-plane-icon";
+import {
+  FlightLookupField,
+  type FlightLookupFill,
+} from "@/components/flight-lookup-field";
 import { useState, useTransition } from "react";
 import { deleteTransit, updateTransit } from "@/app/actions";
 import { ActionForm } from "@/components/action-form";
@@ -32,6 +36,146 @@ function scheduleDayHref(id: string, date: string | null) {
   return dateKey(date) === tokyoToday() ? `${base}&mode=now` : base;
 }
 
+
+function TransitEditForm({
+  item,
+  days,
+  onCancel,
+  onSuccess,
+}: {
+  item: Transit;
+  days: TripDay[];
+  onCancel: () => void;
+  onSuccess: () => void;
+}) {
+  const { t, locale } = useT();
+  const [mode, setMode] = useState<string>(item.mode ?? "Metro");
+  const [name, setName] = useState(item.name);
+  const [from, setFrom] = useState(item.from);
+  const [to, setTo] = useState(item.to);
+  const [date, setDate] = useState(item.date?.slice(0, 10) ?? "");
+  const [dayId, setDayId] = useState(item.dayIds[0] ?? "");
+  const [bookingUrl, setBookingUrl] = useState(item.bookingUrl ?? "");
+
+  function applyFlightFill(fill: FlightLookupFill) {
+    setName(fill.name);
+    setFrom(fill.from);
+    setTo(fill.to);
+    setBookingUrl(fill.bookingUrl);
+    if (fill.date) {
+      setDate(fill.date);
+      const matched = days.find((day) => dateKey(day.date) === fill.date);
+      if (matched) setDayId(matched.id);
+    }
+  }
+
+  return (
+    <ActionForm
+      action={updateTransit}
+      className="grid gap-2 rounded-xl border border-line bg-surface p-3"
+      onSuccess={onSuccess}
+    >
+      <input type="hidden" name="id" value={item.id} />
+      <label className={`block ${compactLabelClass}`}>
+        {t("form.name")}
+        <input
+          name="name"
+          required
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          className={`mt-1 ${compactFieldClass}`}
+        />
+      </label>
+      <label className={`block ${compactLabelClass}`}>
+        {t("form.mode")}
+        <select
+          name="mode"
+          value={mode}
+          onChange={(event) =>
+            setMode(event.target.value as (typeof TRANSIT_MODES)[number])
+          }
+          className={`mt-1 ${compactFieldClass}`}
+        >
+          {TRANSIT_MODES.map((value) => (
+            <option key={value} value={value}>
+              {labelMode(locale, value)}
+            </option>
+          ))}
+        </select>
+      </label>
+      {mode === "Flight" ? (
+        <FlightLookupField onFill={applyFlightFill} />
+      ) : null}
+      <div className="grid grid-cols-2 gap-2">
+        <label className={`block ${compactLabelClass}`}>
+          {t("form.from")}
+          <input
+            name="from"
+            value={from}
+            onChange={(event) => setFrom(event.target.value)}
+            className={`mt-1 ${compactFieldClass}`}
+          />
+        </label>
+        <label className={`block ${compactLabelClass}`}>
+          {t("form.to")}
+          <input
+            name="to"
+            value={to}
+            onChange={(event) => setTo(event.target.value)}
+            className={`mt-1 ${compactFieldClass}`}
+          />
+        </label>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <label className={`block ${compactLabelClass}`}>
+          {t("form.date")}
+          <input
+            name="date"
+            type="date"
+            value={date}
+            onChange={(event) => setDate(event.target.value)}
+            className={`mt-1 ${compactFieldClass}`}
+          />
+        </label>
+        <label className={`block ${compactLabelClass}`}>
+          {t("form.day")}
+          <select
+            name="dayId"
+            value={dayId}
+            onChange={(event) => setDayId(event.target.value)}
+            className={`mt-1 ${compactFieldClass}`}
+          >
+            <option value="">{t("transit.noDay")}</option>
+            {days.map((day) => (
+              <option key={day.id} value={day.id}>
+                {day.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <label className={`block ${compactLabelClass}`}>
+        {t("form.bookingUrl")}
+        <input
+          name="bookingUrl"
+          type="url"
+          value={bookingUrl}
+          onChange={(event) => setBookingUrl(event.target.value)}
+          className={`mt-1 ${compactFieldClass}`}
+        />
+      </label>
+      <div className="flex flex-wrap gap-2 pt-1">
+        <button type="submit" className={btnPrimaryClass}>
+          {t("common.save")}
+        </button>
+        <button type="button" onClick={onCancel} className={btnGhostClass}>
+          {t("common.cancel")}
+        </button>
+      </div>
+    </ActionForm>
+  );
+}
+
 export function TransitCard({
   item,
   dayNames,
@@ -50,101 +194,12 @@ export function TransitCard({
 
   if (editing) {
     return (
-      <ActionForm
-        action={updateTransit}
-        className="grid gap-2 rounded-xl border border-line bg-surface p-3"
+      <TransitEditForm
+        item={item}
+        days={days}
+        onCancel={() => setEditing(false)}
         onSuccess={() => setEditing(false)}
-      >
-        <input type="hidden" name="id" value={item.id} />
-        <label className={`block ${compactLabelClass}`}>
-          {t("form.name")}
-          <input
-            name="name"
-            required
-            defaultValue={item.name}
-            className={`mt-1 ${compactFieldClass}`}
-          />
-        </label>
-        <label className={`block ${compactLabelClass}`}>
-          {t("form.mode")}
-          <select
-            name="mode"
-            defaultValue={item.mode ?? "Metro"}
-            className={`mt-1 ${compactFieldClass}`}
-          >
-            {TRANSIT_MODES.map((mode) => (
-              <option key={mode} value={mode}>
-                {labelMode(locale, mode)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="grid grid-cols-2 gap-2">
-          <label className={`block ${compactLabelClass}`}>
-            {t("form.from")}
-            <input
-              name="from"
-              defaultValue={item.from}
-              className={`mt-1 ${compactFieldClass}`}
-            />
-          </label>
-          <label className={`block ${compactLabelClass}`}>
-            {t("form.to")}
-            <input
-              name="to"
-              defaultValue={item.to}
-              className={`mt-1 ${compactFieldClass}`}
-            />
-          </label>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <label className={`block ${compactLabelClass}`}>
-            {t("form.date")}
-            <input
-              name="date"
-              type="date"
-              defaultValue={item.date?.slice(0, 10) ?? ""}
-              className={`mt-1 ${compactFieldClass}`}
-            />
-          </label>
-          <label className={`block ${compactLabelClass}`}>
-            {t("form.day")}
-            <select
-              name="dayId"
-              defaultValue={item.dayIds[0] ?? ""}
-              className={`mt-1 ${compactFieldClass}`}
-            >
-              <option value="">{t("transit.noDay")}</option>
-              {days.map((day) => (
-                <option key={day.id} value={day.id}>
-                  {day.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <label className={`block ${compactLabelClass}`}>
-          {t("form.bookingUrl")}
-          <input
-            name="bookingUrl"
-            type="url"
-            defaultValue={item.bookingUrl ?? ""}
-            className={`mt-1 ${compactFieldClass}`}
-          />
-        </label>
-        <div className="flex flex-wrap gap-2 pt-1">
-          <button type="submit" className={btnPrimaryClass}>
-            {t("common.save")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setEditing(false)}
-            className={btnGhostClass}
-          >
-            {t("common.cancel")}
-          </button>
-        </div>
-      </ActionForm>
+      />
     );
   }
 
