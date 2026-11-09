@@ -221,7 +221,7 @@ const en = {
   "more.applePayDefaults":
     "Suica is saved as Transit (yen). Wise is saved as Other (yen). Both are Actual, paid by the first person on the editors list, on today's Tokyo day.",
   "more.applePayStep1":
-    "In Shortcuts, create a Personal Automation → Transaction, and pick Suica. Make a second automation for Wise.",
+    "In Shortcuts, create a Personal Automation → Transaction, and pick the Apple Wallet Suica pass (not a physical card). Make a second automation for Wise if you use it.",
   "more.applePayStep2":
     "Turn on Run Immediately so iPhone doesn't ask each time.",
   "more.applePayStep3":
@@ -1001,7 +1001,7 @@ const zh: Record<DictKey, string> = {
   "more.applePayDefaults":
     "Suica 记为交通（日元），Wise 记为其他（日元）。都是实际支出，付款人取编辑者列表的第一人，并挂到东京时区的今天。",
   "more.applePayStep1":
-    "打开「快捷指令」→ 自动化 → 创建个人自动化 → 交易，选 Suica。Wise 再做一条同样的自动化。",
+    "打开「快捷指令」→ 自动化 → 创建个人自动化 → 交易，选 Apple Wallet 里的 Suica（不是实体卡）。若也用 Wise，再做一条同样的自动化。",
   "more.applePayStep2": "打开「立即运行」，这样每次刷卡不用确认。",
   "more.applePayStep3":
     "添加「获取 URL 内容」：方法 POST，地址必须粘贴下面这串 POST 地址（本应用域名），请求体选 JSON。在「请求头」里加 Authorization（不要用「导入问题」）。值必须是 Bearer + Vercel 里的真实密钥，不能照抄占位符。跑一次测试后，上方记账日志几秒内应出现一行；若仍是空的，说明捷径没有 POST 到这里。",
