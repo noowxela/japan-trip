@@ -167,6 +167,98 @@ function TimelineMark({
   );
 }
 
+
+function ItemDetailExpand({
+  item,
+  expanded,
+  onToggle,
+  pinHiddenLabel,
+}: {
+  item: AgendaItem;
+  expanded: boolean;
+  onToggle: () => void;
+  pinHiddenLabel?: string | null;
+}) {
+  const { t } = useT();
+  const detail = item.detail?.trim() ?? "";
+  const hasFromTo = Boolean(item.from?.trim() || item.to?.trim());
+  if (!detail && !pinHiddenLabel) return null;
+
+  return (
+    <div className="mt-0.5 min-w-0">
+      {pinHiddenLabel ? (
+        <p className="text-[12px] font-medium leading-4 text-ink-muted">
+          {pinHiddenLabel}
+        </p>
+      ) : null}
+      {detail ? (
+        <button
+          type="button"
+          data-no-swipe=""
+          aria-expanded={expanded}
+          aria-label={
+            hasFromTo
+              ? t("form.fromTo")
+              : t("form.notes")
+          }
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggle();
+          }}
+          className="mt-0.5 block w-full min-w-0 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+        >
+          {expanded ? (
+            <div className="space-y-2 rounded-lg border border-line bg-surface px-2.5 py-2">
+              {hasFromTo ? (
+                <>
+                  {item.from?.trim() ? (
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-medium leading-4 text-ink-muted">
+                        {t("form.from")}
+                      </p>
+                      <p className="whitespace-pre-wrap break-words text-[15px] leading-5 text-ink">
+                        {item.from}
+                      </p>
+                    </div>
+                  ) : null}
+                  {item.to?.trim() ? (
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-medium leading-4 text-ink-muted">
+                        {t("form.to")}
+                      </p>
+                      <p className="whitespace-pre-wrap break-words text-[15px] leading-5 text-ink">
+                        {item.to}
+                      </p>
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <div className="min-w-0">
+                  <p className="text-[12px] font-medium leading-4 text-ink-muted">
+                    {t("form.notes")}
+                  </p>
+                  <p className="whitespace-pre-wrap break-words text-[15px] leading-5 text-ink">
+                    {detail}
+                  </p>
+                </div>
+              )}
+              <p className="text-[12px] font-medium text-ink-muted">▴</p>
+            </div>
+          ) : (
+            <span className="flex min-w-0 items-center gap-1 text-[13px] leading-5 text-ink-muted">
+              <span className="min-w-0 flex-1 truncate">{detail}</span>
+              <span className="shrink-0 text-[11px] text-ink-muted" aria-hidden>
+                ▾
+              </span>
+            </span>
+          )}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 function ItemMenuButton({
   name,
   onOpen,
@@ -188,7 +280,7 @@ function ItemMenuButton({
         event.stopPropagation();
         onOpen();
       }}
-      className="absolute right-0 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted hover:bg-canvas hover:text-ink"
+      className="absolute right-0 top-0.5 flex h-10 w-10 items-center justify-center rounded-full text-ink-muted hover:bg-canvas hover:text-ink"
     >
       <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
         <circle cx="6" cy="12" r="1.5" fill="currentColor" />
@@ -485,6 +577,7 @@ export function DayAgendaBoard({
   const [over, setOver] = useState<string | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [popId, setPopId] = useState<string | null>(null);
   const [showVisited, setShowVisited] = useState(() => isPastTripDay(dayDate));
@@ -728,10 +821,10 @@ export function DayAgendaBoard({
                   ? labelMode(locale, item.chip) ?? t("mode.Transit")
                   : null;
               const categoryLabel = transit ? modeLabel : typeLabel;
-              const secondaryBits = [
-                item.detail ? item.detail : null,
-                pinHidden ? t("agenda.hiddenOnMap") : null,
-              ].filter(Boolean);
+              const pinHiddenLabel = pinHidden
+                ? t("agenda.hiddenOnMap")
+                : null;
+              const detailExpanded = expandedId === item.id;
               const visibleItems = orderedAgenda.filter((row) => {
                 const rowVisited = isVisited(row);
                 const rowSkipped = isSkipped(row);
@@ -836,7 +929,7 @@ export function DayAgendaBoard({
                     >
                       {transit ? (
                         <div
-                          className={`relative flex min-h-11 min-w-0 items-center gap-1.5 bg-canvas py-1.5 pr-9 ${
+                          className={`relative flex min-h-11 min-w-0 items-start gap-1.5 bg-canvas py-1.5 pr-9 ${
                             isFocus ? "border-l-2 border-accent pl-2 -ml-0.5" : ""
                           }`}
                         >
@@ -880,11 +973,16 @@ export function DayAgendaBoard({
                                 {item.name}
                               </span>
                             </p>
-                            {secondaryBits.length > 0 ? (
-                              <p className="mt-0.5 truncate text-[11px] leading-3 text-ink-muted">
-                                {secondaryBits.join(" · ")}
-                              </p>
-                            ) : null}
+                            <ItemDetailExpand
+                              item={item}
+                              expanded={detailExpanded}
+                              pinHiddenLabel={pinHiddenLabel}
+                              onToggle={() =>
+                                setExpandedId((cur) =>
+                                  cur === item.id ? null : item.id,
+                                )
+                              }
+                            />
                           </div>
                           <ItemMenuButton
                             name={item.name}
@@ -924,7 +1022,7 @@ export function DayAgendaBoard({
                                 }
                               : undefined
                           }
-                          className={`relative flex min-h-11 min-w-0 items-center gap-1 bg-canvas py-1.5 pr-9 ${
+                          className={`relative flex min-h-11 min-w-0 items-start gap-1 bg-canvas py-1.5 pr-9 ${
                             focusable ? "cursor-pointer " : ""
                           }${
                             isFocus
@@ -972,11 +1070,16 @@ export function DayAgendaBoard({
                                 {item.name}
                               </span>
                             </p>
-                            {secondaryBits.length > 0 ? (
-                              <p className="mt-0.5 truncate text-[11px] leading-3 text-ink-muted">
-                                {secondaryBits.join(" · ")}
-                              </p>
-                            ) : null}
+                            <ItemDetailExpand
+                              item={item}
+                              expanded={detailExpanded}
+                              pinHiddenLabel={pinHiddenLabel}
+                              onToggle={() =>
+                                setExpandedId((cur) =>
+                                  cur === item.id ? null : item.id,
+                                )
+                              }
+                            />
                           </div>
                           <ItemMenuButton
                             name={item.name}

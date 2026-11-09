@@ -289,37 +289,39 @@ function AgendaItemEditForm({
             ) : null}
           </label>
           <label className="grid gap-1">
-            <span className="text-xs font-medium text-ink-muted">
+            <span className="text-sm font-medium text-ink-muted">
               {t("form.notes")}
             </span>
             <textarea
-              rows={3}
+              rows={4}
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
-              className={`${fieldClass} h-auto min-h-[4.5rem] py-2`}
+              className={`${fieldClass} h-auto min-h-[5.5rem] py-2.5 text-[16px] leading-5`}
             />
           </label>
         </>
       ) : (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid gap-3">
           <label className="grid gap-1">
-            <span className="text-xs font-medium text-ink-muted">
+            <span className="text-sm font-medium text-ink-muted">
               {t("form.from")}
             </span>
-            <input
+            <textarea
+              rows={2}
               value={from}
               onChange={(event) => setFrom(event.target.value)}
-              className={fieldClass}
+              className={`${fieldClass} h-auto min-h-[3rem] py-2.5 text-[16px] leading-5`}
             />
           </label>
           <label className="grid gap-1">
-            <span className="text-xs font-medium text-ink-muted">
+            <span className="text-sm font-medium text-ink-muted">
               {t("form.to")}
             </span>
-            <input
+            <textarea
+              rows={3}
               value={to}
               onChange={(event) => setTo(event.target.value)}
-              className={fieldClass}
+              className={`${fieldClass} h-auto min-h-[4rem] py-2.5 text-[16px] leading-5`}
             />
           </label>
         </div>
