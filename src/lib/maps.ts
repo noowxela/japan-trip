@@ -1,3 +1,5 @@
+import { isGoogleMapsUrl } from "@/lib/maps-url";
+
 export function googleMapsHref({
   name,
   lat,
@@ -9,11 +11,12 @@ export function googleMapsHref({
   lng?: number | null;
   mapsUrl?: string | null;
 }) {
+  const trimmed = mapsUrl?.trim();
+  if (trimmed && isGoogleMapsUrl(trimmed)) {
+    return trimmed;
+  }
   if (lat != null && lng != null) {
     return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-  }
-  if (mapsUrl && /google\.[^/]+\/maps/i.test(mapsUrl)) {
-    return mapsUrl;
   }
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`;
 }

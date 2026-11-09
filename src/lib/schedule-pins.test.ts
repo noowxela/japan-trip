@@ -3,6 +3,7 @@ import {
   isMapFocusable,
   isNumberedMapStop,
   pinKind,
+  pinsFromAgenda,
   sightNumbersById,
   sightNumbersFromAgenda,
 } from "@/lib/schedule-pins";
@@ -103,6 +104,32 @@ describe("sightNumbersFromAgenda", () => {
       ["temple", 1],
       ["uniqlo", 2],
       ["gu", 3],
+    ]);
+  });
+});
+
+describe("pinsFromAgenda mapsUrl", () => {
+  it("carries mapsUrl from agenda places onto map pins", () => {
+    const pins = pinsFromAgenda(
+      [
+        item({
+          id: "p1",
+          mapsUrl: "https://maps.app.goo.gl/abc123",
+          lat: 34.967,
+          lng: 135.772,
+        }),
+      ],
+      [],
+    );
+    expect(pins).toEqual([
+      {
+        id: "p1",
+        name: "Fushimi Inari",
+        lat: 34.967,
+        lng: 135.772,
+        kind: "sight",
+        mapsUrl: "https://maps.app.goo.gl/abc123",
+      },
     ]);
   });
 });

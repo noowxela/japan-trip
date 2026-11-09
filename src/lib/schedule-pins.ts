@@ -16,6 +16,7 @@ export type SchedulePin = {
   lng: number;
   kind: "sight" | "food" | "other" | "stay";
   label?: string;
+  mapsUrl?: string | null;
 };
 
 export type DayScheduleSlice = {
@@ -95,6 +96,7 @@ export function pinsFromAgenda(
           lat: item.lat,
           lng: item.lng,
           kind: pinKind(item.chip),
+          mapsUrl: item.mapsUrl ?? null,
         },
       ];
     }),
@@ -108,6 +110,7 @@ export function pinsFromAgenda(
           lat: coords.lat,
           lng: coords.lng,
           kind: pinKind(place.type),
+          mapsUrl: place.mapsUrl ?? null,
         },
       ];
     }),
@@ -135,6 +138,7 @@ export function stayPinsForDate(stays: Stay[], date: string | null): SchedulePin
         lng: coords.lng,
         kind: "stay" as const,
         label: "Stay",
+        mapsUrl: stay.mapsUrl ?? null,
       },
     ];
   });
@@ -163,6 +167,7 @@ export function pinsForAllDays(days: TripDay[], places: Place[]): SchedulePin[] 
         lng: coords.lng,
         kind: pinKind(place.type),
         label: `D${dayIndex + 1}`,
+        mapsUrl: place.mapsUrl ?? null,
       },
     ];
   });

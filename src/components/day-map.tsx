@@ -45,6 +45,7 @@ export type DayMapPin = {
   lng: number;
   kind: "sight" | "food" | "other" | "stay";
   label?: string;
+  mapsUrl?: string | null;
 };
 
 /** Focus request; `nonce` changes on every tap so re-tapping flies again. */
@@ -452,6 +453,7 @@ export default function DayMap({
                       name: pin.name,
                       lat: pin.lat,
                       lng: pin.lng,
+                      mapsUrl: pin.mapsUrl,
                     })}
                     target="_blank"
                     rel="noreferrer"
