@@ -28,7 +28,7 @@ export function PlacePreviewMap({ lat, lng }: { lat: number; lng: number }) {
   }, []);
 
   return (
-    <div className="relative h-72 w-full overflow-hidden rounded-xl border border-line">
+    <div className="relative z-0 isolate h-72 w-full overflow-hidden rounded-xl border border-line">
       <MapContainer
         attributionControl={false}
         key={`${lat}-${lng}`}
@@ -45,7 +45,11 @@ export function PlacePreviewMap({ lat, lng }: { lat: number; lng: number }) {
         <MapAttribution />
         <Marker position={[lat, lng]} />
       </MapContainer>
-      <MapStyleSwitch id={styleId} onChange={pick} />
+      <MapStyleSwitch
+        id={styleId}
+        onChange={pick}
+        className="absolute right-2 top-2 z-10"
+      />
     </div>
   );
 }

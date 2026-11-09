@@ -215,7 +215,7 @@ export function AddPlaceForm({
         </ul>
       ) : null}
       {picked ? (
-        <div className="space-y-2">
+        <div className="relative z-0 isolate space-y-2">
           <PlacePreviewMap lat={picked.lat} lng={picked.lng} />
           <p className="text-xs text-ink-muted">{picked.displayName}</p>
         </div>
