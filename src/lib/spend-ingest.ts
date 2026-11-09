@@ -244,27 +244,46 @@ function hasAmountishKey(record: Record<string, unknown>): boolean {
   return pick(record, ...AMOUNT_KEYS) !== undefined;
 }
 
-/** Merge common Wallet / Shortcuts wrappers so nested Currency Amount is reachable. */
+const WRAPPER_KEYS = [
+  "transaction",
+  "input",
+  "shortcut input",
+  "shortcutInput",
+  "shortcut_input",
+  "data",
+  "body",
+  "payload",
+] as const;
+
+function firstAmountishRecord(
+  value: unknown,
+  depth = 0,
+): Record<string, unknown> | null {
+  if (depth > 4) return null;
+  const record = asRecord(value);
+  if (!record) return null;
+  if (hasAmountishKey(record)) return record;
+  for (const key of WRAPPER_KEYS) {
+    const inner = asRecord(pick(record, key));
+    const found = firstAmountishRecord(inner, depth + 1);
+    if (found) return found;
+  }
+  for (const nested of Object.values(record)) {
+    const found = firstAmountishRecord(nested, depth + 1);
+    if (found) return found;
+  }
+  return null;
+}
+
+/** Merge Wallet / Shortcuts wrappers so nested Currency Amount + Name/Card surface. */
 export function normalizeIngestPayload(
   input: Record<string, unknown>,
 ): Record<string, unknown> {
   if (hasAmountishKey(input)) return input;
-  for (const key of [
-    "transaction",
-    "input",
-    "shortcut input",
-    "shortcutInput",
-    "shortcut_input",
-    "data",
-    "body",
-    "payload",
-  ]) {
-    const inner = asRecord(pick(input, key));
-    if (inner && hasAmountishKey(inner)) {
-      return { ...input, ...inner };
-    }
-  }
-  return input;
+  const found = firstAmountishRecord(input);
+  if (!found) return input;
+  // Merge outer → inner so Name / Card or Pass from the Wallet dict win.
+  return { ...input, ...found };
 }
 
 export type ExtractedIngestFields = {
@@ -280,9 +299,12 @@ export type ExtractedIngestFields = {
 export function extractIngestFields(
   input: Record<string, unknown>,
 ): ExtractedIngestFields {
-  const record = normalizeIngestPayload(input);
+  const record = normalizeIngestPayload(stripEmptyStrings(input));
   const amountRaw = pick(record, ...AMOUNT_KEYS);
-  const amount = parseWalletAmount(amountRaw);
+  let amount = parseWalletAmount(amountRaw);
+  if (amount === null) {
+    amount = deepFindWalletAmount(record);
+  }
   const merchant = pickString(record, ...MERCHANT_KEYS);
   const name = pickString(record, ...NAME_KEYS);
   const card = pickString(record, ...CARD_KEYS);
@@ -300,7 +322,7 @@ export function extractIngestFields(
       : "");
   return {
     amount,
-    amountRaw,
+    amountRaw: amountRaw ?? (amount !== null ? amount : undefined),
     merchant,
     name,
     card,
@@ -322,6 +344,109 @@ export function summarizeIngestPayload(
   }
 }
 
+/** Drop "" so empty Shortcut placeholders do not block query / nested fallbacks. */
+export function stripEmptyStrings(
+  input: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(input)) {
+    if (typeof value === "string" && value.trim() === "") continue;
+    out[key] = value;
+  }
+  return out;
+}
+
+/**
+ * Shortcuts often fails to JSON-encode Currency Amount (sends "").
+ * Query-string Magical Variables coerce to text more reliably — merge them
+ * under non-empty body fields.
+ */
+export function mergeIngestQueryParams(
+  body: Record<string, unknown>,
+  searchParams: URLSearchParams,
+): Record<string, unknown> {
+  const fromQuery: Record<string, unknown> = {};
+  for (const [key, value] of searchParams.entries()) {
+    if (value.trim()) fromQuery[key] = value;
+  }
+  return { ...fromQuery, ...stripEmptyStrings(body) };
+}
+
+export type IngestPayloadDiag = {
+  keys: string[];
+  emptyKeys: string[];
+  amountType: string;
+};
+
+function valueTypeLabel(value: unknown): string {
+  if (value === null) return "null";
+  if (value === undefined) return "undefined";
+  if (Array.isArray(value)) return "array";
+  return typeof value;
+}
+
+/** Diagnose why amount/name parsing failed (for ingest-log). */
+export function diagnoseIngestPayload(
+  input: Record<string, unknown>,
+): IngestPayloadDiag {
+  const record = normalizeIngestPayload(input);
+  const emptyKeys: string[] = [];
+  for (const [key, value] of Object.entries(record)) {
+    if (typeof value === "string" && value.trim() === "") emptyKeys.push(key);
+  }
+  const amountRaw = (() => {
+    // peek without skipping empties
+    const lower = new Map(
+      Object.entries(record).map(([key, value]) => [key.toLowerCase(), value]),
+    );
+    for (const name of AMOUNT_KEYS) {
+      if (lower.has(name.toLowerCase())) return lower.get(name.toLowerCase());
+    }
+    return undefined;
+  })();
+  return {
+    keys: Object.keys(record),
+    emptyKeys,
+    amountType: valueTypeLabel(amountRaw),
+  };
+}
+
+/** Walk nested Shortcut/Wallet payloads for a Currency Amount-shaped value. */
+export function deepFindWalletAmount(
+  value: unknown,
+  depth = 0,
+): number | null {
+  if (depth > 5) return null;
+  const direct = parseWalletAmount(value, depth >= 2 ? 1 : 0);
+  if (direct !== null) return direct;
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = deepFindWalletAmount(item, depth + 1);
+      if (found !== null) return found;
+    }
+    return null;
+  }
+  const record = asRecord(value);
+  if (!record) return null;
+  const amountKeySet = new Set(AMOUNT_KEYS.map((k) => k.toLowerCase()));
+  const preferred: unknown[] = [];
+  const rest: unknown[] = [];
+  for (const [key, nested] of Object.entries(record)) {
+    const lower = key.toLowerCase();
+    if (amountKeySet.has(lower) || lower.includes("amount")) preferred.push(nested);
+    else rest.push(nested);
+  }
+  for (const nested of preferred) {
+    const found = deepFindWalletAmount(nested, depth + 1);
+    if (found !== null) return found;
+  }
+  for (const nested of rest) {
+    const found = deepFindWalletAmount(nested, depth + 1);
+    if (found !== null) return found;
+  }
+  return null;
+}
+
 export type SpendIngestPlan = {
   amount: number;
   name: string;
@@ -338,10 +463,17 @@ export type SpendIngestPlan = {
 export function planSpendIngest(
   input: Record<string, unknown>,
 ): { ok: true; plan: SpendIngestPlan } | { ok: false; error: string; status: 400 } {
-  const record = normalizeIngestPayload(input);
+  const diag = diagnoseIngestPayload(input);
+  const record = normalizeIngestPayload(stripEmptyStrings(input));
   const fields = extractIngestFields(record);
   if (fields.amount === null) {
-    return { ok: false, error: "A valid amount is required", status: 400 };
+    const emptyAmount = diag.emptyKeys.some((key) =>
+      AMOUNT_KEYS.map((k) => k.toLowerCase()).includes(key.toLowerCase()),
+    );
+    const error = emptyAmount
+      ? 'amount was empty (Shortcuts sent "" — put Currency Amount in a Text action first, or pass ?amount= in the URL)'
+      : "A valid amount is required";
+    return { ok: false, error, status: 400 };
   }
 
   const merchant = fields.merchant;

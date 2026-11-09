@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   defaultsForCard,
+  deepFindWalletAmount,
+  diagnoseIngestPayload,
   ingestDuplicateMatches,
   ingestExpenseName,
   ingestSourceNotes,
+  mergeIngestQueryParams,
   parseWalletAmount,
   planSpendIngest,
   todayDayId,
@@ -248,5 +251,81 @@ describe("ingestDuplicateMatches", () => {
         candidate: { ...base.candidate, createdTime: "2026-11-08T06:55:00.000Z" },
       }),
     ).toBe(false);
+  });
+});
+
+describe("empty Shortcut JSON placeholders", () => {
+  it("diagnoses empty amount/card/merchant strings", () => {
+    const diag = diagnoseIngestPayload({
+      amount: "",
+      card: "",
+      merchant: "",
+    });
+    expect(diag.emptyKeys.sort()).toEqual(["amount", "card", "merchant"]);
+    expect(diag.amountType).toBe("string");
+  });
+
+  it("returns a specific 400 when amount key is empty", () => {
+    const result = planSpendIngest({
+      amount: "",
+      card: "",
+      merchant: "",
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.status).toBe(400);
+    expect(result.error).toContain("amount was empty");
+  });
+
+  it("fills empty body fields from query params", () => {
+    const merged = mergeIngestQueryParams(
+      { amount: "", card: "", merchant: "" },
+      new URLSearchParams({
+        amount: "¥230",
+        merchant: "Bus",
+        card: "Suica",
+      }),
+    );
+    const result = planSpendIngest(merged);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.plan).toMatchObject({
+      amount: 230,
+      name: "Bus",
+      card: "Suica",
+      category: "Transit",
+      currency: "Yen",
+    });
+  });
+
+  it("deep-finds amount under oddly nested Shortcut wrappers", () => {
+    expect(
+      deepFindWalletAmount({
+        shortcutInput: {
+          transaction: {
+            "Currency Amount": { Amount: 230, CurrencyCode: "JPY" },
+            Name: "Bus",
+            "Card or Pass": "Suica",
+          },
+        },
+      }),
+    ).toBe(230);
+    const result = planSpendIngest({
+      shortcutInput: {
+        transaction: {
+          "Currency Amount": { Amount: 230, CurrencyCode: "JPY" },
+          Name: "Bus",
+          "Card or Pass": "Suica",
+        },
+      },
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.plan).toMatchObject({
+      amount: 230,
+      name: "Bus",
+      card: "Suica",
+      category: "Transit",
+    });
   });
 });

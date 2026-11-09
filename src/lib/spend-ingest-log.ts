@@ -13,6 +13,12 @@ export type SpendIngestAttempt = {
   card?: string;
   /** Truncated raw JSON body for diagnosis. */
   raw?: string;
+  /** Keys present on the (merged) payload. */
+  keys?: string[];
+  /** Keys whose value was "" (common Shortcuts Currency Amount bug). */
+  emptyKeys?: string[];
+  /** typeof the amount field before parsing. */
+  amountType?: string;
   /** True when Authorization header looked like Bearer … */
   authPresent: boolean;
   /** True when header matched SPEND_INGEST_SECRET. */

@@ -227,7 +227,7 @@ const en = {
   "more.applePayStep3":
     "Add Get Contents of URL. Method POST, paste the exact POST URL below (must be this app’s domain), Request Body → JSON. Under Headers add Authorization (not an Import Question). Value must be Bearer + your real secret from Vercel — not the placeholder text. After a test run, this ingest log should show a row within seconds; if it stays empty, the shortcut never POSTed here.",
   "more.applePayStep4":
-    "Map Wallet fields to JSON: Currency Amount → amount (object OK), Name/Merchant → merchant, Card → card. Nested {amount, currency} is accepted.",
+    "Critical: Currency Amount often becomes \"\" in JSON. First add a Text action that contains Currency Amount (it becomes ¥230), map that Text → amount; Name/Merchant → merchant; Card or Pass → card. Or put the same Magical Variables in the POST URL as ?amount=&merchant=&card= (query text is more reliable). If the automation uses Run Shortcut, map from Shortcut Input — automation variables are empty inside the child shortcut. Nested {amount, currency} is also accepted.",
   "more.applePayStep5":
     "Add Show Notification and open editUrl from the JSON response so you can change the category.",
   "more.applePayUrl": "POST URL",
@@ -563,6 +563,7 @@ const en = {
   "ingestLog.fail": "Failed",
   "ingestLog.authMissing": "Missing Authorization: Bearer … header (common if Headers used Import Question or was left empty).",
   "ingestLog.authBad": "Authorization Bearer token did not match SPEND_INGEST_SECRET (placeholder not replaced, or wrong secret).",
+  "ingestLog.emptyFields": "Empty fields from Shortcuts: {keys}. Convert Currency Amount via a Text action (or ?amount= in the URL); use Shortcut Input if Run Shortcut.",
   "flight.lookupLabel": "Flight number",
   "flight.lookupPlaceholder": "e.g. D7532",
   "flight.lookupAction": "Lookup",
@@ -1005,7 +1006,7 @@ const zh: Record<DictKey, string> = {
   "more.applePayStep3":
     "添加「获取 URL 内容」：方法 POST，地址必须粘贴下面这串 POST 地址（本应用域名），请求体选 JSON。在「请求头」里加 Authorization（不要用「导入问题」）。值必须是 Bearer + Vercel 里的真实密钥，不能照抄占位符。跑一次测试后，上方记账日志几秒内应出现一行；若仍是空的，说明捷径没有 POST 到这里。",
   "more.applePayStep4":
-    "把 Wallet 变量对应到 JSON：Currency Amount → amount（嵌套对象也可），Name/Merchant → merchant，Card → card。支持 {amount, currency}。",
+    "关键：Currency Amount 放进 JSON 经常变成空字符串 \"\"。先加一个「文本」动作，里面放 Currency Amount（会变成 ¥230），再把该文本 → amount；Name/Merchant → merchant；Card or Pass → card。或把同样的变量写进 POST 地址查询参数 ?amount=&merchant=&card=（URL 文本更稳）。若自动化是「运行快捷指令」，必须用快捷指令输入，自动化里的变量在子快捷指令里是空的。也支持嵌套 {amount, currency}。",
   "more.applePayStep5":
     "添加「显示通知」，打开返回 JSON 里的 editUrl，就可以改分类。",
   "more.applePayUrl": "POST 地址",
@@ -1339,6 +1340,7 @@ const zh: Record<DictKey, string> = {
   "ingestLog.fail": "失败",
   "ingestLog.authMissing": "缺少 Authorization: Bearer … 请求头（常见原因：请求头用了「导入问题」或为空）。",
   "ingestLog.authBad": "Bearer 令牌与 SPEND_INGEST_SECRET 不匹配（占位符没换成真实密钥，或密钥错误）。",
+  "ingestLog.emptyFields": "捷径发来空字段：{keys}。请先把 Currency Amount 放进「文本」再写入 JSON（或用 URL ?amount=）；若是「运行快捷指令」请改用快捷指令输入。",
   "flight.lookupLabel": "航班号",
   "flight.lookupPlaceholder": "例如 D7532",
   "flight.lookupAction": "查询",

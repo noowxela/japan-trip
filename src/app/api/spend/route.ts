@@ -5,7 +5,9 @@ import { notionStartProperty } from "@/lib/notion-date";
 import { authorizeSpendIngest } from "@/lib/spend-ingest-auth";
 import {
   INGEST_DEDUPE_WINDOW_MS,
+  diagnoseIngestPayload,
   extractIngestFields,
+  mergeIngestQueryParams,
   parseIngestBody,
   planSpendIngest,
   summarizeIngestPayload,
@@ -62,6 +64,7 @@ function authMeta(request: Request) {
 function peekForLog(body: Record<string, unknown>) {
   const fields = extractIngestFields(body);
   const planned = planSpendIngest(body);
+  const diag = diagnoseIngestPayload(body);
   const name = planned.ok
     ? planned.plan.name
     : fields.merchant || fields.name || fields.card || undefined;
@@ -71,6 +74,9 @@ function peekForLog(body: Record<string, unknown>) {
     merchant: fields.merchant || undefined,
     card: fields.card || undefined,
     raw: summarizeIngestPayload(body),
+    keys: diag.keys,
+    emptyKeys: diag.emptyKeys,
+    amountType: diag.amountType,
   };
 }
 
@@ -91,6 +97,9 @@ export async function POST(request: Request) {
     });
     return Response.json({ error: "Invalid request body" }, { status: 400 });
   }
+
+  // Empty JSON placeholders from Shortcuts should not hide ?amount= query vars.
+  body = mergeIngestQueryParams(body, new URL(request.url).searchParams);
 
   const peeked = peekForLog(body);
 

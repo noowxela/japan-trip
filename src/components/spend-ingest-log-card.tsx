@@ -97,8 +97,28 @@ export function SpendIngestLogCard({
                 {row.error ? (
                   <p className="mt-0.5 text-[11px] text-ink">{row.error}</p>
                 ) : null}
+                {row.emptyKeys && row.emptyKeys.length > 0 ? (
+                  <p className="mt-0.5 text-[11px] text-accent">
+                    {t(locale, "ingestLog.emptyFields").replace(
+                      "{keys}",
+                      row.emptyKeys.join(", "),
+                    )}
+                  </p>
+                ) : null}
+                {row.amountType || (row.keys && row.keys.length > 0) ? (
+                  <p className="mt-0.5 text-[10px] text-ink-muted">
+                    {[
+                      row.amountType ? `amount:${row.amountType}` : null,
+                      row.keys && row.keys.length
+                        ? `keys:${row.keys.join(",")}`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                ) : null}
                 {row.raw ? (
-                  <pre className="mt-1 max-h-24 overflow-auto whitespace-pre-wrap break-all rounded bg-canvas px-1.5 py-1 font-mono text-[10px] leading-snug text-ink-muted">
+                  <pre className="mt-1 max-h-28 overflow-auto whitespace-pre-wrap break-all rounded bg-canvas px-1.5 py-1 font-mono text-[10px] leading-snug text-ink-muted">
                     {row.raw}
                   </pre>
                 ) : null}
