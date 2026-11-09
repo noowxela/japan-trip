@@ -304,7 +304,7 @@ export default function DayMap({
   const [internalFullscreen, setInternalFullscreen] = useState(false);
   const { fix, status } = useUserLocationWatch();
   /**
-   * Walking dest is explicit only (popup 「步行到这」). Agenda focus still
+   * Walking dest is explicit only (popup 「步行去」). Agenda focus still
    * flies/opens the pin via FocusPin — it must not start routing.
    */
   const [pinDestId, setPinDestId] = useState<string | null>(null);
@@ -394,7 +394,6 @@ export default function DayMap({
               : isNumberedMapStop(pin.kind)
                 ? sightNumberIcon(sightNumbers.get(pin.id) ?? 0)
                 : otherPinIcon();
-          const isNavDest = navDestId === pin.id;
           return (
             <Marker
               key={pin.id}
@@ -421,26 +420,28 @@ export default function DayMap({
                     <p className="text-xs font-semibold text-ink-muted">{pin.label}</p>
                   ) : null}
                   <p className="font-medium">{pin.name}</p>
-                  <button
-                    type="button"
-                    className="mt-1 block border-0 bg-transparent p-0 text-left text-[#1a73e8] underline-offset-2 hover:underline"
-                    onClick={() => selectNav(pin)}
-                  >
-                    {isNavDest ? t("map.walkTo", { name: pin.name }) : t("map.walkHere")}
-                  </button>
-                  <a
-                    href={googleMapsHref({
-                      name: pin.name,
-                      lat: pin.lat,
-                      lng: pin.lng,
-                      mapsUrl: pin.mapsUrl,
-                    })}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-1 block text-ink-muted no-underline"
-                  >
-                    {t("map.openTitle")}
-                  </a>
+                  <div className="mt-1 flex items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      className="border-0 bg-transparent p-0 text-left text-[#1a73e8] underline-offset-2 hover:underline"
+                      onClick={() => selectNav(pin)}
+                    >
+                      {t("map.walkHere")}
+                    </button>
+                    <a
+                      href={googleMapsHref({
+                        name: pin.name,
+                        lat: pin.lat,
+                        lng: pin.lng,
+                        mapsUrl: pin.mapsUrl,
+                      })}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-ink-muted no-underline"
+                    >
+                      {t("map.openTitle")}
+                    </a>
+                  </div>
                 </div>
               </Popup>
             </Marker>
