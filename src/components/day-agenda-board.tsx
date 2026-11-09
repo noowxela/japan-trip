@@ -41,7 +41,7 @@ import { labelMode, labelType } from "@/lib/i18n/dictionaries";
 import { flightListLinks } from "@/lib/flight-path";
 import { isMapFocusable, sightNumbersFromAgenda } from "@/lib/schedule-pins";
 import { compareAgendaItems } from "@/lib/trip-core";
-import type { AgendaItem, Place } from "@/lib/types";
+import type { AgendaItem, Place, TripDay } from "@/lib/types";
 
 type DragPayload = { id: string; from: "pending" | "agenda" };
 
@@ -556,6 +556,7 @@ export function DayAgendaBoard({
   pending,
   dayId,
   dayDate,
+  days,
   dayCity = null,
   showPending = true,
   highlightId = null,
@@ -566,6 +567,7 @@ export function DayAgendaBoard({
   pending: Place[];
   dayId: string;
   dayDate: string | null;
+  days: TripDay[];
   dayCity?: string | null;
   showPending?: boolean;
   highlightId?: string | null;
@@ -1232,6 +1234,7 @@ export function DayAgendaBoard({
         item={editItem}
         dayId={dayId}
         dayDate={dayDate}
+        days={days}
         city={dayCity}
       />
       <ConfirmDialog

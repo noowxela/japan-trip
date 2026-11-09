@@ -686,6 +686,7 @@ export function ScheduleView({
                       pending={pending}
                       dayId={selectedDay.id}
                       dayDate={selectedDay.date}
+                      days={days}
                       dayCity={selectedDay.city}
                       showPending={false}
                       highlightId={nowModeActive ? focusId : null}

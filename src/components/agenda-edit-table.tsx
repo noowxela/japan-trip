@@ -270,6 +270,7 @@ export function AgendaEditTable({
         item={editItem}
         dayId={dayId}
         dayDate={dateKey(dayDate)}
+        days={days}
         city={dayCity}
       />
     </div>

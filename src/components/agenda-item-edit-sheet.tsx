@@ -20,13 +20,14 @@ import {
 } from "@/components/page-shell";
 import { useTrashUndo } from "@/components/use-trash-undo";
 import { categoryEmoji } from "@/lib/category-icon";
-import { dateKey, formatTime } from "@/lib/format";
+import { dateKey, formatDay, formatTime } from "@/lib/format";
 import { labelMode, labelType } from "@/lib/i18n/dictionaries";
 import { isGoogleMapsUrl } from "@/lib/maps-url";
 import {
   PLACE_TYPES,
   TRANSIT_MODES,
   type AgendaItem,
+  type TripDay,
 } from "@/lib/types";
 
 export function AgendaItemEditSheet({
@@ -35,6 +36,7 @@ export function AgendaItemEditSheet({
   item,
   dayId,
   dayDate,
+  days,
   city,
 }: {
   open: boolean;
@@ -42,6 +44,7 @@ export function AgendaItemEditSheet({
   item: AgendaItem | null;
   dayId: string;
   dayDate: string | null;
+  days: TripDay[];
   city?: string | null;
 }) {
   const { t } = useT();
@@ -55,6 +58,7 @@ export function AgendaItemEditSheet({
           item={item}
           dayId={dayId}
           dayDate={dayDate}
+          days={days}
           city={city}
           onClose={onClose}
         />
@@ -67,12 +71,14 @@ function AgendaItemEditForm({
   item,
   dayId,
   dayDate,
+  days,
   city,
   onClose,
 }: {
   item: AgendaItem;
   dayId: string;
   dayDate: string | null;
+  days: TripDay[];
   city?: string | null;
   onClose: () => void;
 }) {
@@ -84,7 +90,10 @@ function AgendaItemEditForm({
   const [mapsError, setMapsError] = useState("");
   const [resolvingMaps, startMaps] = useTransition();
 
-  const dayDateKey = dateKey(dayDate) ?? "";
+  const [selectedDayId, setSelectedDayId] = useState(dayId);
+  const selectedDay = days.find((day) => day.id === selectedDayId) ?? null;
+  const dayDateKey =
+    dateKey(selectedDay?.date ?? null) ?? dateKey(dayDate) ?? "";
   const [time, setTime] = useState(() => formatTime(item.start) ?? "");
   const [name, setName] = useState(item.name);
   const [type, setType] = useState<(typeof PLACE_TYPES)[number]>(
@@ -134,7 +143,7 @@ function AgendaItemEditForm({
     if (!trimmed) return;
     const formData = new FormData();
     formData.set("id", item.id);
-    formData.set("dayId", dayId);
+    formData.set("dayId", selectedDayId || dayId);
     formData.set("dayDate", dayDateKey);
     formData.set("name", trimmed);
     formData.set("time", time);
@@ -217,6 +226,28 @@ function AgendaItemEditForm({
           }}
           className={`${fieldClass} cursor-pointer`}
         />
+      </label>
+
+      <label className="grid gap-1">
+        <span className="text-xs font-medium text-ink-muted">
+          {t("schedule.moveToDayLabel")}
+        </span>
+        <select
+          value={selectedDayId}
+          onChange={(event) => setSelectedDayId(event.target.value)}
+          className={fieldClass}
+        >
+          {days.map((day) => {
+            const label = [day.name, formatDay(day.date, locale), day.city]
+              .filter(Boolean)
+              .join(" · ");
+            return (
+              <option key={day.id} value={day.id}>
+                {label || day.id}
+              </option>
+            );
+          })}
+        </select>
       </label>
 
       {item.kind === "place" ? (
@@ -344,7 +375,11 @@ function AgendaItemEditForm({
             onClick={onSave}
             className={`${btnPrimaryClass} min-h-11 flex-1 py-3`}
           >
-            {pending ? t("common.saving") : t("common.save")}
+            {pending
+              ? t("common.saving")
+              : selectedDayId !== dayId
+                ? t("agenda.moveToDay")
+                : t("common.save")}
           </button>
         </div>
       </div>
