@@ -303,34 +303,19 @@ export default function DayMap({
   const [hideLabels, setHideLabels] = useState(false);
   const [internalFullscreen, setInternalFullscreen] = useState(false);
   const { fix, status } = useUserLocationWatch();
-  /** Pin-tap override; cleared when a newer agenda focus arrives. */
+  /**
+   * Walking dest is explicit only (popup 「步行到这」). Agenda focus still
+   * flies/opens the pin via FocusPin — it must not start routing.
+   */
   const [pinDestId, setPinDestId] = useState<string | null>(null);
-  const [ignoredFocusNonce, setIgnoredFocusNonce] = useState<number | null>(null);
-  const [seenFocusNonce, setSeenFocusNonce] = useState(focus?.nonce ?? 0);
   const controlled = onFullscreenChange != null;
   const fullscreen = controlled ? Boolean(fullscreenProp) : internalFullscreen;
   const overlay = !controlled && fullscreen;
 
-  // Yield pin override when schedule focuses a (possibly new) stop.
-  if ((focus?.nonce ?? 0) !== seenFocusNonce) {
-    setSeenFocusNonce(focus?.nonce ?? 0);
-    setPinDestId(null);
-    setIgnoredFocusNonce(null);
-  }
-
-  const focusId = focus?.id ?? null;
-  const focusNonce = focus?.nonce ?? null;
-  const pinAlive =
+  const navDestId =
     pinDestId && visiblePins.some((pin) => pin.id === pinDestId)
       ? pinDestId
       : null;
-  const focusAlive =
-    focusId &&
-    focusNonce !== ignoredFocusNonce &&
-    visiblePins.some((pin) => pin.id === focusId)
-      ? focusId
-      : null;
-  const navDestId = pinAlive ?? focusAlive;
 
   const navDest: WalkingNavDest | null = useMemo(() => {
     if (!navDestId) return null;
@@ -342,11 +327,9 @@ export default function DayMap({
   const navRoute = useWalkingNavRoute(fix, navDest);
   const clearNav = useCallback(() => {
     setPinDestId(null);
-    if (focus) setIgnoredFocusNonce(focus.nonce);
-  }, [focus]);
+  }, []);
   const selectNav = useCallback((pin: DayMapPin) => {
     setPinDestId(pin.id);
-    setIgnoredFocusNonce(null);
   }, []);
 
   function toggleFullscreen() {
@@ -417,9 +400,6 @@ export default function DayMap({
               key={pin.id}
               position={[pin.lat, pin.lng]}
               icon={icon}
-              eventHandlers={{
-                click: () => selectNav(pin),
-              }}
               ref={(marker) => {
                 if (marker) markersRef.current.set(pin.id, marker);
                 else markersRef.current.delete(pin.id);
