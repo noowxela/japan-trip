@@ -49,9 +49,14 @@ export function SpendIngestLogCard({
           : t(locale, "ingestLog.noKv")}
       </p>
       {rows.length === 0 ? (
-        <p className="mt-3 text-[12px] text-ink-muted">
-          {t(locale, "ingestLog.empty")}
-        </p>
+        <div className="mt-3 space-y-1.5">
+          <p className="text-[12px] text-ink-muted">
+            {t(locale, "ingestLog.empty")}
+          </p>
+          <p className="text-[11px] leading-relaxed text-ink-muted">
+            {t(locale, "ingestLog.emptyHint")}
+          </p>
+        </div>
       ) : (
         <ul className="mt-3 space-y-2">
           {rows.slice(0, 20).map((row) => {

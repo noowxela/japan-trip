@@ -210,7 +210,7 @@ const en = {
   "more.applePayStep2":
     "Turn on Run Immediately so iPhone doesn't ask each time.",
   "more.applePayStep3":
-    "Add Get Contents of URL. Method POST, the URL below, Request Body → JSON. Under Headers add Authorization (not an Import Question). Value must be Bearer + your real secret from Vercel — not the placeholder text.",
+    "Add Get Contents of URL. Method POST, paste the exact POST URL below (must be this app’s domain), Request Body → JSON. Under Headers add Authorization (not an Import Question). Value must be Bearer + your real secret from Vercel — not the placeholder text. After a test run, this ingest log should show a row within seconds; if it stays empty, the shortcut never POSTed here.",
   "more.applePayStep4":
     "Map Wallet fields to JSON: Amount → amount, Merchant → merchant, Card → card.",
   "more.applePayStep5":
@@ -539,7 +539,8 @@ const en = {
   "ingestLog.title": "Shortcut ingest log",
   "ingestLog.body": "Latest Wallet → Shortcuts → POST /api/spend attempts (success, fail, HTTP status). Stored in app KV — not Notion.",
   "ingestLog.noKv": "KV is not configured, so attempts only appear in server logs. Add Upstash Redis to keep this in-app log.",
-  "ingestLog.empty": "No attempts recorded yet. Pay with Suica/Wise or run the shortcut once, then refresh.",
+  "ingestLog.empty": "No attempts recorded yet. Pay with Suica/Wise or run the shortcut once, then refresh this page.",
+  "ingestLog.emptyHint": "If you already ran a test or tapped Suica and still see nothing, the request never reached this server. In Shortcuts, confirm Get Contents of URL uses the exact POST URL below (japan-trip-pi-indol.vercel.app), Headers has Authorization Bearer + the real secret (not the placeholder), and the automation’s last run shows a network result — not skipped/failed before the request.",
   "ingestLog.ok": "Saved",
   "ingestLog.duplicate": "Duplicate",
   "ingestLog.fail": "Failed",
@@ -970,7 +971,7 @@ const zh: Record<DictKey, string> = {
     "打开「快捷指令」→ 自动化 → 创建个人自动化 → 交易，选 Suica。Wise 再做一条同样的自动化。",
   "more.applePayStep2": "打开「立即运行」，这样每次刷卡不用确认。",
   "more.applePayStep3":
-    "添加「获取 URL 内容」：方法 POST，地址用下面的 POST URL，请求体选 JSON。在「请求头」里加 Authorization（不要用「导入问题」）。值必须是 Bearer + Vercel 里的真实密钥，不能照抄占位符。",
+    "添加「获取 URL 内容」：方法 POST，地址必须粘贴下面这串 POST 地址（本应用域名），请求体选 JSON。在「请求头」里加 Authorization（不要用「导入问题」）。值必须是 Bearer + Vercel 里的真实密钥，不能照抄占位符。跑一次测试后，上方记账日志几秒内应出现一行；若仍是空的，说明捷径没有 POST 到这里。",
   "more.applePayStep4":
     "把 Wallet 变量对应到 JSON：Amount → amount，Merchant → merchant，Card → card。",
   "more.applePayStep5":
@@ -1297,7 +1298,8 @@ const zh: Record<DictKey, string> = {
   "ingestLog.title": "捷径记账日志",
   "ingestLog.body": "最近 Wallet → 捷径 → POST /api/spend 的尝试（成功/失败/状态码）。存在应用 KV，不写 Notion。",
   "ingestLog.noKv": "未配置 KV，尝试只会进服务器日志。加上 Upstash Redis 后可在此查看。",
-  "ingestLog.empty": "还没有记录。用 Suica/Wise 刷一次或手动跑捷径，然后刷新。",
+  "ingestLog.empty": "还没有记录。用 Suica/Wise 刷一次或手动跑捷径，然后刷新本页。",
+  "ingestLog.emptyHint": "如果你已经 test run 或刷过 Suica 却仍是空的，说明请求根本没打到这台服务器。请在「快捷指令」里核对：获取 URL 内容的地址必须是下面这串 POST 地址（japan-trip-pi-indol.vercel.app）；请求头里有 Authorization: Bearer + 真实密钥（不能照抄占位符）；再看自动化最近一次运行结果是否真的发出了网络请求（而不是在请求前就跳过/失败）。",
   "ingestLog.ok": "已保存",
   "ingestLog.duplicate": "重复",
   "ingestLog.fail": "失败",
