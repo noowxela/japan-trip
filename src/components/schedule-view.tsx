@@ -644,6 +644,8 @@ export function ScheduleView({
                       transit={editTransit}
                       dayId={selectedDay.id}
                       dayDate={selectedDay.date}
+                      days={days}
+                      dayCity={selectedDay.city}
                     />
                     <AddAgendaForm
                       days={days}

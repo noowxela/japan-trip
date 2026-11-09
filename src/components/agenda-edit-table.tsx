@@ -1,331 +1,277 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import {
   deletePlace,
   deleteTransit,
-  updatePlace,
-  updateTransit,
+  moveAgendaItemsToDay,
 } from "@/app/actions";
 import { useActionToast } from "@/components/action-form";
+import { AgendaItemEditSheet } from "@/components/agenda-item-edit-sheet";
 import { useT } from "@/components/i18n-provider";
 import { useTrashUndo } from "@/components/use-trash-undo";
-import { dateKey, formatTime } from "@/lib/format";
-import { compareAgendaItems } from "@/lib/trip-core";
+import { categoryEmoji } from "@/lib/category-icon";
+import { dateKey, formatDay, formatTime } from "@/lib/format";
 import { labelMode, labelType } from "@/lib/i18n/dictionaries";
-import {
-  PLACE_TYPES,
-  TRANSIT_MODES,
-  type Place,
-  type Transit,
-} from "@/lib/types";
-
-const cell =
-  "h-9 w-full min-w-0 rounded-lg border border-line px-2 text-sm outline-none focus:border-accent";
-
-const rowClass =
-  "grid w-full min-w-0 grid-cols-2 gap-2 border-b border-line p-2 last:border-b-0 lg:grid-cols-[minmax(0,8rem)_3.5rem_7rem_minmax(0,1.3fr)_minmax(0,1fr)_auto] lg:items-end lg:gap-2 lg:px-2 lg:py-1.5";
-
-function Field({
-  label,
-  className = "",
-  children,
-}: {
-  label: string;
-  className?: string;
-  children: ReactNode;
-}) {
-  return (
-    <label className={`grid min-w-0 gap-1 ${className}`}>
-      <span className="text-[11px] font-medium text-ink-muted lg:sr-only">
-        {label}
-      </span>
-      {children}
-    </label>
-  );
-}
-
-function TimeField({ defaultValue }: { defaultValue?: string }) {
-  return (
-    <input
-      name="time"
-      type="time"
-      step="60"
-      defaultValue={defaultValue ?? ""}
-      className={`${cell} cursor-pointer`}
-      onClick={(event) => {
-        const input = event.currentTarget;
-        if (typeof input.showPicker !== "function") return;
-        try {
-          input.showPicker();
-        } catch {
-          // Browser may already have the picker open.
-        }
-      }}
-    />
-  );
-}
-
-function SaveButton({ pending }: { pending: boolean }) {
-  const { t } = useT();
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="shrink-0 notebook-btn bg-accent px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
-    >
-      {pending ? t("common.saving") : t("common.save")}
-    </button>
-  );
-}
-
-function DeleteButton({ onDelete }: { onDelete: () => void }) {
-  const [busy, startTransition] = useTransition();
-  const { t } = useT();
-
-  return (
-    <button
-      type="button"
-      disabled={busy}
-      onClick={() => {
-        startTransition(async () => {
-          await onDelete();
-        });
-      }}
-      className="notebook-btn inline-flex min-h-11 shrink-0 items-center px-3 text-xs font-medium text-accent disabled:opacity-60"
-    >
-      {t("common.delete")}
-    </button>
-  );
-}
+import { buildAgenda } from "@/lib/trip-core";
+import type { AgendaItem, Place, Transit, TripDay } from "@/lib/types";
 
 export function AgendaEditTable({
   places,
   transit,
   dayId,
   dayDate,
+  days,
+  dayCity = null,
 }: {
   places: Place[];
   transit: Transit[];
   dayId: string;
   dayDate: string | null;
+  days: TripDay[];
+  dayCity?: string | null;
 }) {
-  const { t } = useT();
-  const rows: Array<
-    | { kind: "place"; place: Place }
-    | { kind: "transit"; transit: Transit }
-  > = [
-    ...places
-      .filter((place) => !place.pending)
-      .map((place) => ({ kind: "place" as const, place })),
-    ...transit.map((item) => ({ kind: "transit" as const, transit: item })),
-  ].sort((a, b) =>
-    compareAgendaItems(
-      {
-        start: a.kind === "place" ? a.place.start : a.transit.start,
-        order: a.kind === "transit" ? a.transit.order : null,
-        name: a.kind === "place" ? a.place.name : a.transit.name,
-      },
-      {
-        start: b.kind === "place" ? b.place.start : b.transit.start,
-        order: b.kind === "transit" ? b.transit.order : null,
-        name: b.kind === "place" ? b.place.name : b.transit.name,
-      },
-    ),
+  const { t, locale } = useT();
+  const notify = useActionToast();
+  const trashWithUndo = useTrashUndo();
+  const [pending, startTransition] = useTransition();
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [targetDayId, setTargetDayId] = useState("");
+  const [editId, setEditId] = useState<string | null>(null);
+
+  const agenda = useMemo(
+    () =>
+      buildAgenda(
+        places.filter((place) => !place.pending),
+        transit,
+      ),
+    [places, transit],
   );
 
-  if (rows.length === 0) {
+  const otherDays = useMemo(
+    () => days.filter((day) => day.id !== dayId),
+    [days, dayId],
+  );
+
+  const editItem = agenda.find((item) => item.id === editId) ?? null;
+  const selectedCount = selected.size;
+  const allSelected = agenda.length > 0 && selectedCount === agenda.length;
+
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    setSelected((prev) => {
+      if (agenda.length > 0 && prev.size === agenda.length) return new Set();
+      return new Set(agenda.map((item) => item.id));
+    });
+  }
+
+  function clearSelection() {
+    setSelected(new Set());
+  }
+
+  function moveSelected() {
+    if (!targetDayId || selectedCount === 0) return;
+    const items = agenda
+      .filter((item) => selected.has(item.id))
+      .map((item) => ({
+        id: item.id,
+        kind: item.kind,
+        start: item.start,
+      }));
+    if (items.length === 0) return;
+    const formData = new FormData();
+    formData.set("targetDayId", targetDayId);
+    formData.set("items", JSON.stringify(items));
+    startTransition(async () => {
+      const result = await moveAgendaItemsToDay(formData);
+      await notify(result);
+      if (result.ok) {
+        clearSelection();
+        setTargetDayId("");
+      }
+    });
+  }
+
+  async function removeItem(item: AgendaItem) {
+    const formData = new FormData();
+    formData.set("id", item.id);
+    if (item.kind === "transit") {
+      await trashWithUndo(await deleteTransit(formData), item.id, "transit");
+    } else {
+      await trashWithUndo(await deletePlace(formData), item.id, "place");
+    }
+    setSelected((prev) => {
+      if (!prev.has(item.id)) return prev;
+      const next = new Set(prev);
+      next.delete(item.id);
+      return next;
+    });
+  }
+
+  if (agenda.length === 0) {
     return (
-      <p className="notebook-card border-dashed px-4 py-6 text-sm text-ink-muted shadow-none">
+      <p className="rounded-2xl border border-dashed border-line px-4 py-6 text-sm text-ink-muted">
         {t("agenda.noStopsEdit")}
       </p>
     );
   }
 
   return (
-    <div className="min-w-0 overflow-hidden notebook-card">
-      <div className="hidden grid-cols-[8rem_3.5rem_7rem_minmax(0,1.3fr)_minmax(0,1fr)_auto] gap-2 border-b border-line px-3 py-2 text-[11px] font-medium text-ink-muted lg:grid">
-        <span>{t("form.time")}</span>
-        <span>#</span>
-        <span>{t("form.kind")}</span>
-        <span>{t("form.name")}</span>
-        <span>{t("form.detail")}</span>
-        <span className="text-right">{t("common.edit")}</span>
+    <div className={`grid gap-2 ${pending ? "opacity-70" : ""}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2 px-0.5">
+        <p className="text-[12px] text-ink-muted">{t("schedule.editHint")}</p>
+        <button
+          type="button"
+          onClick={toggleAll}
+          className="inline-flex min-h-9 items-center rounded-lg px-2 text-[12px] font-medium text-accent"
+        >
+          {allSelected ? t("schedule.clearSelection") : t("schedule.selectAll")}
+        </button>
       </div>
-      {rows.map((row) =>
-        row.kind === "place" ? (
-          <PlaceEditRow
-            key={row.place.id}
-            place={row.place}
-            dayId={dayId}
-            dayDate={dayDate}
-          />
-        ) : (
-          <TransitEditRow
-            key={row.transit.id}
-            item={row.transit}
-            dayId={dayId}
-            dayDate={dayDate}
-          />
-        ),
-      )}
-    </div>
-  );
-}
 
-function PlaceEditRow({
-  place,
-  dayId,
-  dayDate,
-}: {
-  place: Place;
-  dayId: string;
-  dayDate: string | null;
-}) {
-  const [pending, startTransition] = useTransition();
-  const notify = useActionToast();
-  const trashWithUndo = useTrashUndo();
-  const { t, locale } = useT();
+      <ol className="overflow-hidden rounded-2xl border border-line bg-surface">
+        {agenda.map((item) => {
+          const checked = selected.has(item.id);
+          const timeLabel = formatTime(item.start) ?? "—";
+          const kindLabel =
+            item.kind === "place"
+              ? labelType(locale, item.chip)
+              : labelMode(locale, item.chip) ?? t("mode.Transit");
+          const emoji = categoryEmoji(item.kind, item.chip) ?? (item.kind === "transit" ? "🚆" : "📍");
+          return (
+            <li
+              key={`${item.kind}-${item.id}`}
+              className={`border-b border-line/70 last:border-b-0 ${
+                checked ? "bg-accent/5" : ""
+              }`}
+            >
+              <div className="grid grid-cols-[2.25rem_2.75rem_minmax(0,1fr)_auto] items-center gap-x-1.5 px-2 py-2.5">
+                <label className="flex min-h-11 min-w-11 items-center justify-center">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggle(item.id)}
+                    aria-label={item.name}
+                    className="h-4 w-4 accent-[var(--accent)]"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => toggle(item.id)}
+                  className="text-left text-[13px] tabular-nums text-ink-muted"
+                >
+                  {timeLabel}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggle(item.id)}
+                  className="min-w-0 text-left"
+                >
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <span aria-hidden className="shrink-0 text-[14px]">
+                      {emoji}
+                    </span>
+                    <span className="min-w-0 truncate text-[14px] font-medium text-ink">
+                      {item.name}
+                    </span>
+                  </span>
+                  <span className="mt-0.5 block truncate text-[11px] text-ink-muted">
+                    {[kindLabel, item.detail].filter(Boolean).join(" · ")}
+                  </span>
+                </button>
+                <div className="flex shrink-0 items-center gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setEditId(item.id)}
+                    className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg text-[12px] font-medium text-accent"
+                  >
+                    {t("common.edit")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      startTransition(async () => {
+                        await removeItem(item);
+                      });
+                    }}
+                    className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg text-[12px] text-ink-muted"
+                  >
+                    {t("common.delete")}
+                  </button>
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
 
-  return (
-    <form
-      className={rowClass}
-      onSubmit={(event) => {
-        event.preventDefault();
-        const formData = new FormData(event.currentTarget);
-        startTransition(async () => {
-          await notify(await updatePlace(formData));
-        });
-      }}
-    >
-      <input type="hidden" name="id" value={place.id} />
-      <input type="hidden" name="dayId" value={dayId} />
-      <input type="hidden" name="dayDate" value={dateKey(dayDate) ?? ""} />
-      <input type="hidden" name="mapsUrl" value={place.mapsUrl ?? ""} />
-      <input type="hidden" name="notes" value={place.notes} />
-      <Field label={t("form.time")}>
-        <TimeField defaultValue={formatTime(place.start) ?? ""} />
-      </Field>
-      <div className="hidden lg:block" />
-      <Field label={t("form.kind")} className="lg:col-span-1">
-        <select name="type" defaultValue={place.type ?? "Sight"} className={cell}>
-          {PLACE_TYPES.map((type) => (
-            <option key={type} value={type}>
-              {labelType(locale, type)}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <Field label={t("form.name")} className="col-span-2 lg:col-span-2">
-        <input
-          name="name"
-          required
-          defaultValue={place.name}
-          className={cell}
-        />
-      </Field>
-      <div className="col-span-2 flex w-full min-w-0 justify-end gap-2 lg:col-span-1">
-        <SaveButton pending={pending} />
-        <DeleteButton
-          onDelete={async () => {
-            const formData = new FormData();
-            formData.set("id", place.id);
-            await trashWithUndo(await deletePlace(formData), place.id, "place");
-          }}
-        />
-      </div>
-    </form>
-  );
-}
-
-function TransitEditRow({
-  item,
-  dayId,
-  dayDate,
-}: {
-  item: Transit;
-  dayId: string;
-  dayDate: string | null;
-}) {
-  const [pending, startTransition] = useTransition();
-  const notify = useActionToast();
-  const trashWithUndo = useTrashUndo();
-  const { t, locale } = useT();
-
-  return (
-    <form
-      className={rowClass}
-      onSubmit={(event) => {
-        event.preventDefault();
-        const formData = new FormData(event.currentTarget);
-        startTransition(async () => {
-          await notify(await updateTransit(formData));
-        });
-      }}
-    >
-      <input type="hidden" name="id" value={item.id} />
-      <input type="hidden" name="dayId" value={dayId} />
-      <input
-        type="hidden"
-        name="dayDate"
-        value={dateKey(dayDate) ?? dateKey(item.date) ?? ""}
-      />
-      <input type="hidden" name="bookingUrl" value={item.bookingUrl ?? ""} />
-      <input
-        name="date"
-        type="hidden"
-        value={dateKey(item.date) ?? dateKey(dayDate) ?? ""}
-      />
-      <Field label={t("form.time")} className="order-1 lg:order-none">
-        <TimeField defaultValue={formatTime(item.start) ?? ""} />
-      </Field>
-      <Field label="#" className="order-3 lg:order-none">
-        <input
-          name="order"
-          type="number"
-          defaultValue={item.order ?? ""}
-          className={cell}
-        />
-      </Field>
-      <Field label={t("form.kind")} className="order-2 lg:order-none">
-        <select name="mode" defaultValue={item.mode ?? "Metro"} className={cell}>
-          {TRANSIT_MODES.map((mode) => (
-            <option key={mode} value={mode}>
-              {labelMode(locale, mode)}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <Field label={t("form.name")} className="order-4 col-span-2 lg:order-none lg:col-span-1">
-        <input name="name" required defaultValue={item.name} className={cell} />
-      </Field>
-      <Field label={t("form.fromTo")} className="order-5 col-span-2 lg:order-none lg:col-span-1">
-        <div className="grid grid-cols-2 gap-1">
-          <input
-            name="from"
-            defaultValue={item.from}
-            placeholder={t("form.from")}
-            className={cell}
-          />
-          <input
-            name="to"
-            defaultValue={item.to}
-            placeholder={t("form.to")}
-            className={cell}
-          />
+      {selectedCount > 0 ? (
+        <div className="sticky bottom-20 z-20 rounded-2xl border border-line bg-surface/95 p-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-surface/90">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[13px] font-medium text-ink">
+              {t("schedule.selectedCount", { n: selectedCount })}
+            </p>
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="text-[12px] text-ink-muted"
+            >
+              {t("schedule.clearSelection")}
+            </button>
+          </div>
+          <label className="mt-2 grid gap-1">
+            <span className="text-[11px] font-medium text-ink-muted">
+              {t("schedule.moveToDayLabel")}
+            </span>
+            <select
+              value={targetDayId}
+              onChange={(event) => setTargetDayId(event.target.value)}
+              className="h-11 w-full rounded-xl border border-line bg-canvas px-3 text-[14px] outline-none focus:border-accent"
+            >
+              <option value="">{t("schedule.pickDay")}</option>
+              {otherDays.map((day) => {
+                const label = [
+                  day.name,
+                  formatDay(day.date, locale),
+                  day.city,
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
+                return (
+                  <option key={day.id} value={day.id}>
+                    {label || day.id}
+                  </option>
+                );
+              })}
+            </select>
+          </label>
+          <button
+            type="button"
+            disabled={!targetDayId || pending}
+            onClick={moveSelected}
+            className="mt-2 inline-flex h-11 w-full items-center justify-center rounded-xl bg-accent px-3 text-[14px] font-medium text-white disabled:opacity-50"
+          >
+            {pending ? t("common.saving") : t("schedule.moveSelected")}
+          </button>
         </div>
-      </Field>
-      <div className="order-6 col-span-2 flex w-full min-w-0 justify-end gap-2 lg:order-none lg:col-span-1">
-        <SaveButton pending={pending} />
-        <DeleteButton
-          onDelete={async () => {
-            const formData = new FormData();
-            formData.set("id", item.id);
-            await trashWithUndo(await deleteTransit(formData), item.id, "transit");
-          }}
-        />
-      </div>
-    </form>
+      ) : null}
+
+      <AgendaItemEditSheet
+        open={editId != null}
+        onClose={() => setEditId(null)}
+        item={editItem}
+        dayId={dayId}
+        dayDate={dateKey(dayDate)}
+        city={dayCity}
+      />
+    </div>
   );
 }

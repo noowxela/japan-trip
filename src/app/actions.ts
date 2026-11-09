@@ -25,7 +25,7 @@ import {
   THEME_MAX_AGE_SEC,
   isThemePreference,
 } from "@/lib/theme";
-import { ensureTokyoOffset, tokyoWallDateTime } from "@/lib/format";
+import { ensureTokyoOffset, formatTime, tokyoWallDateTime } from "@/lib/format";
 import { findSpendDuplicate, getDay, TRIP_TAGS } from "@/lib/trip";
 
 function bump(...tags: string[]) {
@@ -1017,6 +1017,77 @@ export async function deletePrepItem(formData: FormData): Promise<ActionResult> 
   if (!id) return actionErr(await actionT("action.missingPrep"));
   await trashPage(id, TRIP_TAGS.prep);
   return actionOk(await actionT("action.prepRemoved"));
+}
+
+
+export async function moveAgendaItemsToDay(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
+  const targetDayId = String(formData.get("targetDayId") ?? "").trim();
+  if (!targetDayId) return actionErr(await actionT("action.missingPlaceOrDay"));
+
+  let items: Array<{ id: string; kind: "place" | "transit"; start?: string | null }> = [];
+  try {
+    const raw = String(formData.get("items") ?? "").trim();
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) throw new Error("bad items");
+    items = parsed
+      .map((row) => {
+        if (!row || typeof row !== "object") return null;
+        const id = String((row as { id?: unknown }).id ?? "").trim();
+        const kind = String((row as { kind?: unknown }).kind ?? "").trim();
+        if (!id || (kind !== "place" && kind !== "transit")) return null;
+        const startRaw = (row as { start?: unknown }).start;
+        const start =
+          typeof startRaw === "string" && startRaw.trim()
+            ? startRaw.trim()
+            : null;
+        return { id, kind: kind as "place" | "transit", start };
+      })
+      .filter((row): row is { id: string; kind: "place" | "transit"; start: string | null } => row != null);
+  } catch {
+    return actionErr(await actionT("action.missingPlaceOrDay"));
+  }
+  if (items.length === 0) {
+    return actionErr(await actionT("action.missingPlaceOrDay"));
+  }
+
+  const day = await getDay(targetDayId);
+  const dayDate = (day?.date ?? "").slice(0, 10);
+  const notion = getNotion();
+  const tags = new Set<string>();
+
+  for (const item of items) {
+    const time = item.start ? formatTime(item.start) : null;
+    const remapped =
+      time && dayDate ? tokyoWallDateTime(dayDate, time) : null;
+    if (item.kind === "place") {
+      await notion.pages.update({
+        page_id: item.id,
+        properties: {
+          Day: { relation: [{ id: targetDayId }] },
+          Pending: { checkbox: false },
+          ...(remapped ? { Start: startProp(remapped) } : {}),
+        },
+      });
+      tags.add(TRIP_TAGS.places);
+    } else {
+      await notion.pages.update({
+        page_id: item.id,
+        properties: {
+          Day: { relation: [{ id: targetDayId }] },
+          ...(dayDate ? { Date: { date: { start: dayDate } } } : {}),
+          ...(remapped ? { Start: startProp(remapped) } : {}),
+        },
+      });
+      tags.add(TRIP_TAGS.transit);
+    }
+  }
+
+  bump(...tags);
+  return actionOk(
+    await actionT("action.movedItemsToDay", { n: items.length }),
+  );
 }
 
 export async function movePendingToDay(formData: FormData): Promise<ActionResult> {

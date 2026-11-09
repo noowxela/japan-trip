@@ -71,6 +71,14 @@ const en = {
   "schedule.dayDone": "Today's agenda is complete",
   "schedule.edit": "Edit",
   "schedule.done": "Done",
+  "schedule.selectAll": "Select all",
+  "schedule.clearSelection": "Clear",
+  "schedule.selectedCount": "{n} selected",
+  "schedule.moveSelected": "Move",
+  "schedule.moveToDayLabel": "Move to day",
+  "schedule.pickDay": "Choose a day",
+  "schedule.editHint": "Tap to select. Open a row to edit details.",
+
   "schedule.map": "Map",
   "schedule.route": "Route",
 
@@ -101,6 +109,8 @@ const en = {
   "agenda.carryOverPast": "Unvisited from earlier days",
   "agenda.carryOverOther": "Pending from other days",
   "agenda.moveToDay": "Move to this day",
+  "agenda.batchMove": "Move selected",
+
 
   "type.Sight": "Sight",
   "type.Food": "Food",
@@ -291,6 +301,8 @@ const en = {
   "action.missingId": "Missing id",
   "action.missingPlaceOrDay": "Missing place or day",
   "action.movedToDay": "Moved to this day",
+  "action.movedItemsToDay": "Moved {n} to that day",
+
   "action.addEditorFirst": "Add an editor row in Notion first",
   "action.wrongPin": "Name or PIN is wrong",
 
@@ -839,6 +851,14 @@ const zh: Record<DictKey, string> = {
   "schedule.dayDone": "今天的行程已完成",
   "schedule.edit": "编辑",
   "schedule.done": "完成",
+  "schedule.selectAll": "全选",
+  "schedule.clearSelection": "清除",
+  "schedule.selectedCount": "已选 {n} 项",
+  "schedule.moveSelected": "移动",
+  "schedule.moveToDayLabel": "移到哪一天",
+  "schedule.pickDay": "选择日期",
+  "schedule.editHint": "点选条目，点开可改详情。",
+
   "schedule.map": "地图",
   "schedule.route": "路线",
 
@@ -869,6 +889,8 @@ const zh: Record<DictKey, string> = {
   "agenda.carryOverPast": "前几日未去",
   "agenda.carryOverOther": "其他日的待定",
   "agenda.moveToDay": "移到这一天",
+  "agenda.batchMove": "移动所选",
+
 
   "type.Sight": "景点",
   "type.Food": "美食",
@@ -1056,6 +1078,8 @@ const zh: Record<DictKey, string> = {
   "action.missingId": "缺少编号",
   "action.missingPlaceOrDay": "缺少地点或日程",
   "action.movedToDay": "已移到这一天",
+  "action.movedItemsToDay": "已将 {n} 项移到那天",
+
   "action.addEditorFirst": "请先在 Notion 中添加编辑者",
   "action.wrongPin": "姓名或 PIN 不正确",
 
