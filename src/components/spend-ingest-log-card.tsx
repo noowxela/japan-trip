@@ -61,8 +61,9 @@ export function SpendIngestLogCard({
         <ul className="mt-3 space-y-2">
           {rows.slice(0, 20).map((row) => {
             const bits = [
+              row.name,
               row.card,
-              row.merchant,
+              row.merchant && row.merchant !== row.name ? row.merchant : null,
               row.amount != null ? String(row.amount) : null,
               `HTTP ${row.status}`,
             ].filter(Boolean);
@@ -95,6 +96,11 @@ export function SpendIngestLogCard({
                 ) : null}
                 {row.error ? (
                   <p className="mt-0.5 text-[11px] text-ink">{row.error}</p>
+                ) : null}
+                {row.raw ? (
+                  <pre className="mt-1 max-h-24 overflow-auto whitespace-pre-wrap break-all rounded bg-canvas px-1.5 py-1 font-mono text-[10px] leading-snug text-ink-muted">
+                    {row.raw}
+                  </pre>
                 ) : null}
               </li>
             );

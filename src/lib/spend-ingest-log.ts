@@ -7,8 +7,12 @@ export type SpendIngestAttempt = {
   error?: string;
   /** Amount parsed; null if missing/invalid. */
   amount: number | null;
+  /** Expense name after merchant/name/card fallback. */
+  name?: string;
   merchant?: string;
   card?: string;
+  /** Truncated raw JSON body for diagnosis. */
+  raw?: string;
   /** True when Authorization header looked like Bearer … */
   authPresent: boolean;
   /** True when header matched SPEND_INGEST_SECRET. */

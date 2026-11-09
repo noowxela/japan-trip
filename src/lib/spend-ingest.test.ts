@@ -31,6 +31,17 @@ describe("parseWalletAmount", () => {
     expect(parseWalletAmount(-40)).toBeNull();
     expect(parseWalletAmount(null)).toBeNull();
   });
+
+  it("unwraps nested Currency Amount dictionaries", () => {
+    expect(parseWalletAmount({ amount: 210, currency: "JPY" })).toBe(210);
+    expect(parseWalletAmount({ Amount: "¥1,280", CurrencyCode: "JPY" })).toBe(
+      1280,
+    );
+    expect(parseWalletAmount({ value: 99 })).toBe(99);
+    expect(
+      parseWalletAmount(JSON.stringify({ amount: 55, currency: "JPY" })),
+    ).toBe(55);
+  });
 });
 
 describe("defaultsForCard", () => {
@@ -138,6 +149,57 @@ describe("planSpendIngest", () => {
       ok: false,
       error: "A valid amount is required",
       status: 400,
+    });
+  });
+
+  it("parses nested Wallet Currency Amount objects", () => {
+    const result = planSpendIngest({
+      amount: { amount: 350, currency: "JPY" },
+      merchant: "Seven-Eleven",
+      card: "Suica",
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.plan).toMatchObject({
+      amount: 350,
+      name: "Seven-Eleven",
+      currency: "Yen",
+      category: "Transit",
+    });
+  });
+
+  it("accepts Currency Amount key and Wallet Name as merchant", () => {
+    const result = planSpendIngest({
+      "Currency Amount": { Amount: "¥480", CurrencyCode: "JPY" },
+      Name: "京都地下鉄",
+      "Card or Pass": "Suica",
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.plan).toMatchObject({
+      amount: 480,
+      name: "京都地下鉄",
+      card: "Suica",
+      category: "Transit",
+      currency: "Yen",
+    });
+  });
+
+  it("unwraps a transaction wrapper payload", () => {
+    const result = planSpendIngest({
+      transaction: {
+        amount: { amount: 1200, currency: "JPY" },
+        merchant: "FamilyMart",
+        card: "Wise",
+      },
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.plan).toMatchObject({
+      amount: 1200,
+      name: "FamilyMart",
+      category: "Other",
+      notes: "Apple Pay · Wise",
     });
   });
 });

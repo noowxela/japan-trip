@@ -5,9 +5,10 @@ import { notionStartProperty } from "@/lib/notion-date";
 import { authorizeSpendIngest } from "@/lib/spend-ingest-auth";
 import {
   INGEST_DEDUPE_WINDOW_MS,
+  extractIngestFields,
   parseIngestBody,
-  parseWalletAmount,
   planSpendIngest,
+  summarizeIngestPayload,
   todayDayId,
 } from "@/lib/spend-ingest";
 import { recordSpendIngestAttempt } from "@/lib/spend-ingest-log";
@@ -58,26 +59,19 @@ function authMeta(request: Request) {
   return { authPresent, authOk };
 }
 
-function peekAmountMerchantCard(body: Record<string, unknown>) {
-  const lower = new Map(
-    Object.entries(body).map(([key, value]) => [key.toLowerCase(), value]),
-  );
-  const amount = parseWalletAmount(lower.get("amount"));
-  const merchantRaw = lower.get("merchant");
-  const cardRaw = lower.get("card");
-  const merchant =
-    typeof merchantRaw === "string"
-      ? merchantRaw.trim().slice(0, 80)
-      : merchantRaw == null
-        ? undefined
-        : String(merchantRaw).trim().slice(0, 80);
-  const card =
-    typeof cardRaw === "string"
-      ? cardRaw.trim().slice(0, 40)
-      : cardRaw == null
-        ? undefined
-        : String(cardRaw).trim().slice(0, 40);
-  return { amount, merchant: merchant || undefined, card: card || undefined };
+function peekForLog(body: Record<string, unknown>) {
+  const fields = extractIngestFields(body);
+  const planned = planSpendIngest(body);
+  const name = planned.ok
+    ? planned.plan.name
+    : fields.merchant || fields.name || fields.card || undefined;
+  return {
+    amount: fields.amount,
+    name: name || undefined,
+    merchant: fields.merchant || undefined,
+    card: fields.card || undefined,
+    raw: summarizeIngestPayload(body),
+  };
 }
 
 export async function POST(request: Request) {
@@ -98,7 +92,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const peeked = peekAmountMerchantCard(body);
+  const peeked = peekForLog(body);
 
   if (!authOk) {
     await recordSpendIngestAttempt({
@@ -134,8 +128,10 @@ export async function POST(request: Request) {
       status: 503,
       error: "Notion is not configured",
       amount: plan.amount,
+      name: plan.name,
       merchant: plan.merchant || undefined,
       card: plan.card || undefined,
+      raw: peeked.raw,
       authPresent,
       authOk: true,
     });
@@ -152,8 +148,10 @@ export async function POST(request: Request) {
         ok: true,
         status: 200,
         amount: plan.amount,
+        name: plan.name,
         merchant: plan.merchant || undefined,
         card: plan.card || undefined,
+        raw: peeked.raw,
         authPresent,
         authOk: true,
         expenseId: cachedId,
@@ -185,8 +183,10 @@ export async function POST(request: Request) {
       ok: true,
       status: 200,
       amount: plan.amount,
+      name: plan.name,
       merchant: plan.merchant || undefined,
       card: plan.card || undefined,
+      raw: peeked.raw,
       authPresent,
       authOk: true,
       expenseId: existing.id,
@@ -235,8 +235,10 @@ export async function POST(request: Request) {
       status: 502,
       error: detail || "Failed to save expense",
       amount: plan.amount,
+      name: plan.name,
       merchant: plan.merchant || undefined,
       card: plan.card || undefined,
+      raw: peeked.raw,
       authPresent,
       authOk: true,
     });
@@ -253,8 +255,10 @@ export async function POST(request: Request) {
     ok: true,
     status: 200,
     amount: plan.amount,
+    name: plan.name,
     merchant: plan.merchant || undefined,
     card: plan.card || undefined,
+    raw: peeked.raw,
     authPresent,
     authOk: true,
     expenseId: created.id,
