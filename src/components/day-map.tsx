@@ -35,7 +35,7 @@ import { FlightMapArcs } from "@/components/flight-map-arc";
 import type { FlightRoute } from "@/lib/flight-path";
 import { isNumberedMapStop, sightNumbersById } from "@/lib/schedule-pins";
 import { CITY_COORDS } from "@/lib/types";
-import { googleMapsHref } from "@/lib/maps";
+import { googleMapsDeepLinkHref, googleMapsHref } from "@/lib/maps";
 import { useT } from "@/components/i18n-provider";
 
 export type DayMapPin = {
@@ -394,6 +394,18 @@ export default function DayMap({
               : isNumberedMapStop(pin.kind)
                 ? sightNumberIcon(sightNumbers.get(pin.id) ?? 0)
                 : otherPinIcon();
+          const mapsWebHref = googleMapsHref({
+            name: pin.name,
+            lat: pin.lat,
+            lng: pin.lng,
+            mapsUrl: pin.mapsUrl,
+          });
+          const mapsAppHref = googleMapsDeepLinkHref({
+            name: pin.name,
+            lat: pin.lat,
+            lng: pin.lng,
+            mapsUrl: pin.mapsUrl,
+          });
           return (
             <Marker
               key={pin.id}
@@ -429,15 +441,23 @@ export default function DayMap({
                       {t("map.walkHere")}
                     </button>
                     <a
-                      href={googleMapsHref({
-                        name: pin.name,
-                        lat: pin.lat,
-                        lng: pin.lng,
-                        mapsUrl: pin.mapsUrl,
-                      })}
-                      target="_blank"
-                      rel="noreferrer"
+                      href={mapsWebHref}
                       className="text-ink-muted no-underline"
+                      onClick={(event) => {
+                        // Hand off to Google Maps app (avoid PWA in-app browser sheet).
+                        if (mapsAppHref === mapsWebHref) return;
+                        event.preventDefault();
+                        const started = Date.now();
+                        window.location.href = mapsAppHref;
+                        window.setTimeout(() => {
+                          if (
+                            document.visibilityState === "visible" &&
+                            Date.now() - started < 1600
+                          ) {
+                            window.location.href = mapsWebHref;
+                          }
+                        }, 650);
+                      }}
                     >
                       {t("map.openTitle")}
                     </a>

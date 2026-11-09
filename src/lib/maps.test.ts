@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { googleMapsHref } from "@/lib/maps";
+import { googleMapsDeepLinkHref, googleMapsHref } from "@/lib/maps";
 
 describe("googleMapsHref", () => {
   it("prefers a non-empty Google Maps URL over coordinates", () => {
@@ -62,5 +62,30 @@ describe("googleMapsHref", () => {
         mapsUrl: "https://example.com/not-maps",
       }),
     ).toBe("https://www.google.com/maps/search/?api=1&query=34.967,135.772");
+  });
+});
+
+describe("googleMapsDeepLinkHref", () => {
+  it("wraps a preferred mapsUrl in comgooglemapsurl://", () => {
+    expect(
+      googleMapsDeepLinkHref({
+        name: "Fushimi Inari",
+        lat: 34.967,
+        lng: 135.772,
+        mapsUrl: "https://maps.app.goo.gl/abc123",
+      }),
+    ).toBe("comgooglemapsurl://maps.app.goo.gl/abc123");
+  });
+
+  it("wraps coord search https in comgooglemapsurl://", () => {
+    expect(
+      googleMapsDeepLinkHref({
+        name: "Fushimi Inari",
+        lat: 34.967,
+        lng: 135.772,
+      }),
+    ).toBe(
+      "comgooglemapsurl://www.google.com/maps/search/?api=1&query=34.967,135.772",
+    );
   });
 });
