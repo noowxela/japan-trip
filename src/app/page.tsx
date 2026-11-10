@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { OverviewExpenseFab } from "@/components/add-spend-form";
+import { OverviewPullRefresh } from "@/components/overview-pull-refresh";
 import { EditorLockButton } from "@/components/editor-lock-button";
 import { EmptyState } from "@/components/empty-state";
 import { FlightInfoList } from "@/components/flight-info-list";
@@ -125,6 +126,7 @@ export default async function OverviewPage() {
         })}
       />
       <QuickExpenseTripSync days={days} people={people} places={places} />
+      <OverviewPullRefresh>
       <PageShell>
         <PageHeader
           eyebrow={t(locale, "overview.eyebrow")}
@@ -201,6 +203,7 @@ export default async function OverviewPage() {
         people={people}
         defaultDayId={focus?.id ?? ""}
       />
+      </OverviewPullRefresh>
     </>
   );
 }

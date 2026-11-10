@@ -29,7 +29,7 @@ type AppUpdateContextValue = {
   updateAvailable: boolean;
   checking: boolean;
   reloading: boolean;
-  checkNow: () => Promise<void>;
+  checkNow: (options?: { reveal?: boolean }) => Promise<boolean>;
   reloadToLatest: () => Promise<void>;
   dismissBanner: () => void;
   bannerVisible: boolean;
@@ -109,19 +109,26 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
   const [checking, setChecking] = useState(false);
   const [reloading, setReloading] = useState(false);
   const [dismissed, setDismissed] = useState(false);
-  const inFlight = useRef(false);
+  const inFlight = useRef<Promise<boolean> | null>(null);
 
-  const checkNow = useCallback(async () => {
-    if (inFlight.current) return;
-    inFlight.current = true;
-    setChecking(true);
-    try {
-      const payload = await fetchLatestVersion();
-      if (payload) setLatest(payload);
-    } finally {
-      inFlight.current = false;
-      setChecking(false);
-    }
+  const checkNow = useCallback(async (options?: { reveal?: boolean }) => {
+    const pending = inFlight.current;
+    const available = pending
+      ? await pending
+      : await (inFlight.current = (async () => {
+          setChecking(true);
+          try {
+            const payload = await fetchLatestVersion();
+            if (!payload) return false;
+            setLatest(payload);
+            return payload.commit !== APP_COMMIT;
+          } finally {
+            inFlight.current = null;
+            setChecking(false);
+          }
+        })());
+    if (options?.reveal && available) setDismissed(false);
+    return available;
   }, []);
 
   const handleReload = useCallback(async () => {
