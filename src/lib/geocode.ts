@@ -1,4 +1,5 @@
 import {
+  extractGoogleMapsUrl,
   isGoogleMapsUrl,
   mapsSearchUrl,
   parseGoogleMapsLocation,
@@ -146,6 +147,18 @@ async function followMapsRedirects(start: string, maxHops = 5): Promise<string> 
       current = new URL(location, current).href;
       continue;
     }
+    if (response.ok) {
+      const html = await response.text();
+      const fromBody = extractGoogleMapsUrl(html);
+      if (fromBody && fromBody !== current) {
+        current = fromBody;
+        continue;
+      }
+      const inPage = parseGoogleMapsLocation(html);
+      if (inPage.lat != null && inPage.lng != null) {
+        return mapsSearchUrl(inPage.lat, inPage.lng);
+      }
+    }
     return response.url || current;
   }
   return current;
@@ -171,7 +184,7 @@ function hitFromMaps(
 export async function resolveGoogleMapsUrl(
   input: string,
 ): Promise<PlaceSearchHit | null> {
-  const raw = input.trim();
+  const raw = extractGoogleMapsUrl(input) ?? input.trim();
   if (!isGoogleMapsUrl(raw)) return null;
 
   let current = raw;
@@ -209,8 +222,9 @@ export async function resolveGoogleMapsUrl(
 export async function searchPlacesJapan(query: string, city?: string) {
   const q = query.trim();
   if (q.length < 2) return [];
-  if (isGoogleMapsUrl(q)) {
-    const hit = await resolveGoogleMapsUrl(q);
+  const mapsUrl = extractGoogleMapsUrl(q);
+  if (mapsUrl) {
+    const hit = await resolveGoogleMapsUrl(mapsUrl);
     return hit ? [hit] : [];
   }
   const url = new URL("https://nominatim.openstreetmap.org/search");

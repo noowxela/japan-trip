@@ -9,7 +9,7 @@ import { useT } from "@/components/i18n-provider";
 import { btnPrimaryClass, fieldClass } from "@/components/page-shell";
 import { dateKey } from "@/lib/format";
 import type { PlaceSearchHit } from "@/lib/geocode";
-import { isGoogleMapsUrl } from "@/lib/maps-url";
+import { extractGoogleMapsUrl } from "@/lib/maps-url";
 import { labelMode, labelType } from "@/lib/i18n/dictionaries";
 import {
   PLACE_TYPES,
@@ -52,14 +52,14 @@ export function AddAgendaForm({
   }
 
   function applyHits(hits: PlaceSearchHit[], raw: string) {
-    if (hits.length === 1 && isGoogleMapsUrl(raw)) {
+    if (hits.length === 1 && extractGoogleMapsUrl(raw)) {
       pick(hits[0]);
       return;
     }
     setResults(hits);
     if (hits.length === 0) {
       setError(
-        isGoogleMapsUrl(raw) ? t("form.mapsLinkFailed") : t("form.noMapResults"),
+        extractGoogleMapsUrl(raw) ? t("form.mapsLinkFailed") : t("form.noMapResults"),
       );
     }
   }
@@ -119,10 +119,12 @@ export function AddAgendaForm({
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 onPaste={(event) => {
-                  const pasted = event.clipboardData.getData("text").trim();
-                  if (!isGoogleMapsUrl(pasted)) return;
-                  setQuery(pasted);
-                  runSearch(pasted);
+                  const pasted = event.clipboardData.getData("text");
+                  const mapsUrl = extractGoogleMapsUrl(pasted);
+                  if (!mapsUrl) return;
+                  event.preventDefault();
+                  setQuery(mapsUrl);
+                  runSearch(mapsUrl);
                 }}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {

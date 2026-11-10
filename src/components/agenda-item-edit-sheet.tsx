@@ -22,7 +22,7 @@ import { useTrashUndo } from "@/components/use-trash-undo";
 import { categoryEmoji } from "@/lib/category-icon";
 import { dateKey, formatDay, formatTime } from "@/lib/format";
 import { labelMode, labelType } from "@/lib/i18n/dictionaries";
-import { isGoogleMapsUrl } from "@/lib/maps-url";
+import { extractGoogleMapsUrl } from "@/lib/maps-url";
 import {
   PLACE_TYPES,
   TRANSIT_MODES,
@@ -119,8 +119,8 @@ function AgendaItemEditForm({
   const [to, setTo] = useState(item.to ?? "");
 
   function resolveMapsField(raw: string) {
-    const value = raw.trim();
-    if (!isGoogleMapsUrl(value)) return;
+    const value = extractGoogleMapsUrl(raw);
+    if (!value) return;
     setMapsError("");
     startMaps(async () => {
       const hits = await searchPlaces(value, city ?? undefined);
@@ -302,10 +302,12 @@ function AgendaItemEditForm({
               onChange={(event) => setMapsUrl(event.target.value)}
               onBlur={(event) => resolveMapsField(event.target.value)}
               onPaste={(event) => {
-                const pasted = event.clipboardData.getData("text").trim();
-                if (!isGoogleMapsUrl(pasted)) return;
-                setMapsUrl(pasted);
-                resolveMapsField(pasted);
+                const pasted = event.clipboardData.getData("text");
+                const mapsUrl = extractGoogleMapsUrl(pasted);
+                if (!mapsUrl) return;
+                event.preventDefault();
+                setMapsUrl(mapsUrl);
+                resolveMapsField(mapsUrl);
               }}
               onClear={clearMapsLink}
               clearLabel={t("form.clearMapsLink")}

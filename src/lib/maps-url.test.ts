@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  extractGoogleMapsUrl,
   isGoogleMapsUrl,
   mapsSearchUrl,
   parseGoogleMapsLocation,
@@ -85,5 +86,34 @@ describe("mapsSearchUrl", () => {
     expect(mapsSearchUrl(34.96714, 135.77268)).toBe(
       "https://www.google.com/maps/search/?api=1&query=34.96714,135.77268",
     );
+  });
+});
+
+describe("extractGoogleMapsUrl", () => {
+  it("returns a clean short link from share text or a missing scheme", () => {
+    expect(
+      extractGoogleMapsUrl("https://maps.app.goo.gl/Cchv3jZLDspqvTpr7"),
+    ).toBe("https://maps.app.goo.gl/Cchv3jZLDspqvTpr7");
+    expect(extractGoogleMapsUrl("maps.app.goo.gl/Cchv3jZLDspqvTpr7")).toBe(
+      "https://maps.app.goo.gl/Cchv3jZLDspqvTpr7",
+    );
+    expect(
+      extractGoogleMapsUrl(
+        "錦市場\nhttps://maps.app.goo.gl/Cchv3jZLDspqvTpr7?g_st=ic",
+      ),
+    ).toBe("https://maps.app.goo.gl/Cchv3jZLDspqvTpr7?g_st=ic");
+    expect(
+      extractGoogleMapsUrl("Check out Nishiki Market https://maps.app.goo.gl/abc123."),
+    ).toBe("https://maps.app.goo.gl/abc123");
+  });
+
+  it("unwraps google.com/url wrappers and ignores non-Maps text", () => {
+    expect(
+      extractGoogleMapsUrl(
+        "https://www.google.com/url?q=https://maps.app.goo.gl/abc123",
+      ),
+    ).toBe("https://maps.app.goo.gl/abc123");
+    expect(extractGoogleMapsUrl("Fushimi Inari Taisha")).toBeNull();
+    expect(extractGoogleMapsUrl("https://www.google.com/search?q=kyoto")).toBeNull();
   });
 });

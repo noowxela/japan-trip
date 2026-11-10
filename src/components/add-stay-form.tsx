@@ -11,7 +11,7 @@ import { ClearableInput } from "@/components/clearable-input";
 import { btnPrimaryClass, fieldClass, formShellClass } from "@/components/page-shell";
 import { tokyoToday } from "@/lib/format";
 import { clearMapsFieldState } from "@/lib/clear-maps-field";
-import { isGoogleMapsUrl } from "@/lib/maps-url";
+import { extractGoogleMapsUrl } from "@/lib/maps-url";
 
 const PlacePreviewMap = nextDynamic(
   () => import("@/components/place-preview-map").then((mod) => mod.PlacePreviewMap),
@@ -59,8 +59,8 @@ export function AddStayForm({
   }
 
   function resolveMapsField(raw: string) {
-    const value = raw.trim();
-    if (!isGoogleMapsUrl(value)) return;
+    const value = extractGoogleMapsUrl(raw);
+    if (!value) return;
     setMapsError("");
     startMaps(async () => {
       const hits = await searchPlaces(value);
@@ -123,11 +123,12 @@ export function AddStayForm({
           value={address}
           onChange={(event) => setAddress(event.target.value)}
           onPaste={(event) => {
-            const pasted = event.clipboardData.getData("text").trim();
-            if (!isGoogleMapsUrl(pasted)) return;
+            const pasted = event.clipboardData.getData("text");
+            const mapsUrl = extractGoogleMapsUrl(pasted);
+            if (!mapsUrl) return;
             event.preventDefault();
-            setMapsUrl(pasted);
-            resolveMapsField(pasted);
+            setMapsUrl(mapsUrl);
+            resolveMapsField(mapsUrl);
           }}
           className={fieldClass}
         />
@@ -143,10 +144,12 @@ export function AddStayForm({
           onChange={(event) => setMapsUrl(event.target.value)}
           onBlur={(event) => resolveMapsField(event.target.value)}
           onPaste={(event) => {
-            const pasted = event.clipboardData.getData("text").trim();
-            if (!isGoogleMapsUrl(pasted)) return;
-            setMapsUrl(pasted);
-            resolveMapsField(pasted);
+            const pasted = event.clipboardData.getData("text");
+            const mapsUrl = extractGoogleMapsUrl(pasted);
+            if (!mapsUrl) return;
+            event.preventDefault();
+            setMapsUrl(mapsUrl);
+            resolveMapsField(mapsUrl);
           }}
           onClear={clearMapsLink}
           clearLabel={t("form.clearMapsLink")}

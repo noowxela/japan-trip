@@ -22,7 +22,7 @@ import { btnGhostClass, btnPrimaryClass } from "@/components/page-shell";
 import { formatTabDate, nightsBetween } from "@/lib/format";
 import { clearMapsFieldState } from "@/lib/clear-maps-field";
 import { coordsOfStay } from "@/lib/geocode";
-import { isGoogleMapsUrl } from "@/lib/maps-url";
+import { extractGoogleMapsUrl } from "@/lib/maps-url";
 import type { Stay } from "@/lib/types";
 
 const PlacePreviewMap = nextDynamic(
@@ -63,8 +63,8 @@ export function StayCard({ stay }: { stay: Stay }) {
   }
 
   function resolveMapsField(raw: string) {
-    const value = raw.trim();
-    if (!isGoogleMapsUrl(value)) return;
+    const value = extractGoogleMapsUrl(raw);
+    if (!value) return;
     setMapsError("");
     startMaps(async () => {
       const hits = await searchPlaces(value);
@@ -132,11 +132,12 @@ export function StayCard({ stay }: { stay: Stay }) {
             name="address"
             defaultValue={stay.address}
             onPaste={(event) => {
-              const pasted = event.clipboardData.getData("text").trim();
-              if (!isGoogleMapsUrl(pasted)) return;
+              const pasted = event.clipboardData.getData("text");
+              const mapsUrl = extractGoogleMapsUrl(pasted);
+              if (!mapsUrl) return;
               event.preventDefault();
-              setMapsUrl(pasted);
-              resolveMapsField(pasted);
+              setMapsUrl(mapsUrl);
+              resolveMapsField(mapsUrl);
             }}
             className={`mt-1 ${compactFieldClass}`}
           />
@@ -150,10 +151,12 @@ export function StayCard({ stay }: { stay: Stay }) {
             onChange={(event) => setMapsUrl(event.target.value)}
             onBlur={(event) => resolveMapsField(event.target.value)}
             onPaste={(event) => {
-              const pasted = event.clipboardData.getData("text").trim();
-              if (!isGoogleMapsUrl(pasted)) return;
-              setMapsUrl(pasted);
-              resolveMapsField(pasted);
+              const pasted = event.clipboardData.getData("text");
+              const mapsUrl = extractGoogleMapsUrl(pasted);
+              if (!mapsUrl) return;
+              event.preventDefault();
+              setMapsUrl(mapsUrl);
+              resolveMapsField(mapsUrl);
             }}
             onClear={clearMapsLink}
             clearLabel={t("form.clearMapsLink")}

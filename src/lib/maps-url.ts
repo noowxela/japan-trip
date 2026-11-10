@@ -63,6 +63,60 @@ export function isGoogleMapsUrl(value: string): boolean {
   return false;
 }
 
+function stripTrailingPunct(value: string) {
+  return value.replace(/[.,;:!?。、，)\]】》」』]+$/g, "");
+}
+
+function withHttps(value: string) {
+  return /^https?:\/\//i.test(value) ? value : `https://${value}`;
+}
+
+function unwrapGoogleRedirect(raw: string) {
+  try {
+    const url = new URL(raw);
+    if (
+      (url.hostname === "google.com" || url.hostname.endsWith(".google.com")) &&
+      url.pathname === "/url"
+    ) {
+      const target = url.searchParams.get("q") || url.searchParams.get("url");
+      if (target) return target;
+    }
+  } catch {
+    // Keep the original string.
+  }
+  return raw;
+}
+
+const URL_IN_TEXT = /https?:\/\/[^\s<>"'）】》」』]+/gi;
+const BARE_MAPS_URL =
+  /(?:maps\.app\.goo\.gl|goo\.gl\/maps|g\.co\/maps|maps\.google\.[a-z.]+|(?:www\.)?google\.[a-z.]+\/maps)\/[^\s<>"'）】》」』]+/gi;
+
+/**
+ * Pull a Google Maps URL out of a paste that may include a place name,
+ * a missing https://, trailing punctuation, or a google.com/url wrapper.
+ */
+export function extractGoogleMapsUrl(input: string): string | null {
+  const raw = input.trim().replace(/\u00a0/g, " ");
+  if (!raw) return null;
+
+  const asMapsUrl = (value: string) => {
+    const cleaned = stripTrailingPunct(unwrapGoogleRedirect(withHttps(value.trim())));
+    return isGoogleMapsUrl(cleaned) ? cleaned : null;
+  };
+
+  const direct = asMapsUrl(raw);
+  if (direct) return direct;
+
+  const candidates: string[] = [];
+  for (const match of raw.matchAll(URL_IN_TEXT)) candidates.push(match[0]);
+  for (const match of raw.matchAll(BARE_MAPS_URL)) candidates.push(match[0]);
+  for (const candidate of candidates) {
+    const found = asMapsUrl(candidate);
+    if (found) return found;
+  }
+  return null;
+}
+
 export function parseGoogleMapsLocation(input: string): ParsedMapsLocation {
   const raw = input.trim();
   const decoded = decodeLoose(raw);

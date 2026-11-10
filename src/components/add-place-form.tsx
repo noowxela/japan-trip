@@ -14,7 +14,7 @@ import { dateKey, tokyoToday, tokyoWallDateTime } from "@/lib/format";
 import { labelType } from "@/lib/i18n/dictionaries";
 import { PLACE_TYPES, type TripDay } from "@/lib/types";
 import type { PlaceSearchHit } from "@/lib/geocode";
-import { isGoogleMapsUrl } from "@/lib/maps-url";
+import { extractGoogleMapsUrl } from "@/lib/maps-url";
 
 const PlacePreviewMap = nextDynamic(
   () => import("@/components/place-preview-map").then((mod) => mod.PlacePreviewMap),
@@ -99,14 +99,14 @@ export function AddPlaceForm({
   }
 
   function applyHits(hits: PlaceSearchHit[], raw: string) {
-    if (hits.length === 1 && isGoogleMapsUrl(raw)) {
+    if (hits.length === 1 && extractGoogleMapsUrl(raw)) {
       pick(hits[0]);
       return;
     }
     setResults(hits);
     if (hits.length === 0) {
       setError(
-        isGoogleMapsUrl(raw) ? t("form.mapsLinkFailed") : t("form.noMapResults"),
+        extractGoogleMapsUrl(raw) ? t("form.mapsLinkFailed") : t("form.noMapResults"),
       );
     }
   }
@@ -125,8 +125,8 @@ export function AddPlaceForm({
   }
 
   function resolveMapsField(raw: string) {
-    const value = raw.trim();
-    if (!isGoogleMapsUrl(value)) return;
+    const value = extractGoogleMapsUrl(raw);
+    if (!value) return;
     setError("");
     startSearch(async () => {
       const hits = await searchPlaces(value, city);
@@ -170,10 +170,12 @@ export function AddPlaceForm({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onPaste={(event) => {
-              const pasted = event.clipboardData.getData("text").trim();
-              if (!isGoogleMapsUrl(pasted)) return;
-              setQuery(pasted);
-              runSearch(pasted);
+              const pasted = event.clipboardData.getData("text");
+              const mapsUrl = extractGoogleMapsUrl(pasted);
+              if (!mapsUrl) return;
+              event.preventDefault();
+              setQuery(mapsUrl);
+              runSearch(mapsUrl);
             }}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
@@ -324,10 +326,12 @@ export function AddPlaceForm({
                   onChange={(event) => setMapsUrl(event.target.value)}
                   onBlur={(event) => resolveMapsField(event.target.value)}
                   onPaste={(event) => {
-                    const pasted = event.clipboardData.getData("text").trim();
-                    if (!isGoogleMapsUrl(pasted)) return;
-                    setMapsUrl(pasted);
-                    resolveMapsField(pasted);
+                    const pasted = event.clipboardData.getData("text");
+                    const mapsUrl = extractGoogleMapsUrl(pasted);
+                    if (!mapsUrl) return;
+                    event.preventDefault();
+                    setMapsUrl(mapsUrl);
+                    resolveMapsField(mapsUrl);
                   }}
                   onClear={clearMapsLink}
                   clearLabel={t("form.clearMapsLink")}
