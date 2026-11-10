@@ -75,3 +75,9 @@ fallback (/places) -> tap /
 ## 6. Status history
 
 - 2026-11-04 — implemented (local commit, not pushed)
+- 2026-11-10 — bugfix: RSC routes no longer use NetworkFirst. Teeing a
+  `Cache-Control: no-store` flight stream into `cache.put()` could abort
+  the App Router mid-navigation (URL stayed on Overview; later requests
+  still sent `Next-Url` of the pending page). Online RSC is now fully
+  buffered, then stored without no-store; shallower fallbacks use the
+  normalised cache key. The 4s timeout remains for document HTML only.

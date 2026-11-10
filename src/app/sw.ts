@@ -6,10 +6,11 @@ import type {
   SerwistGlobalConfig,
   SerwistPlugin,
 } from "serwist";
-import { ExpirationPlugin, NetworkFirst, NetworkOnly, Serwist } from "serwist";
+import { NetworkFirst, NetworkOnly, Serwist } from "serwist";
 import {
   normalizeRscCacheKey,
-  shallowerRscKeys,
+  rscCacheableHeaders,
+  rscCacheLookupKeys,
   shouldWarmRsc,
 } from "@/lib/sw-rsc-key";
 import { SERVED_FROM_CACHE_MESSAGE } from "@/lib/offline-status";
@@ -42,38 +43,119 @@ const notifyServedFromCache: SerwistPlugin = {
   },
 };
 
-/**
- * RSC payloads: Next's `?_rsc=` hash changes with the screen you navigate
- * from, so the default per-URL cache misses on offline soft navigation.
- * Normalise the key (see `sw-rsc-key.ts`) so any cached payload for the
- * target page is reused. Online still always prefers the network.
- */
-const rscCacheKey: SerwistPlugin = {
-  cacheKeyWillBeUsed: async ({ request }) =>
-    normalizeRscCacheKey(request.url, request.headers),
-  // Offline miss: reuse a payload rendered from a shallower segment.
-  cachedResponseWillBeUsed: async ({ cacheName, cachedResponse, request }) => {
-    if (cachedResponse) return cachedResponse;
-    const cache = await caches.open(cacheName);
-    for (const key of shallowerRscKeys(request.url)) {
-      const hit = await cache.match(key, { ignoreVary: true });
-      if (hit) return hit;
-    }
-    return cachedResponse;
-  },
-};
+const RSC_CACHE_MAX_ENTRIES = 96;
 
-function rscNetworkFirst(cacheName: string) {
-  return new NetworkFirst({
-    cacheName,
-    networkTimeoutSeconds: 4,
-    matchOptions: { ignoreVary: true },
-    plugins: [
-      rscCacheKey,
-      notifyServedFromCache,
-      new ExpirationPlugin({ maxEntries: 96, maxAgeSeconds: 14 * 86400 }),
-    ],
+function rscCacheName(request: Request): string {
+  return request.headers.get("Next-Router-Prefetch") === "1" ||
+    request.headers.get("Next-Router-Segment-Prefetch")
+    ? "pages-rsc-prefetch"
+    : "pages-rsc";
+}
+
+async function putRscCache(cacheName: string, key: string, response: Response) {
+  try {
+    const cache = await caches.open(cacheName);
+    await cache.put(key, response);
+    const keys = await cache.keys();
+    if (keys.length <= RSC_CACHE_MAX_ENTRIES) return;
+    const extras = keys.length - RSC_CACHE_MAX_ENTRIES;
+    for (let i = 0; i < extras; i += 1) {
+      const stale = keys[i];
+      if (stale) await cache.delete(stale);
+    }
+  } catch {
+    // Quota or a still-uncacheable response: the page already has the body.
+  }
+}
+
+async function matchRscCache(
+  cacheName: string,
+  keys: string[],
+): Promise<Response | undefined> {
+  const cache = await caches.open(cacheName);
+  for (const key of keys) {
+    const hit = await cache.match(key, { ignoreVary: true });
+    if (hit) return hit;
+  }
+  return undefined;
+}
+
+async function notifyRscServedFromCache(
+  event: Event | undefined,
+  request: Request,
+  cached: Response,
+) {
+  const clientId =
+    event instanceof FetchEvent
+      ? event.clientId || event.resultingClientId
+      : "";
+  if (!clientId) return;
+  const client = await self.clients.get(clientId);
+  client?.postMessage({
+    type: SERVED_FROM_CACHE_MESSAGE,
+    url: request.url,
+    cachedAt: cached.headers.get("date"),
   });
+}
+
+/**
+ * Handle RSC (flight) requests without Serwist's NetworkFirst.
+ *
+ * The App Router needs the *complete* flight stream. NetworkFirst teed the
+ * response into `cache.put(response.clone())` while the page read the other
+ * branch, and Next's force-dynamic payloads send `Cache-Control: no-store`,
+ * which Cache API rejects — cancelling the tee can abort the router's stream
+ * mid-flight. The navigation then never commits (URL stays put, later
+ * requests still carry the pending `Next-Url`). A 4s network timeout could
+ * also answer with a cached prefetch/partial body.
+ *
+ * Online: wait for the full body, return a fresh Response from that buffer,
+ * and store a cacheable copy. Offline (fetch throws): serve the normalised
+ * key or a shallower full payload.
+ */
+async function handleRscRequest({
+  request,
+  event,
+}: {
+  request: Request;
+  event?: Event;
+}): Promise<Response> {
+  const cacheName = rscCacheName(request);
+  const keys = rscCacheLookupKeys(request.url, request.headers);
+  const key = keys[0]!;
+
+  try {
+    const response = await fetch(request);
+    const type = response.headers.get("content-type") ?? "";
+    if (!response.ok || !type.includes("text/x-component")) {
+      return response;
+    }
+    const body = await response.arrayBuffer();
+    const forPage = new Response(body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+    });
+    const work = putRscCache(
+      cacheName,
+      key,
+      new Response(body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: rscCacheableHeaders(response.headers),
+      }),
+    );
+    if (event instanceof FetchEvent) event.waitUntil(work);
+    else await work;
+    return forPage;
+  } catch {
+    const hit = await matchRscCache(cacheName, keys);
+    if (hit) {
+      await notifyRscServedFromCache(event, request, hit);
+      return hit;
+    }
+    throw new Error(`rsc-offline-miss:${new URL(request.url).pathname}`);
+  }
 }
 
 /**
@@ -93,7 +175,15 @@ async function warmRscPayload(pageUrl: string) {
     const response = await fetch(url.toString(), { headers, credentials: "same-origin" });
     const type = response.headers.get("content-type") ?? "";
     if (response.ok && type.includes("text/x-component")) {
-      await cache.put(key, response);
+      const body = await response.arrayBuffer();
+      await cache.put(
+        key,
+        new Response(body, {
+          status: response.status,
+          statusText: response.statusText,
+          headers: rscCacheableHeaders(response.headers),
+        }),
+      );
     }
   } catch {
     // Offline or server error: keep whatever is cached.
@@ -113,10 +203,6 @@ const pagesNetworkFirst = new NetworkFirst({
   networkTimeoutSeconds: 4,
   plugins: [notifyServedFromCache, warmRscAfterPageLoad],
 });
-
-const rscPrefetchNetworkFirst = rscNetworkFirst("pages-rsc-prefetch");
-const rscNavNetworkFirst = rscNetworkFirst("pages-rsc");
-
 
 /** Shells that should survive subway rides after one online visit. */
 const KEY_OFFLINE_SHELLS = [
@@ -179,10 +265,7 @@ const serwist = new Serwist({
         request.headers.get("RSC") === "1" &&
         !pathname.startsWith("/api/"),
       handler: {
-        handle: (options) =>
-          options.request.headers.get("Next-Router-Prefetch") === "1"
-            ? rscPrefetchNetworkFirst.handle(options)
-            : rscNavNetworkFirst.handle(options),
+        handle: (options) => handleRscRequest(options),
       },
     },
     ...defaultCache,

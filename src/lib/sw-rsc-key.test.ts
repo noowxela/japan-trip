@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   normalizeRscCacheKey,
   RSC_WARM_MAX_AGE_MS,
+  rscCacheableHeaders,
+  rscCacheLookupKeys,
   rscRequestKind,
   shouldWarmRsc,
   refetchDepth,
@@ -101,5 +103,37 @@ describe("shouldWarmRsc", () => {
   });
   it("skips a fresh payload", () => {
     expect(shouldWarmRsc(new Date(now - 60_000).toUTCString(), now)).toBe(false);
+  });
+});
+
+describe("rscCacheLookupKeys", () => {
+  it("starts from the normalised key so shallower fallbacks work", () => {
+    const url = "https://x.test/schedule?_rsc=aaa";
+    const headers = h({
+      RSC: "1",
+      "Next-Router-State-Tree": tree(["schedule", {}, null, "refetch"]),
+    });
+    expect(shallowerRscKeys(url)).toEqual([]);
+    expect(rscCacheLookupKeys(url, headers)).toEqual([
+      "https://x.test/schedule?__sw_rsc=full%7Cd1",
+      "https://x.test/schedule?__sw_rsc=full%7Cd0",
+    ]);
+  });
+});
+
+describe("rscCacheableHeaders", () => {
+  it("strips no-store so Cache API will accept the payload", () => {
+    const stored = rscCacheableHeaders(
+      h({
+        "content-type": "text/x-component",
+        "cache-control": "private, no-cache, no-store, max-age=0, must-revalidate",
+        pragma: "no-cache",
+        "x-matched-path": "/schedule.rsc",
+      }),
+    );
+    expect(stored.get("cache-control")).toBeNull();
+    expect(stored.get("pragma")).toBeNull();
+    expect(stored.get("content-type")).toBe("text/x-component");
+    expect(stored.get("x-matched-path")).toBe("/schedule.rsc");
   });
 });

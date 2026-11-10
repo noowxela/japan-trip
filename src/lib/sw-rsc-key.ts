@@ -83,6 +83,33 @@ export function shallowerRscKeys(key: string): string[] {
   return keys;
 }
 
+/**
+ * Exact cache key, then shallower full keys. Always start from the normalised
+ * key — passing the raw `?_rsc=` request URL to `shallowerRscKeys` is a no-op
+ * because that URL has no `__sw_rsc` param.
+ */
+export function rscCacheLookupKeys(
+  url: string,
+  headers: RscRequestHeaders,
+): string[] {
+  const key = normalizeRscCacheKey(url, headers);
+  return [key, ...shallowerRscKeys(key)];
+}
+
+/**
+ * Cache API rejects `cache.put()` for `Cache-Control: no-store` (Next's
+ * force-dynamic RSC responses). Strip those directives on the *stored* copy
+ * so offline reuse works; the response returned to the page keeps the original
+ * headers. Also avoids a teed `cache.put(response.clone())` cancelling the
+ * stream the router is still reading.
+ */
+export function rscCacheableHeaders(headers: Headers): Headers {
+  const stored = new Headers(headers);
+  stored.delete("cache-control");
+  stored.delete("pragma");
+  return stored;
+}
+
 /** Re-warm a page's full RSC payload at most this often (SDD 015). */
 export const RSC_WARM_MAX_AGE_MS = 30 * 60 * 1000;
 
