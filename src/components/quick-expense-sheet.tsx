@@ -9,14 +9,17 @@ import { useT } from "@/components/i18n-provider";
 import { Modal } from "@/components/modal";
 import { useOutbox } from "@/components/outbox-provider";
 import { btnPrimaryClass, fieldClass } from "@/components/page-shell";
+import { FoodPlaceField } from "@/components/food-place-field";
 import { SplitWithField } from "@/components/split-with-field";
 import { useToast } from "@/components/toast-provider";
 import { dateKey, formatDay, tokyoNowTime, tokyoToday } from "@/lib/format";
 import { haptic } from "@/lib/haptic";
 import { labelCategory } from "@/lib/i18n/dictionaries";
 import { deleteOutboxEntry, listOutbox } from "@/lib/outbox";
+import { foodPlacesForDay } from "@/lib/spend-place";
 import {
   SPEND_CATEGORIES,
+  type Place,
   type SpendCurrency,
   type TripDay,
 } from "@/lib/types";
@@ -30,6 +33,7 @@ export type QuickExpenseDefaults = {
   currency?: SpendCurrency;
   people?: string[];
   days?: TripDay[];
+  places?: Place[];
 };
 
 function readStoredCurrency(): SpendCurrency {
@@ -95,6 +99,7 @@ function QuickExpenseForm({
 
   const days = useMemo(() => defaults.days ?? [], [defaults.days]);
   const people = useMemo(() => defaults.people ?? [], [defaults.people]);
+  const places = useMemo(() => defaults.places ?? [], [defaults.places]);
 
   const initialDay =
     days.find((d) => d.id === defaults.dayId) ??
@@ -113,6 +118,7 @@ function QuickExpenseForm({
     readStoredPayer(people, editorName),
   );
   const [splitWith, setSplitWith] = useState<string[]>([]);
+  const [placeId, setPlaceId] = useState("");
   const [name, setName] = useState("");
   const [dayDate, setDayDate] = useState(initialDate);
   const [time, setTime] = useState(() => tokyoNowTime());
@@ -143,7 +149,41 @@ function QuickExpenseForm({
   function onDayDateChange(next: string) {
     setDayDate(next);
     const matched = dayIdForDate(days, next);
-    if (matched) setDayId(matched);
+    if (matched) {
+      setDayId(matched);
+      clearPlaceIfNotOnDay(matched);
+    } else {
+      setPlaceId("");
+    }
+  }
+
+  function clearPlaceIfNotOnDay(nextDayId: string) {
+    if (!placeId) return;
+    const stillThere = foodPlacesForDay(places, nextDayId).some(
+      (place) => place.id === placeId,
+    );
+    if (!stillThere) setPlaceId("");
+  }
+
+  function onSelectDay(nextDayId: string) {
+    setDayId(nextDayId);
+    const matchedDate = dateKey(days.find((day) => day.id === nextDayId)?.date ?? null);
+    if (matchedDate) setDayDate(matchedDate);
+    clearPlaceIfNotOnDay(nextDayId);
+  }
+
+  function onSelectCategory(next: (typeof SPEND_CATEGORIES)[number]) {
+    setCategory(next);
+    if (next !== "Food") setPlaceId("");
+  }
+
+  function onSelectPlace(nextId: string) {
+    const prev = places.find((place) => place.id === placeId);
+    const next = places.find((place) => place.id === nextId);
+    setPlaceId(nextId);
+    if (!name.trim() || (prev && name.trim() === prev.name)) {
+      setName(next?.name ?? "");
+    }
   }
 
   function onSave() {
@@ -169,6 +209,7 @@ function QuickExpenseForm({
     formData.set("dayDate", dayDate);
     formData.set("time", time);
     formData.set("clientId", clientId);
+    if (category === "Food" && placeId) formData.set("placeId", placeId);
 
     try {
       window.localStorage.setItem(CURRENCY_KEY, currency);
@@ -293,9 +334,18 @@ function QuickExpenseForm({
       <ChipGroup
         label={t("form.category")}
         value={category}
-        onChange={setCategory}
+        onChange={onSelectCategory}
         options={categoryOptions}
       />
+
+      {category === "Food" ? (
+        <FoodPlaceField
+          places={places}
+          dayId={dayId}
+          value={placeId}
+          onChange={onSelectPlace}
+        />
+      ) : null}
 
       {people.length > 0 ? (
         <ChipGroup
@@ -373,7 +423,7 @@ function QuickExpenseForm({
         <ChipGroup
           label={t("form.day")}
           value={dayId || dayOptions[0].value}
-          onChange={setDayId}
+          onChange={onSelectDay}
           options={dayOptions}
         />
       ) : null}

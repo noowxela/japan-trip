@@ -14,18 +14,20 @@ import {
   tokyoToday,
 } from "@/lib/format";
 import { spendWhen, timelineGroups } from "@/lib/spend";
-import type { SpendItem, TripDay } from "@/lib/types";
+import type { Place, SpendItem, TripDay } from "@/lib/types";
 
 export function SpendTimeline({
   items,
   days,
   jpyPerRm,
   displayYen,
+  places = [],
 }: {
   items: SpendItem[];
   days: TripDay[];
   jpyPerRm: number;
   displayYen: boolean;
+  places?: Place[];
 }) {
   const { t, locale } = useT();
   const groups = timelineGroups(items, days, jpyPerRm);
@@ -96,6 +98,7 @@ export function SpendTimeline({
                           displayYen={displayYen}
                           compact
                           timeLabel={time}
+                          places={places}
                         />
                       </li>
                     );

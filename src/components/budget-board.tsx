@@ -10,7 +10,7 @@ import { SpendItemCard } from "@/components/spend-item-card";
 import { SpendTimeline, formatAmount } from "@/components/spend-timeline";
 import { labelCategory } from "@/lib/i18n/dictionaries";
 import { categoryBreakdown, settleUp, topSpend, toRm } from "@/lib/spend";
-import { SPEND_CATEGORIES, type SpendItem, type TripDay } from "@/lib/types";
+import { SPEND_CATEGORIES, type Place, type SpendItem, type TripDay } from "@/lib/types";
 
 type Tab = "timeline" | "category" | "top" | "split";
 type DisplayCurrency = "MYR" | "YEN";
@@ -34,10 +34,12 @@ export function BudgetBoard({
   fxLive,
   fxAsOf,
   people = [],
+  places = [],
 }: {
   actuals: SpendItem[];
   days: TripDay[];
   people?: string[];
+  places?: Place[];
   spentRm: number;
   estimateRm: number;
   jpyPerRm: number;
@@ -193,6 +195,7 @@ export function BudgetBoard({
               days={days}
               jpyPerRm={jpyPerRm}
               displayYen={yen}
+              places={places}
             />
           </div>
         </>
@@ -207,6 +210,7 @@ export function BudgetBoard({
           jpyPerRm={jpyPerRm}
           locale={locale}
           totalLabel={t("budget.total")}
+          places={places}
         />
       ) : null}
 
@@ -223,6 +227,7 @@ export function BudgetBoard({
                   jpyPerRm={jpyPerRm}
                   displayYen={yen}
                   compact
+                  places={places}
                 />
               </li>
             ))}
@@ -240,6 +245,7 @@ export function BudgetBoard({
           displayYen={yen}
           jpyPerRm={jpyPerRm}
           fxTitle={fxTitle}
+          places={places}
         />
       ) : null}
     </>
@@ -251,11 +257,13 @@ function SettlePanel({
   displayYen,
   jpyPerRm,
   fxTitle,
+  places = [],
 }: {
   settle: ReturnType<typeof settleUp>;
   displayYen: boolean;
   jpyPerRm: number;
   fxTitle: string;
+  places?: Place[];
 }) {
   const { t } = useT();
   const money = (rm: number) => formatAmount(rm, displayYen, jpyPerRm);
@@ -354,6 +362,7 @@ function SettlePanel({
                 jpyPerRm={jpyPerRm}
                 displayYen={displayYen}
                 compact
+                places={places}
               />
             ))}
           </div>
@@ -423,6 +432,7 @@ function CategorySummary({
   jpyPerRm,
   locale,
   totalLabel,
+  places = [],
 }: {
   rows: ReturnType<typeof categoryBreakdown>;
   items: SpendItem[];
@@ -431,6 +441,7 @@ function CategorySummary({
   jpyPerRm: number;
   locale: ReturnType<typeof useT>["locale"];
   totalLabel: string;
+  places?: Place[];
 }) {
   const { t } = useT();
   const largest = useMemo(() => {
@@ -535,6 +546,7 @@ function CategorySummary({
                       jpyPerRm={jpyPerRm}
                       displayYen={displayYen}
                       compact
+                      places={places}
                     />
                   </li>
                 ))}

@@ -66,7 +66,9 @@ function peekForLog(body: Record<string, unknown>) {
   const planned = planSpendIngest(body);
   const diag = diagnoseIngestPayload(body);
   const name = planned.ok
-    ? planned.plan.name
+    ? planned.entryDetect
+      ? planned.name
+      : planned.plan.name
     : fields.merchant || fields.name || fields.card || undefined;
   return {
     amount: fields.amount,
@@ -129,6 +131,33 @@ export async function POST(request: Request) {
     });
     return Response.json({ error: planned.error }, { status: planned.status });
   }
+
+  if (planned.entryDetect) {
+    await recordSpendIngestAttempt({
+      ok: true,
+      status: 200,
+      amount: 0,
+      name: planned.name,
+      merchant: planned.merchant || undefined,
+      card: planned.card || undefined,
+      raw: peeked.raw,
+      keys: peeked.keys,
+      emptyKeys: peeked.emptyKeys,
+      amountType: peeked.amountType,
+      authPresent,
+      authOk: true,
+      entryDetect: true,
+    });
+    return Response.json({
+      ok: true,
+      entryDetect: true,
+      amount: 0,
+      name: planned.name,
+      merchant: planned.merchant || null,
+      card: planned.card || null,
+    });
+  }
+
   const { plan } = planned;
 
   if (!notionReady()) {

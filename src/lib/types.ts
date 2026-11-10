@@ -67,6 +67,8 @@ export type SpendItem = {
   paidBy: string | null;
   /** Empty = split among everyone. */
   splitWith: string[];
+  /** Optional relation to a schedule Place (food spend link). */
+  placeId: string | null;
 };
 
 export type PrepItem = {

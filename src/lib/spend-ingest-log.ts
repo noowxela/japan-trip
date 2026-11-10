@@ -25,6 +25,8 @@ export type SpendIngestAttempt = {
   authOk: boolean;
   expenseId?: string;
   duplicate?: boolean;
+  /** True when an explicit ¥0 tap was logged as transit entry/detect (no Notion expense). */
+  entryDetect?: boolean;
 };
 
 const KEY = "japan-trip:spend-ingest-log";

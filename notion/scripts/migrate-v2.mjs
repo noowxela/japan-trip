@@ -152,6 +152,13 @@ if (!spendId) {
 						single_property: {},
 					},
 				},
+				Place: {
+					relation: {
+						data_source_id: placesId,
+						type: "single_property",
+						single_property: {},
+					},
+				},
 				Start: { date: {} },
 				"Paid by": { select: { options: [] } },
 				Notes: { rich_text: {} },
@@ -171,6 +178,13 @@ if (spendId) {
 		]),
 		Start: { date: {} },
 		"Paid by": { select: { options: [] } },
+		Place: {
+			relation: {
+				data_source_id: placesId,
+				type: "single_property",
+				single_property: {},
+			},
+		},
 	});
 }
 

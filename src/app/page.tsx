@@ -124,7 +124,7 @@ export default async function OverviewPage() {
           prep,
         })}
       />
-      <QuickExpenseTripSync days={days} people={people} />
+      <QuickExpenseTripSync days={days} people={people} places={places} />
       <PageShell>
         <PageHeader
           eyebrow={t(locale, "overview.eyebrow")}

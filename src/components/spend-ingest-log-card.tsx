@@ -22,11 +22,17 @@ function formatWhen(iso: string, locale: Locale) {
 
 function statusLabel(row: SpendIngestAttempt, locale: Locale) {
   if (row.ok) {
+    if (row.entryDetect) return t(locale, "ingestLog.entryDetect");
     return row.duplicate
       ? t(locale, "ingestLog.duplicate")
       : t(locale, "ingestLog.ok");
   }
   return t(locale, "ingestLog.fail");
+}
+
+function statusClass(row: SpendIngestAttempt) {
+  if (row.entryDetect) return "text-ink";
+  return row.ok ? "text-ok" : "text-accent";
 }
 
 export function SpendIngestLogCard({
@@ -74,9 +80,7 @@ export function SpendIngestLogCard({
               >
                 <div className="flex items-baseline justify-between gap-2">
                   <span
-                    className={`text-[12px] font-semibold ${
-                      row.ok ? "text-ok" : "text-accent"
-                    }`}
+                    className={`text-[12px] font-semibold ${statusClass(row)}`}
                   >
                     {statusLabel(row, locale)}
                   </span>

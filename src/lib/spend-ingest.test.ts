@@ -26,13 +26,22 @@ describe("parseWalletAmount", () => {
     expect(parseWalletAmount(240)).toBe(240);
   });
 
-  it("rejects empty or non-positive values", () => {
+  it("rejects empty, invalid, or negative values", () => {
     expect(parseWalletAmount("")).toBeNull();
     expect(parseWalletAmount("abc")).toBeNull();
     expect(parseWalletAmount("¥")).toBeNull();
-    expect(parseWalletAmount(0)).toBeNull();
     expect(parseWalletAmount(-40)).toBeNull();
     expect(parseWalletAmount(null)).toBeNull();
+  });
+
+  it("keeps an explicit zero distinct from missing/invalid", () => {
+    expect(parseWalletAmount(0)).toBe(0);
+    expect(parseWalletAmount("0")).toBe(0);
+    expect(parseWalletAmount("¥0")).toBe(0);
+    expect(parseWalletAmount("0円")).toBe(0);
+    expect(parseWalletAmount("0.00")).toBe(0);
+    expect(parseWalletAmount({ amount: 0, currency: "JPY" })).toBe(0);
+    expect(parseWalletAmount({ Amount: "¥0", CurrencyCode: "JPY" })).toBe(0);
   });
 
   it("unwraps nested Currency Amount dictionaries", () => {
@@ -136,7 +145,7 @@ describe("planSpendIngest", () => {
   it("applies Wise defaults and uses the card as the name when merchant is missing", () => {
     const result = planSpendIngest({ amount: "1,080円", card: "Wise" });
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok || result.entryDetect) return;
     expect(result.plan).toMatchObject({
       amount: 1080,
       name: "Wise",
@@ -155,6 +164,35 @@ describe("planSpendIngest", () => {
     });
   });
 
+  it("treats an explicit zero as a transit entry detect, not a booking", () => {
+    const result = planSpendIngest({
+      amount: 0,
+      merchant: "JR East",
+      card: "Suica",
+    });
+    expect(result).toEqual({
+      ok: true,
+      entryDetect: true,
+      amount: 0,
+      name: "JR East",
+      merchant: "JR East",
+      card: "Suica",
+    });
+  });
+
+  it("treats Wallet-style ¥0 strings and nested objects as entry detect", () => {
+    for (const amount of ["¥0", "0円", { amount: 0, currency: "JPY" }]) {
+      const result = planSpendIngest({ amount, card: "Suica" });
+      expect(result.ok).toBe(true);
+      if (!result.ok || !result.entryDetect) {
+        throw new Error("expected entry detect");
+      }
+      expect(result.amount).toBe(0);
+      expect(result.card).toBe("Suica");
+      expect(result.name).toBe("Suica");
+    }
+  });
+
   it("parses nested Wallet Currency Amount objects", () => {
     const result = planSpendIngest({
       amount: { amount: 350, currency: "JPY" },
@@ -162,7 +200,7 @@ describe("planSpendIngest", () => {
       card: "Suica",
     });
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok || result.entryDetect) return;
     expect(result.plan).toMatchObject({
       amount: 350,
       name: "Seven-Eleven",
@@ -178,7 +216,7 @@ describe("planSpendIngest", () => {
       "Card or Pass": "Suica",
     });
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok || result.entryDetect) return;
     expect(result.plan).toMatchObject({
       amount: 480,
       name: "京都地下鉄",
@@ -197,7 +235,7 @@ describe("planSpendIngest", () => {
       },
     });
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok || result.entryDetect) return;
     expect(result.plan).toMatchObject({
       amount: 1200,
       name: "FamilyMart",
@@ -288,7 +326,7 @@ describe("empty Shortcut JSON placeholders", () => {
     );
     const result = planSpendIngest(merged);
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok || result.entryDetect) return;
     expect(result.plan).toMatchObject({
       amount: 230,
       name: "Bus",
@@ -320,7 +358,7 @@ describe("empty Shortcut JSON placeholders", () => {
       },
     });
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok || result.entryDetect) return;
     expect(result.plan).toMatchObject({
       amount: 230,
       name: "Bus",

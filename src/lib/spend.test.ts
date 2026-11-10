@@ -20,6 +20,7 @@ const item = (
   start: partial.start ?? null,
   paidBy: partial.paidBy ?? null,
   splitWith: partial.splitWith ?? [],
+  placeId: partial.placeId ?? null,
   ...partial,
 });
 

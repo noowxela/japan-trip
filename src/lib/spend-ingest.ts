@@ -51,7 +51,7 @@ function pickString(record: Record<string, unknown>, ...names: string[]): string
  */
 export function parseWalletAmount(raw: unknown, depth = 0): number | null {
   if (typeof raw === "number") {
-    return Number.isFinite(raw) && raw > 0 ? raw : null;
+    return Number.isFinite(raw) && raw >= 0 ? raw : null;
   }
   if (typeof raw === "string") {
     let text = raw.trim();
@@ -77,7 +77,7 @@ export function parseWalletAmount(raw: unknown, depth = 0): number | null {
     text = text.replace(/,/g, "");
     if (!text) return null;
     const amount = Number(text);
-    if (!Number.isFinite(amount) || amount <= 0) return null;
+    if (!Number.isFinite(amount) || amount < 0) return null;
     return amount;
   }
   if (depth >= 2) return null;
@@ -460,9 +460,30 @@ export type SpendIngestPlan = {
   paidBy: string;
 };
 
+/** Suica/train gate-in: an explicit ¥0 amount, not a missing Shortcuts field. */
+export type SpendIngestEntryDetect = {
+  ok: true;
+  entryDetect: true;
+  amount: 0;
+  name: string;
+  merchant: string;
+  card: string;
+};
+
+export type SpendIngestResult =
+  | { ok: true; entryDetect?: false; plan: SpendIngestPlan }
+  | SpendIngestEntryDetect
+  | { ok: false; error: string; status: 400 };
+
+export function isSpendIngestPlan(
+  result: SpendIngestResult,
+): result is { ok: true; entryDetect?: false; plan: SpendIngestPlan } {
+  return result.ok === true && !result.entryDetect;
+}
+
 export function planSpendIngest(
   input: Record<string, unknown>,
-): { ok: true; plan: SpendIngestPlan } | { ok: false; error: string; status: 400 } {
+): SpendIngestResult {
   const diag = diagnoseIngestPayload(input);
   const record = normalizeIngestPayload(stripEmptyStrings(input));
   const fields = extractIngestFields(record);
@@ -474,6 +495,26 @@ export function planSpendIngest(
       ? 'amount was empty (Shortcuts sent "" — put Currency Amount in a Text action first, or pass ?amount= in the URL)'
       : "A valid amount is required";
     return { ok: false, error, status: 400 };
+  }
+
+  if (fields.amount === 0) {
+    const merchant = fields.merchant;
+    const card = fields.card;
+    const defaults = defaultsForCard(card);
+    const name = ingestExpenseName({
+      merchant,
+      name: fields.name,
+      card,
+      category: defaults.category,
+    });
+    return {
+      ok: true,
+      entryDetect: true,
+      amount: 0,
+      name,
+      merchant,
+      card,
+    };
   }
 
   const merchant = fields.merchant;

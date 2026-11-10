@@ -26,11 +26,25 @@ describe("spend ingest attempt shape", () => {
         authOk: false,
         error: "Unauthorized (missing Authorization Bearer header)",
       },
+      {
+        at: "2026-11-09T02:02:00.000Z",
+        ok: true,
+        status: 200,
+        amount: 0,
+        name: "JR East",
+        card: "Suica",
+        authPresent: true,
+        authOk: true,
+        entryDetect: true,
+      },
     ];
     expect(rows[0].ok).toBe(true);
     expect(rows[0].name).toBe("Tokyo Metro");
     expect(rows[0].raw).toContain("currency");
     expect(rows[1].authPresent).toBe(false);
+    expect(rows[2].entryDetect).toBe(true);
+    expect(rows[2].amount).toBe(0);
+    expect(rows[2].ok).toBe(true);
   });
 });
 

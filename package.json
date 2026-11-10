@@ -14,7 +14,8 @@
     "sync:place-maps": "node notion/scripts/sync-place-maps.mjs",
     "migrate:transit-visited": "node notion/scripts/add-transit-visited.mjs",
     "migrate:skipped": "node notion/scripts/add-skipped.mjs",
-    "migrate:stay-maps": "node notion/scripts/add-stay-maps.mjs"
+    "migrate:stay-maps": "node notion/scripts/add-stay-maps.mjs",
+    "migrate:spend-place": "node notion/scripts/add-spend-place.mjs"
   },
   "dependencies": {
     "@notionhq/client": "^5.25.2",

@@ -117,6 +117,42 @@ async function withSplitWithFallback<T>(
   }
 }
 
+function placeIdFrom(formData: FormData) {
+  return String(formData.get("placeId") ?? "").trim();
+}
+
+function placeProp(placeId: string) {
+  return { Place: { relation: placeId ? [{ id: placeId }] : [] } };
+}
+
+/**
+ * Until `npm run migrate:spend-place` adds a Spend→Places `Place` relation,
+ * or if the linked page is gone, retry the write without it.
+ */
+async function withPlaceFallback<T>(
+  write: (includePlace: boolean) => Promise<T>,
+): Promise<T> {
+  try {
+    return await write(true);
+  } catch (error) {
+    if (
+      !APIResponseError.isAPIResponseError(error) ||
+      error.code !== APIErrorCode.ValidationError
+    ) {
+      throw error;
+    }
+    const message = error.message;
+    const mentionsPlace = message.includes("Place");
+    const relationIssue =
+      /relation|related page|could not find page/i.test(message);
+    if (!mentionsPlace && !relationIssue) throw error;
+    console.warn(
+      "Spend Place relation skipped; run npm run migrate:spend-place if the column is missing",
+    );
+    return write(false);
+  }
+}
+
 function startValue(formData: FormData) {
   const start = String(formData.get("start") ?? "").trim();
   const time = String(formData.get("time") ?? "").trim();
@@ -870,6 +906,7 @@ export async function addSpend(formData: FormData): Promise<ActionResult> {
   const dayId = String(formData.get("dayId") ?? "").trim();
   const paidBy = String(formData.get("paidBy") ?? "").trim();
   const splitWith = splitWithFrom(formData);
+  const placeId = placeIdFrom(formData);
   const currency = parseSpendCurrency(String(formData.get("currency") ?? ""));
   const amount = Number(amountRaw);
   const clientCreatedAt = String(formData.get("clientCreatedAt") ?? "").trim();
@@ -899,23 +936,26 @@ export async function addSpend(formData: FormData): Promise<ActionResult> {
   try {
     const notion = getNotion();
     created = await withSplitWithFallback((includeSplit) =>
-      notion.pages.create({
-        parent: { data_source_id: ds("SPEND") },
-        properties: {
-          Name: titleProp(name),
-          Amount: { number: amount },
-          Currency: { select: { name: currency } },
-          ...(kind ? { Kind: { select: { name: kind } } } : {}),
-          ...(category ? { Category: { select: { name: category } } } : {}),
-          ...(notes ? { Notes: textProp(notes) } : {}),
-          ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
-          ...(start ? { Start: startProp(start) } : {}),
-          ...(paidBy ? { "Paid by": { select: { name: paidBy } } } : {}),
-          ...(includeSplit && splitWith.length > 0
-            ? splitWithProp(splitWith)
-            : {}),
-        },
-      }),
+      withPlaceFallback((includePlace) =>
+        notion.pages.create({
+          parent: { data_source_id: ds("SPEND") },
+          properties: {
+            Name: titleProp(name),
+            Amount: { number: amount },
+            Currency: { select: { name: currency } },
+            ...(kind ? { Kind: { select: { name: kind } } } : {}),
+            ...(category ? { Category: { select: { name: category } } } : {}),
+            ...(notes ? { Notes: textProp(notes) } : {}),
+            ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
+            ...(start ? { Start: startProp(start) } : {}),
+            ...(paidBy ? { "Paid by": { select: { name: paidBy } } } : {}),
+            ...(includeSplit && splitWith.length > 0
+              ? splitWithProp(splitWith)
+              : {}),
+            ...(includePlace && placeId ? placeProp(placeId) : {}),
+          },
+        }),
+      ),
     );
   } catch (error) {
     return spendActionError(error);
@@ -936,6 +976,7 @@ export async function updateSpend(formData: FormData): Promise<ActionResult> {
   const dayId = String(formData.get("dayId") ?? "").trim();
   const paidBy = String(formData.get("paidBy") ?? "").trim();
   const splitWith = splitWithFrom(formData);
+  const placeId = placeIdFrom(formData);
   const currency = parseSpendCurrency(String(formData.get("currency") ?? ""));
   const amount = Number(amountRaw);
   const start = spendStartValue(formData);
@@ -944,21 +985,24 @@ export async function updateSpend(formData: FormData): Promise<ActionResult> {
   try {
     const notion = getNotion();
     await withSplitWithFallback((includeSplit) =>
-      notion.pages.update({
-        page_id: id,
-        properties: {
-          Name: titleProp(name),
-          Amount: { number: amount },
-          Currency: { select: { name: currency } },
-          Kind: { select: kind ? { name: kind } : null },
-          Category: { select: category ? { name: category } : null },
-          Notes: textProp(notes),
-          Day: { relation: dayId ? [{ id: dayId }] : [] },
-          Start: startProp(start || null),
-          "Paid by": { select: paidBy ? { name: paidBy } : null },
-          ...(includeSplit ? splitWithProp(splitWith) : {}),
-        },
-      }),
+      withPlaceFallback((includePlace) =>
+        notion.pages.update({
+          page_id: id,
+          properties: {
+            Name: titleProp(name),
+            Amount: { number: amount },
+            Currency: { select: { name: currency } },
+            Kind: { select: kind ? { name: kind } : null },
+            Category: { select: category ? { name: category } : null },
+            Notes: textProp(notes),
+            Day: { relation: dayId ? [{ id: dayId }] : [] },
+            Start: startProp(start || null),
+            "Paid by": { select: paidBy ? { name: paidBy } : null },
+            ...(includeSplit ? splitWithProp(splitWith) : {}),
+            ...(includePlace ? placeProp(placeId) : {}),
+          },
+        }),
+      ),
     );
   } catch (error) {
     return spendActionError(error);

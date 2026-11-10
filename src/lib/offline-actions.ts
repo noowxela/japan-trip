@@ -71,6 +71,7 @@ export function spendPayloadFromForm(formData: FormData): AddSpendPayload {
       .getAll("splitWith")
       .map((value) => String(value).trim())
       .filter(Boolean),
+    placeId: String(formData.get("placeId") ?? "").trim(),
     dayDate: String(formData.get("dayDate") ?? "").trim().slice(0, 10),
     time: String(formData.get("time") ?? "").trim(),
   });
@@ -90,6 +91,7 @@ export function formDataFromSpendPayload(
   formData.set("dayId", payload.dayId);
   formData.set("paidBy", payload.paidBy);
   for (const name of payload.splitWith ?? []) formData.append("splitWith", name);
+  if (payload.placeId) formData.set("placeId", payload.placeId);
   if (payload.dayDate) formData.set("dayDate", payload.dayDate);
   if (payload.time) formData.set("time", payload.time);
   formData.set("clientId", payload.clientId);
@@ -115,6 +117,7 @@ export function optimisticSpendFromPayload(payload: AddSpendPayload): SpendItem 
     start: payload.createdAt,
     paidBy: payload.paidBy || null,
     splitWith: payload.splitWith ?? [],
+    placeId: payload.placeId?.trim() || null,
   };
 }
 

@@ -8,6 +8,7 @@ import { ChipGroup } from "@/components/chip-group";
 import { SpendAmountField } from "@/components/spend-amount-field";
 import { useSlideIn } from "@/components/slide-in-page";
 import { SplitWithField } from "@/components/split-with-field";
+import { FoodPlaceField } from "@/components/food-place-field";
 import { DatePicker } from "@/components/date-picker";
 import { useEditSession } from "@/components/edit-session";
 import { useT } from "@/components/i18n-provider";
@@ -21,7 +22,7 @@ import {
 } from "@/components/page-shell";
 import { dateKey, formatTime, tokyoToday } from "@/lib/format";
 import { labelCategory } from "@/lib/i18n/dictionaries";
-import { SPEND_CATEGORIES, type SpendItem, type TripDay } from "@/lib/types";
+import { SPEND_CATEGORIES, type Place, type SpendItem, type TripDay } from "@/lib/types";
 
 function dateForDayId(days: TripDay[], dayId: string) {
   return dateKey(days.find((day) => day.id === dayId)?.date ?? null);
@@ -48,6 +49,7 @@ export function SpendForm({
   item,
   days,
   people = [],
+  places = [],
   defaultDayId = "",
   onSuccess,
   focusCategory = false,
@@ -55,6 +57,7 @@ export function SpendForm({
   item?: SpendItem;
   days: TripDay[];
   people?: string[];
+  places?: Place[];
   defaultDayId?: string;
   onSuccess?: () => void;
   /** Highlight category chips (Apple Pay notification deep link). */
@@ -78,6 +81,7 @@ export function SpendForm({
     item?.paidBy ?? editorName ?? people[0] ?? "",
   );
   const [splitWith, setSplitWith] = useState<string[]>(item?.splitWith ?? []);
+  const [placeId, setPlaceId] = useState(item?.placeId ?? "");
   const dayId = dayIdForDate(days, dayDate);
   const matchedDay = days.find((day) => day.id === dayId);
   useEffect(() => {
@@ -162,13 +166,27 @@ export function SpendForm({
               ? (category as (typeof SPEND_CATEGORIES)[number])
               : "Food"
           }
-          onChange={setCategory}
+          onChange={(next) => {
+            setCategory(next);
+            if (next !== "Food") setPlaceId("");
+          }}
           options={SPEND_CATEGORIES.map((value) => ({
             value,
             label: labelCategory(locale, value) ?? value,
           }))}
         />
         </div>
+
+        {category === "Food" ? (
+          <FoodPlaceField
+            places={places}
+            dayId={dayId}
+            value={placeId}
+            onChange={setPlaceId}
+          />
+        ) : (
+          <input type="hidden" name="placeId" value="" />
+        )}
 
         <label className="grid gap-1">
           <span className="text-[12px] font-medium text-ink-muted">

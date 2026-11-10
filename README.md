@@ -34,6 +34,16 @@ npm run migrate:stay-maps
 
 If secrets cannot decrypt here, add those three properties manually on the Stays database. Until they exist, saving a stay with a Maps link shows a toast pointing at this migrate (it no longer surfaces as React #441).
 
+Spend can optionally link a food expense to a same-day Food/Cafe place on the schedule. That needs a relation property named exactly `Place` on the Spend data source, pointing at Places. The one-shot migrate only adds the schema — it does not change existing rows:
+
+```bash
+npm run migrate:spend-place
+```
+
+If that command cannot reach Notion, add the `Place` relation manually. Until it exists, adding a food expense still saves; the place link is skipped.
+
+Wallet / Shortcuts ingest: an explicit ¥0 amount (train gate-in / detect) is logged as a successful entry detect and does not create a Notion expense. A missing or empty amount still returns 400 so real fares are not silently skipped.
+
 ## Run
 
 ```bash

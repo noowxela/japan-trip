@@ -12,7 +12,8 @@ import { getLocale } from "@/lib/i18n/server";
 import { NotionNotReady } from "@/components/notion-not-ready";
 import { notionReady } from "@/lib/notion";
 import { spendWhen } from "@/lib/spend";
-import { getDays, getEditorNames, getSpendItem } from "@/lib/trip";
+import { linkedPlaceLabel } from "@/lib/spend-place";
+import { getDays, getEditorNames, getPlaces, getSpendItem } from "@/lib/trip";
 
 export const dynamic = "force-dynamic";
 
@@ -32,12 +33,13 @@ export default async function ExpenseDetailPage({
   const focus = await searchParams;
   const focusCategory = focus.focus === "category";
   if (id === "new") redirect("/budget");
-  const [item, days, editor, fx, people] = await Promise.all([
+  const [item, days, editor, fx, people, places] = await Promise.all([
     getSpendItem(id),
     getDays(),
     getEditorSession(),
     getMyrToJpy(),
     getEditorNames(),
+    getPlaces(),
   ]);
   if (!item) notFound();
 
@@ -54,6 +56,15 @@ export default async function ExpenseDetailPage({
     },
     { label: t(locale, "form.time"), value: time || "—" },
   ];
+  const placeLabel = linkedPlaceLabel(item, places);
+  if (placeLabel) {
+    rows.splice(1, 0, {
+      label: t(locale, "form.foodPlace"),
+      value: placeLabel.missing
+        ? t(locale, "form.foodPlaceMissing")
+        : placeLabel.name,
+    });
+  }
 
   return (
     <PageShell className="pt-4">
@@ -64,6 +75,7 @@ export default async function ExpenseDetailPage({
           <p className="mt-0.5 truncate text-[12px] text-ink-muted">
             {[
               labelCategory(locale, item.category),
+              placeLabel && !placeLabel.missing ? placeLabel.name : null,
               item.paidBy,
               dayName,
             ]
@@ -78,6 +90,7 @@ export default async function ExpenseDetailPage({
           item={item}
           days={days}
           people={people}
+          places={places}
           focusCategory={focusCategory}
         />
       ) : (

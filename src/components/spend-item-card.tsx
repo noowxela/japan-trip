@@ -14,7 +14,8 @@ import {
   type GestureOrigin,
 } from "@/lib/haptic";
 import { toRm } from "@/lib/spend";
-import { JPY_PER_RM, type SpendItem } from "@/lib/types";
+import { linkedPlaceLabel } from "@/lib/spend-place";
+import { JPY_PER_RM, type Place, type SpendItem } from "@/lib/types";
 
 export function SpendItemCard({
   item,
@@ -22,6 +23,7 @@ export function SpendItemCard({
   displayYen = false,
   compact = false,
   timeLabel,
+  places = [],
 }: {
   item: SpendItem;
   jpyPerRm?: number;
@@ -29,10 +31,16 @@ export function SpendItemCard({
   compact?: boolean;
   /** Optional time shown before the icon on compact rows (no leading bullet). */
   timeLabel?: string | null;
+  places?: Place[];
 }) {
   const { t, locale } = useT();
   const gesture = useRef<GestureOrigin | null>(null);
   const pendingSync = item.id.startsWith("outbox:");
+  const place = linkedPlaceLabel(item, places);
+  const placeChip =
+    place && !place.missing && place.name && place.name !== item.name
+      ? place.name
+      : null;
 
   const onPointerDown = (event: PointerEvent<HTMLAnchorElement>) => {
     if (!event.isPrimary) return;
@@ -85,6 +93,11 @@ export function SpendItemCard({
               {item.paidBy}
             </span>
           ) : null}
+          {placeChip ? (
+            <span className="shrink-0 rounded-full bg-canvas px-1.5 py-px text-[10px] font-medium text-ink-muted">
+              {placeChip}
+            </span>
+          ) : null}
         </p>
       </div>
       <SpendAmounts
@@ -111,6 +124,11 @@ export function SpendItemCard({
           {item.paidBy ? (
             <span className="w-fit rounded-full bg-canvas px-2 py-0.5 text-[11px] font-medium text-ink-muted">
               {item.paidBy}
+            </span>
+          ) : null}
+          {placeChip ? (
+            <span className="w-fit rounded-full bg-canvas px-2 py-0.5 text-[11px] font-medium text-ink-muted">
+              {placeChip}
             </span>
           ) : null}
         </div>
