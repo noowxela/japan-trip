@@ -124,6 +124,20 @@ export function BottomNav() {
             <Link
               key={tab.href}
               href={tab.href}
+              onClick={(event) => {
+                if (pathname !== "/" || tab.href === "/") return;
+                if (
+                  event.metaKey ||
+                  event.ctrlKey ||
+                  event.shiftKey ||
+                  event.altKey ||
+                  event.button !== 0
+                ) {
+                  return;
+                }
+                event.preventDefault();
+                window.location.assign(tab.href);
+              }}
               className={`notebook-press flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-medium leading-tight transition-transform motion-reduce:transition-none ${
                 active
                   ? "scale-[1.02] text-accent"

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { OverviewExpenseFab } from "@/components/add-spend-form";
+import { OverviewHardNav } from "@/components/overview-hard-nav";
 import { OverviewPullRefresh } from "@/components/overview-pull-refresh";
 import { EditorLockButton } from "@/components/editor-lock-button";
 import { EmptyState } from "@/components/empty-state";
@@ -115,6 +116,7 @@ export default async function OverviewPage() {
 
   return (
     <>
+      <OverviewHardNav />
       <TripCacheSync
         snapshot={makeTripSnapshot({
           days,
