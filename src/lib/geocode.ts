@@ -123,6 +123,65 @@ function cleanGeocodeQuery(query: string) {
   return latin || query;
 }
 
+const COUNTRY_PART = /^(japan|日本|nippon|nihon)$/i;
+const POSTAL_PART = /^\d{3}-?\d{4}$/;
+
+/** Build Nominatim queries from a Maps q= label (name + address). */
+export function mapsGeocodeQueries(label: string): string[] {
+  const raw = label.replace(/\s+/g, " ").trim();
+  if (!raw) return [];
+
+  const parts = raw
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const withoutCountry = parts.filter((part) => !COUNTRY_PART.test(part));
+  const queries: string[] = [];
+  const add = (value: string) => {
+    const next = value.replace(/\s+/g, " ").trim();
+    if (next.length >= 3 && !queries.includes(next)) queries.push(next);
+  };
+
+  add(raw);
+  const noCountry = withoutCountry.join(", ");
+  if (noCountry) add(noCountry);
+
+  // First clause is usually the shop name; the rest is the street address.
+  if (withoutCountry.length >= 2 && !/^\d/.test(withoutCountry[0] ?? "")) {
+    add(withoutCountry.slice(1).join(", "));
+  }
+
+  const streetIdx = withoutCountry.findIndex((part, index) => {
+    if (/^\d/.test(part)) return true;
+    // First clause is the shop name (e.g. "... Kawaramachi"), not the street.
+    if (index === 0) return false;
+    return /(cho|machi|丁目|町|番地)\b/i.test(part) || /[丁目町]/.test(part);
+  });
+  if (streetIdx >= 0) {
+    add(
+      withoutCountry
+        .slice(streetIdx)
+        .filter((part) => !POSTAL_PART.test(part))
+        .join(", "),
+    );
+  }
+
+  if (withoutCountry[0]) add(withoutCountry[0]);
+  return queries;
+}
+
+function mapsPlaceName(label: string) {
+  return label.split(",")[0]?.trim() || label;
+}
+
+async function geocodeMapsLabel(label: string) {
+  for (const query of mapsGeocodeQueries(label)) {
+    const hits = await searchPlacesJapan(query);
+    if (hits[0]) return hits[0];
+  }
+  return null;
+}
+
 async function followMapsRedirects(start: string, maxHops = 5): Promise<string> {
   let current = start;
   for (let hop = 0; hop < maxHops; hop++) {
@@ -149,13 +208,14 @@ async function followMapsRedirects(start: string, maxHops = 5): Promise<string> 
     }
     if (response.ok) {
       const html = await response.text();
-      const fromBody = extractGoogleMapsUrl(html);
-      if (fromBody && fromBody !== current) {
-        current = fromBody;
-        continue;
-      }
+      // Only trust an explicit pin in the page. Viewport / center= values in
+      // the Maps shell (often the viewer's city) are not the place.
       const inPage = parseGoogleMapsLocation(html);
-      if (inPage.lat != null && inPage.lng != null) {
+      if (
+        inPage.lat != null &&
+        inPage.lng != null &&
+        /(?:^|[!/?&])3d-?\d+(?:\.\d+)?[!/]4d-?\d+/i.test(html)
+      ) {
         return mapsSearchUrl(inPage.lat, inPage.lng);
       }
     }
@@ -205,10 +265,10 @@ export async function resolveGoogleMapsUrl(
   }
 
   if (parsed.name) {
-    const geo = await geocodeJapan(parsed.name);
+    const geo = await geocodeMapsLabel(parsed.name);
     if (geo) {
       return {
-        name: parsed.name,
+        name: mapsPlaceName(parsed.name),
         displayName: parsed.name,
         lat: geo.lat,
         lng: geo.lng,
