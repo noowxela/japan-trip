@@ -28,3 +28,18 @@ describe("agenda.editItem", () => {
     expect(t("zh", "agenda.editItem")).toBe("编辑行程");
   });
 });
+
+describe("ingestLog pagination copy", () => {
+  it("has zh and en range and pager labels", () => {
+    expect(t("en", "ingestLog.pageRange", { from: 1, to: 10, total: 25 })).toBe(
+      "1–10 of 25",
+    );
+    expect(t("zh", "ingestLog.pageRange", { from: 1, to: 10, total: 25 })).toBe(
+      "第 1–10 条，共 25 条",
+    );
+    expect(t("en", "ingestLog.prev")).toBe("Previous");
+    expect(t("zh", "ingestLog.prev")).toBe("上一页");
+    expect(t("en", "ingestLog.next")).toBe("Next");
+    expect(t("zh", "ingestLog.next")).toBe("下一页");
+  });
+});

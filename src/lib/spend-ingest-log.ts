@@ -32,6 +32,40 @@ export type SpendIngestAttempt = {
 const KEY = "japan-trip:spend-ingest-log";
 const MAX = 40;
 
+export const INGEST_LOG_PAGE_SIZE = 10;
+
+export type IngestLogPage<T> = {
+  page: number;
+  pageCount: number;
+  slice: T[];
+  from: number;
+  to: number;
+  total: number;
+};
+
+/** Newest-first page of ingest attempts. Page 1 is the latest records. */
+export function paginateIngestLog<T>(
+  rows: T[],
+  page: number,
+  pageSize = INGEST_LOG_PAGE_SIZE,
+): IngestLogPage<T> {
+  const total = rows.length;
+  const size = Math.max(1, pageSize);
+  const pageCount = Math.max(1, Math.ceil(total / size));
+  const safePage = Math.min(Math.max(1, Number.isFinite(page) ? Math.trunc(page) : 1), pageCount);
+  const start = total === 0 ? 0 : (safePage - 1) * size;
+  const slice = rows.slice(start, start + size);
+  return {
+    page: safePage,
+    pageCount,
+    slice,
+    from: total === 0 ? 0 : start + 1,
+    to: start + slice.length,
+    total,
+  };
+}
+
+
 function kvEnv(): { url: string; token: string } | null {
   const url =
     process.env.KV_REST_API_URL?.trim() ||
