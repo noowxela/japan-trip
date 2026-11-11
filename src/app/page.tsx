@@ -13,6 +13,7 @@ import {
   TripCompleteRow,
 } from "@/components/overview-cards";
 import { PageHeader, SummaryStrip } from "@/components/compact";
+import { OverviewDayCards } from "@/components/overview-day-cards";
 import { QuickExpenseTripSync } from "@/components/quick-expense-provider";
 import { TripCacheSync } from "@/components/trip-cache-sync";
 import { PageShell } from "@/components/page-shell";
@@ -161,6 +162,8 @@ export default async function OverviewPage() {
             initialNowMs={now.getTime()}
           />
         </SummaryStrip>
+
+        <OverviewDayCards days={dated} today={today} locale={locale} />
 
         {phase === "after" ? (
           <div className="grid gap-2">

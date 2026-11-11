@@ -62,3 +62,31 @@ describe("clothes, gifts, checkout, and airfare copy", () => {
     expect(t("zh", "cat.Airfare")).toBe("飞机票");
   });
 });
+
+describe("overview day cards and eSIM copy", () => {
+  it("has zh and en labels", () => {
+    expect(t("en", "overview.dayCards")).toBe("Trip days");
+    expect(t("zh", "overview.dayCards")).toBe("行程日");
+    expect(t("en", "overview.dayCardAria", { n: 7, date: "Thu 12 Nov" })).toBe(
+      "Day 7, Thu 12 Nov",
+    );
+    expect(t("zh", "overview.dayCardAria", { n: 7, date: "11月12日 周四" })).toBe(
+      "第7天，11月12日 周四",
+    );
+    expect(t("en", "overview.dayCardTodayAria", { n: 7, date: "Thu 12 Nov" })).toBe(
+      "Day 7, Thu 12 Nov, today",
+    );
+    expect(t("zh", "overview.dayCardTodayAria", { n: 7, date: "11月12日 周四" })).toBe(
+      "第7天，11月12日 周四，今天",
+    );
+    expect(t("en", "esim.title")).toBe("eSIM");
+    expect(t("zh", "esim.title")).toBe("eSIM");
+    expect(t("en", "esim.add")).toBe("Add plan");
+    expect(t("zh", "esim.add")).toBe("添加套餐");
+    expect(t("en", "esim.expired")).toBe("Expired");
+    expect(t("zh", "esim.expired")).toBe("已过期");
+    expect(t("en", "esim.validUntil", { date: "20 Nov" })).toBe("Valid until 20 Nov");
+    expect(t("zh", "esim.validUntil", { date: "11月20日" })).toBe("有效期至 11月20日");
+  });
+});
+

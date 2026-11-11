@@ -859,6 +859,29 @@ const en = {
   "overview.checkedOut": "Checked out",
   "overview.markCheckedOut": "Checked out",
   "overview.checkedOutToast": "Marked as checked out",
+
+  "overview.dayCards": "Trip days",
+  "overview.dayCardAria": "Day {n}, {date}",
+  "overview.dayCardTodayAria": "Day {n}, {date}, today",
+
+  "esim.title": "eSIM",
+  "esim.add": "Add plan",
+  "esim.edit": "Edit plan",
+  "esim.delete": "Delete plan",
+  "esim.empty": "No eSIM plan saved yet.",
+  "esim.name": "Name / provider",
+  "esim.namePlaceholder": "Plan or provider name",
+  "esim.data": "Data",
+  "esim.dataPlaceholder": "e.g. 10GB",
+  "esim.expiry": "Expiry",
+  "esim.notes": "Notes",
+  "esim.notesPlaceholder": "Activation, ICCID…",
+  "esim.expired": "Expired",
+  "esim.validUntil": "Valid until {date}",
+  "esim.expiresToday": "Expires today",
+  "esim.noExpiry": "No expiry date",
+  "esim.deleteTitle": "Delete this eSIM plan?",
+  "esim.deleteMessage": "Remove “{name}” from this device? You can undo.",
 } as const;
 
 const zh: Record<DictKey, string> = {
@@ -1713,6 +1736,29 @@ const zh: Record<DictKey, string> = {
   "overview.checkedOut": "已退房",
   "overview.markCheckedOut": "已退房",
   "overview.checkedOutToast": "已标记退房",
+
+  "overview.dayCards": "行程日",
+  "overview.dayCardAria": "第{n}天，{date}",
+  "overview.dayCardTodayAria": "第{n}天，{date}，今天",
+
+  "esim.title": "eSIM",
+  "esim.add": "添加套餐",
+  "esim.edit": "编辑套餐",
+  "esim.delete": "删除套餐",
+  "esim.empty": "还没有记录 eSIM 套餐。",
+  "esim.name": "名称 / 运营商",
+  "esim.namePlaceholder": "套餐或运营商名称",
+  "esim.data": "流量",
+  "esim.dataPlaceholder": "例如 10GB",
+  "esim.expiry": "到期日",
+  "esim.notes": "备注",
+  "esim.notesPlaceholder": "开通方式、ICCID…",
+  "esim.expired": "已过期",
+  "esim.validUntil": "有效期至 {date}",
+  "esim.expiresToday": "今天到期",
+  "esim.noExpiry": "未设到期日",
+  "esim.deleteTitle": "删除这个 eSIM 套餐？",
+  "esim.deleteMessage": "从这台设备移除「{name}」？可以撤销。",
 };
 
 export const dictionaries: Record<Locale, Record<DictKey, string>> = {
