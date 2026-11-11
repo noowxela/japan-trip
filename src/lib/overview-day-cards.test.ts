@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  AUTUMN_LEAF_VARIANTS,
+  autumnLeafVariant,
   buildOverviewDayCards,
   currentOverviewDayIndex,
 } from "@/lib/overview-day-cards";
@@ -137,5 +139,23 @@ describe("buildOverviewDayCards", () => {
     expect(cards).toHaveLength(3);
     expect(cards.map((card) => card.state)).toEqual(["past", "today", "future"]);
     expect(currentOverviewDayIndex(cards)).toBe(1);
+  });
+});
+
+describe("autumnLeafVariant", () => {
+  it("cycles maple, rust, amber, gold, and burnt", () => {
+    expect(AUTUMN_LEAF_VARIANTS).toEqual([
+      "maple",
+      "rust",
+      "amber",
+      "gold",
+      "burnt",
+    ]);
+    expect(AUTUMN_LEAF_VARIANTS.map((_, index) => autumnLeafVariant(index))).toEqual(
+      [...AUTUMN_LEAF_VARIANTS],
+    );
+    expect(autumnLeafVariant(5)).toBe("maple");
+    expect(autumnLeafVariant(6)).toBe("rust");
+    expect(autumnLeafVariant(-1)).toBe("burnt");
   });
 });

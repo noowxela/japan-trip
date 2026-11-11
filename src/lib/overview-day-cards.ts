@@ -7,6 +7,23 @@ function datedKey(value: string | null | undefined): string | null {
 
 export type OverviewDayCardState = "past" | "today" | "future";
 
+/** Cycling autumn-leaf tones for past Overview day cards. */
+export const AUTUMN_LEAF_VARIANTS = [
+  "maple",
+  "rust",
+  "amber",
+  "gold",
+  "burnt",
+] as const;
+
+export type AutumnLeafVariant = (typeof AUTUMN_LEAF_VARIANTS)[number];
+
+export function autumnLeafVariant(index: number): AutumnLeafVariant {
+  const count = AUTUMN_LEAF_VARIANTS.length;
+  const normalized = ((index % count) + count) % count;
+  return AUTUMN_LEAF_VARIANTS[normalized]!;
+}
+
 export type OverviewDayCardModel = {
   id: string;
   date: string;

@@ -21,6 +21,16 @@
   --color-sage: var(--line);
   --color-moss: var(--accent);
   --color-hanko: var(--accent);
+  --color-leaf-maple: var(--leaf-maple);
+  --color-leaf-maple-soft: var(--leaf-maple-soft);
+  --color-leaf-rust: var(--leaf-rust);
+  --color-leaf-rust-soft: var(--leaf-rust-soft);
+  --color-leaf-amber: var(--leaf-amber);
+  --color-leaf-amber-soft: var(--leaf-amber-soft);
+  --color-leaf-gold: var(--leaf-gold);
+  --color-leaf-gold-soft: var(--leaf-gold-soft);
+  --color-leaf-burnt: var(--leaf-burnt);
+  --color-leaf-burnt-soft: var(--leaf-burnt-soft);
   --font-sans: var(--font-nunito);
 }
 
@@ -40,6 +50,17 @@
   --surface: #ffffff;
   --canvas: #f6f1e8;
   --line: rgba(60, 40, 20, 0.1);
+  /* Muted autumn leaves for past Overview day cards. */
+  --leaf-maple: #9b3d2c;
+  --leaf-maple-soft: #f4e0d8;
+  --leaf-rust: #8f4528;
+  --leaf-rust-soft: #f3e1d6;
+  --leaf-amber: #8a5a12;
+  --leaf-amber-soft: #f3ead4;
+  --leaf-gold: #7a6418;
+  --leaf-gold-soft: #f0ead0;
+  --leaf-burnt: #a24e1c;
+  --leaf-burnt-soft: #f4e2d2;
   --card-shadow:
     0 1px 2px rgba(60, 40, 20, 0.06), 0 4px 16px rgba(60, 40, 20, 0.05);
   --theme-color: #f6f1e8;
@@ -59,6 +80,16 @@
   --surface: #1e1b18;
   --canvas: #141210;
   --line: rgba(255, 255, 255, 0.08);
+  --leaf-maple: #e39284;
+  --leaf-maple-soft: rgba(227, 146, 132, 0.18);
+  --leaf-rust: #d49272;
+  --leaf-rust-soft: rgba(212, 146, 114, 0.18);
+  --leaf-amber: #d4a04a;
+  --leaf-amber-soft: rgba(212, 160, 74, 0.16);
+  --leaf-gold: #cbb45c;
+  --leaf-gold-soft: rgba(203, 180, 92, 0.16);
+  --leaf-burnt: #e09a62;
+  --leaf-burnt-soft: rgba(224, 154, 98, 0.18);
   --card-shadow:
     0 1px 2px rgba(0, 0, 0, 0.35), 0 4px 16px rgba(0, 0, 0, 0.28);
   --theme-color: #141210;

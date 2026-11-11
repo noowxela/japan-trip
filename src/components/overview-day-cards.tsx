@@ -2,22 +2,37 @@ import Link from "next/link";
 import { formatDay, formatTabDate } from "@/lib/format";
 import { t, type Locale } from "@/lib/i18n/dictionaries";
 import {
+  autumnLeafVariant,
   buildOverviewDayCards,
+  type AutumnLeafVariant,
   type OverviewDatedDay,
   type OverviewDayCardModel,
-  type OverviewDayCardState,
 } from "@/lib/overview-day-cards";
 
-function cardClass(state: OverviewDayCardState) {
+const PAST_LEAF_CLASS: Record<AutumnLeafVariant, string> = {
+  maple: "border-leaf-maple bg-leaf-maple-soft text-leaf-maple",
+  rust: "border-leaf-rust bg-leaf-rust-soft text-leaf-rust",
+  amber: "border-leaf-amber bg-leaf-amber-soft text-leaf-amber",
+  gold: "border-leaf-gold bg-leaf-gold-soft text-leaf-gold",
+  burnt: "border-leaf-burnt bg-leaf-burnt-soft text-leaf-burnt",
+};
+
+function cardClass(card: OverviewDayCardModel) {
   const base =
     "flex h-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg border px-0.5 py-1.5 text-center no-underline outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent";
-  if (state === "today") {
-    return `${base} border-accent bg-accent/10 text-accent`;
+  if (card.state === "today") {
+    return `${base} border-ok bg-ok-soft text-ok`;
   }
-  if (state === "past") {
-    return `${base} border-line bg-surface text-ink-muted opacity-70`;
+  if (card.state === "past") {
+    return `${base} ${PAST_LEAF_CLASS[autumnLeafVariant(card.index)]}`;
   }
   return `${base} border-line bg-surface text-ink`;
+}
+
+function dateClass(card: OverviewDayCardModel) {
+  if (card.state === "today") return "text-ok";
+  if (card.state === "past") return undefined;
+  return "text-ink-muted";
 }
 
 function DayCardLink({
@@ -44,15 +59,13 @@ function DayCardLink({
       href={`/schedule?day=${encodeURIComponent(card.id)}`}
       aria-label={aria}
       aria-current={card.state === "today" ? "date" : undefined}
-      className={cardClass(card.state)}
+      className={cardClass(card)}
     >
       <span className="text-[15px] font-semibold leading-none tabular-nums">
         {card.dayNumber}
       </span>
       <span
-        className={`whitespace-nowrap text-[9px] leading-none tabular-nums ${
-          card.state === "today" ? "text-accent" : "text-ink-muted"
-        }`}
+        className={`whitespace-nowrap text-[9px] leading-none tabular-nums ${dateClass(card) ?? ""}`}
       >
         {formatTabDate(card.date)}
       </span>
