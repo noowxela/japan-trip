@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
+  BEFORE_TRIP_KEY,
   byDay,
+  firstDatedTripDay,
   moneySummary,
   normalizeSplitWith,
   parseSpendCurrency,
   settleUp,
+  timelineGroupLabel,
+  timelineGroups,
   toRm,
 } from "@/lib/spend";
-import type { SpendItem } from "@/lib/types";
+import type { SpendItem, TripDay } from "@/lib/types";
 
 const item = (
   partial: Partial<SpendItem> & Pick<SpendItem, "id" | "amount" | "currency">,
@@ -21,6 +25,17 @@ const item = (
   paidBy: partial.paidBy ?? null,
   splitWith: partial.splitWith ?? [],
   placeId: partial.placeId ?? null,
+  ...partial,
+});
+
+
+const day = (
+  partial: Partial<TripDay> & Pick<TripDay, "id">,
+): TripDay => ({
+  name: partial.name ?? partial.id,
+  date: partial.date ?? null,
+  city: partial.city ?? null,
+  status: partial.status ?? null,
   ...partial,
 });
 
@@ -183,3 +198,126 @@ describe("settleUp", () => {
     });
   });
 });
+
+describe("firstDatedTripDay", () => {
+  it("returns the earliest dated trip day and ignores undated days", () => {
+    const days = [
+      day({ id: "d2", date: "2026-11-09" }),
+      day({ id: "undated" }),
+      day({ id: "d1", date: "2026-11-08" }),
+    ];
+    expect(firstDatedTripDay(days)).toBe("2026-11-08");
+    expect(firstDatedTripDay([])).toBeNull();
+    expect(firstDatedTripDay([day({ id: "x" })])).toBeNull();
+  });
+});
+
+describe("timelineGroups", () => {
+  const days = [
+    day({ id: "d1", name: "Day 1", date: "2026-11-08" }),
+    day({ id: "d2", name: "Day 2", date: "2026-11-09" }),
+  ];
+
+  it("puts undated items and pre-trip purchases in one before-trip group first", () => {
+    const items = [
+      item({ id: "esim", name: "Xummer eSIM", amount: 43, currency: "RM" }),
+      item({
+        id: "flights",
+        name: "Round Trip Flights",
+        amount: 2000,
+        currency: "RM",
+        start: "2026-02-08",
+      }),
+      item({
+        id: "hotel",
+        name: "Mitsui Garden",
+        amount: 800,
+        currency: "RM",
+        start: "2026-08-25",
+      }),
+      item({
+        id: "lunch",
+        name: "Lunch",
+        amount: 20,
+        currency: "RM",
+        dayIds: ["d1"],
+      }),
+      item({
+        id: "after",
+        name: "Souvenir after trip",
+        amount: 15,
+        currency: "RM",
+        start: "2026-11-20",
+      }),
+    ];
+    const groups = timelineGroups(items, days);
+    expect(groups.map((group) => group.key)).toEqual([
+      BEFORE_TRIP_KEY,
+      "2026-11-08",
+      "2026-11-20",
+    ]);
+    const before = groups[0]!;
+    expect(before.date).toBeNull();
+    expect(before.items.map((row) => row.id)).toEqual(["flights", "hotel", "esim"]);
+    expect(before.totalRm).toBe(2843);
+    expect(groups[1]!.items.map((row) => row.id)).toEqual(["lunch"]);
+    expect(groups[2]!.items.map((row) => row.id)).toEqual(["after"]);
+  });
+
+  it("keeps trip-day and on-or-after-first-day items in dated groups", () => {
+    const items = [
+      item({
+        id: "day2",
+        name: "Day 2 dinner",
+        amount: 30,
+        currency: "RM",
+        dayIds: ["d2"],
+      }),
+      item({
+        id: "same-day",
+        name: "Arrival snack",
+        amount: 8,
+        currency: "RM",
+        start: "2026-11-08",
+      }),
+    ];
+    const groups = timelineGroups(items, days);
+    expect(groups.map((group) => group.key)).toEqual(["2026-11-08", "2026-11-09"]);
+    expect(groups.some((group) => group.key === BEFORE_TRIP_KEY)).toBe(false);
+  });
+
+  it("only sends undated items to before-trip when no trip day has a date", () => {
+    const items = [
+      item({ id: "esim", name: "eSIM", amount: 43, currency: "RM" }),
+      item({
+        id: "booked",
+        name: "Flights",
+        amount: 100,
+        currency: "RM",
+        start: "2026-02-08",
+      }),
+    ];
+    const groups = timelineGroups(items, [day({ id: "d1" })]);
+    expect(groups.map((group) => group.key)).toEqual([
+      BEFORE_TRIP_KEY,
+      "2026-02-08",
+    ]);
+    expect(groups[0]!.items.map((row) => row.id)).toEqual(["esim"]);
+    expect(groups[1]!.items.map((row) => row.id)).toEqual(["booked"]);
+  });
+});
+
+describe("timelineGroupLabel", () => {
+  it("labels the before-trip group in zh and en, not as no date", () => {
+    expect(timelineGroupLabel({ key: BEFORE_TRIP_KEY, date: null }, "zh")).toBe(
+      "出发前",
+    );
+    expect(timelineGroupLabel({ key: BEFORE_TRIP_KEY, date: null }, "en")).toBe(
+      "Before trip",
+    );
+    expect(timelineGroupLabel({ key: "2026-11-08", date: "2026-11-08" }, "en")).toBe(
+      "Sun 8 Nov",
+    );
+  });
+});
+

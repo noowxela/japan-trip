@@ -1,4 +1,5 @@
-import { dateKey, formatTime } from "@/lib/format";
+import { dateKey, formatTime, formatTimelineDate } from "@/lib/format";
+import { t, type Locale } from "@/lib/i18n/dictionaries";
 import {
   DEFAULT_SPEND_CURRENCY,
   JPY_PER_RM,
@@ -8,7 +9,8 @@ import {
   type TripDay,
 } from "@/lib/types";
 
-export const UNSCHEDULED_KEY = "unscheduled";
+/** Timeline group for undated spends and purchases before the first trip day. */
+export const BEFORE_TRIP_KEY = "before-trip";
 
 export function parseSpendCurrency(value: string | null): SpendCurrency {
   return value === "Yen" ? "Yen" : DEFAULT_SPEND_CURRENCY;
@@ -67,27 +69,57 @@ export type TimelineGroup = {
   totalRm: number;
 };
 
+export function firstDatedTripDay(days: TripDay[]): string | null {
+  const dates = days
+    .map((day) => dateKey(day.date))
+    .filter((value): value is string => Boolean(value))
+    .sort((a, b) => a.localeCompare(b));
+  return dates[0] ?? null;
+}
+
+function timelineGroupKey(
+  item: SpendItem,
+  days: TripDay[],
+  firstTrip: string | null,
+): string {
+  const when = dateKey(spendWhen(item, days));
+  if (!when || (firstTrip && when < firstTrip)) return BEFORE_TRIP_KEY;
+  return when;
+}
+
+export function timelineGroupLabel(
+  group: Pick<TimelineGroup, "key" | "date">,
+  locale: Locale = "zh",
+): string {
+  if (group.key === BEFORE_TRIP_KEY) return t(locale, "budget.beforeTrip");
+  return formatTimelineDate(group.date, locale) ?? "—";
+}
+
 export function timelineGroups(
   items: SpendItem[],
   days: TripDay[],
   jpyPerRm = JPY_PER_RM,
 ): TimelineGroup[] {
+  const firstTrip = firstDatedTripDay(days);
   const map = new Map<string, SpendItem[]>();
   for (const item of items) {
-    const key = dateKey(spendWhen(item, days)) ?? UNSCHEDULED_KEY;
+    const key = timelineGroupKey(item, days, firstTrip);
     const list = map.get(key) ?? [];
     list.push(item);
     map.set(key, list);
   }
 
   const keys = [...map.keys()].sort((a, b) => {
-    if (a === UNSCHEDULED_KEY) return 1;
-    if (b === UNSCHEDULED_KEY) return -1;
+    if (a === BEFORE_TRIP_KEY) return -1;
+    if (b === BEFORE_TRIP_KEY) return 1;
     return a.localeCompare(b);
   });
 
   return keys.map((key) => {
     const groupItems = (map.get(key) ?? []).slice().sort((a, b) => {
+      const dateA = dateKey(spendWhen(a, days)) ?? "9999-99-99";
+      const dateB = dateKey(spendWhen(b, days)) ?? "9999-99-99";
+      if (dateA !== dateB) return dateA.localeCompare(dateB);
       const timeA = formatTime(spendWhen(a, days)) ?? "99:99";
       const timeB = formatTime(spendWhen(b, days)) ?? "99:99";
       if (timeA !== timeB) return timeA.localeCompare(timeB);
@@ -95,7 +127,7 @@ export function timelineGroups(
     });
     return {
       key,
-      date: key === UNSCHEDULED_KEY ? null : key,
+      date: key === BEFORE_TRIP_KEY ? null : key,
       items: groupItems,
       totalRm: sumRm(groupItems, undefined, jpyPerRm),
     };

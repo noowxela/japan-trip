@@ -8,12 +8,11 @@ import { yenForMyr } from "@/lib/exchange";
 import {
   formatRm,
   formatTime,
-  formatTimelineDate,
   formatYen,
   isPastTripDay,
   tokyoToday,
 } from "@/lib/format";
-import { spendWhen, timelineGroups } from "@/lib/spend";
+import { spendWhen, timelineGroupLabel, timelineGroups } from "@/lib/spend";
 import type { Place, SpendItem, TripDay } from "@/lib/types";
 
 export function SpendTimeline({
@@ -46,7 +45,7 @@ export function SpendTimeline({
     if (Object.prototype.hasOwnProperty.call(openByKey, key)) {
       return openByKey[key]!;
     }
-    // Today + future + unscheduled open; past dates collapsed (Tokyo calendar).
+    // Today + future + before-trip (former unscheduled) open; past dates collapsed (Tokyo calendar).
     return !isPastTripDay(date, today);
   }
 
@@ -61,7 +60,7 @@ export function SpendTimeline({
     <div className="relative">
       <ol className="grid gap-2">
         {groups.map((group) => {
-          const dateLabel = formatTimelineDate(group.date, locale) ?? "—";
+          const dateLabel = timelineGroupLabel(group, locale);
           const open = isOpen(group.key, group.date);
           return (
             <li key={group.key}>

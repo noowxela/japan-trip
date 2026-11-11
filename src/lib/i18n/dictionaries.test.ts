@@ -90,3 +90,9 @@ describe("overview day cards and eSIM copy", () => {
   });
 });
 
+describe("budget.beforeTrip", () => {
+  it("has zh and en labels", () => {
+    expect(t("en", "budget.beforeTrip")).toBe("Before trip");
+    expect(t("zh", "budget.beforeTrip")).toBe("出发前");
+  });
+});
