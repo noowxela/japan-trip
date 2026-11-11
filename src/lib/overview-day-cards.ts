@@ -7,21 +7,37 @@ function datedKey(value: string | null | undefined): string | null {
 
 export type OverviewDayCardState = "past" | "today" | "future";
 
-/** Cycling autumn-leaf tones for past Overview day cards. */
-export const AUTUMN_LEAF_VARIANTS = [
-  "maple",
-  "rust",
-  "amber",
-  "gold",
-  "burnt",
+const MONTH_ABBR = [
+  "jan",
+  "feb",
+  "mar",
+  "apr",
+  "may",
+  "jun",
+  "jul",
+  "aug",
+  "sep",
+  "oct",
+  "nov",
+  "dec",
 ] as const;
 
-export type AutumnLeafVariant = (typeof AUTUMN_LEAF_VARIANTS)[number];
+/** Visible day-number on an Overview card: D1, D2, … */
+export function formatOverviewDayCardLabel(dayNumber: number): string {
+  return `D${dayNumber}`;
+}
 
-export function autumnLeafVariant(index: number): AutumnLeafVariant {
-  const count = AUTUMN_LEAF_VARIANTS.length;
-  const normalized = ((index % count) + count) % count;
-  return AUTUMN_LEAF_VARIANTS[normalized]!;
+/** Visible date on an Overview card: nov6, nov10, … (no leading zero). */
+export function formatOverviewDayCardDate(
+  date: string | null | undefined,
+): string {
+  const key = datedKey(date);
+  if (!key) return "";
+  const month = Number(key.slice(5, 7));
+  const day = Number(key.slice(8, 10));
+  const abbr = MONTH_ABBR[month - 1];
+  if (!abbr || !Number.isFinite(day) || day < 1) return "";
+  return `${abbr}${day}`;
 }
 
 export type OverviewDayCardModel = {

@@ -1,21 +1,15 @@
 import Link from "next/link";
-import { formatDay, formatTabDate } from "@/lib/format";
+import { formatDay } from "@/lib/format";
 import { t, type Locale } from "@/lib/i18n/dictionaries";
 import {
-  autumnLeafVariant,
   buildOverviewDayCards,
-  type AutumnLeafVariant,
+  formatOverviewDayCardDate,
+  formatOverviewDayCardLabel,
   type OverviewDatedDay,
   type OverviewDayCardModel,
 } from "@/lib/overview-day-cards";
 
-const PAST_LEAF_CLASS: Record<AutumnLeafVariant, string> = {
-  maple: "border-leaf-maple bg-leaf-maple-soft text-leaf-maple",
-  rust: "border-leaf-rust bg-leaf-rust-soft text-leaf-rust",
-  amber: "border-leaf-amber bg-leaf-amber-soft text-leaf-amber",
-  gold: "border-leaf-gold bg-leaf-gold-soft text-leaf-gold",
-  burnt: "border-leaf-burnt bg-leaf-burnt-soft text-leaf-burnt",
-};
+const PAST_LEAF_CLASS = "border-leaf-burnt bg-leaf-burnt-soft text-leaf-burnt";
 
 function cardClass(card: OverviewDayCardModel) {
   const base =
@@ -24,7 +18,7 @@ function cardClass(card: OverviewDayCardModel) {
     return `${base} border-ok bg-ok-soft text-ok`;
   }
   if (card.state === "past") {
-    return `${base} ${PAST_LEAF_CLASS[autumnLeafVariant(card.index)]}`;
+    return `${base} ${PAST_LEAF_CLASS}`;
   }
   return `${base} border-line bg-surface text-ink`;
 }
@@ -62,12 +56,12 @@ function DayCardLink({
       className={cardClass(card)}
     >
       <span className="text-[15px] font-semibold leading-none tabular-nums">
-        {card.dayNumber}
+        {formatOverviewDayCardLabel(card.dayNumber)}
       </span>
       <span
-        className={`whitespace-nowrap text-[9px] leading-none tabular-nums ${dateClass(card) ?? ""}`}
+        className={`whitespace-nowrap text-[9px] leading-none ${dateClass(card) ?? ""}`}
       >
-        {formatTabDate(card.date)}
+        {formatOverviewDayCardDate(card.date)}
       </span>
     </Link>
   );
