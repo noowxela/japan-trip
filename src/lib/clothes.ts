@@ -296,44 +296,72 @@ export function clothesSummary(
 export const EMPTY_CLOTHES: ClothesItem[] = [];
 Object.freeze(EMPTY_CLOTHES);
 
+export type ClothesSnapshot = {
+  items: ClothesItem[];
+  seeded: boolean;
+};
+
+/** Seeded snapshots reused for SSR and a missing store (React #185). */
+export const SEEDED_CLOTHES_ZH: ClothesSnapshot = Object.freeze({
+  items: DEFAULT_CLOTHES_ZH,
+  seeded: true,
+});
+export const SEEDED_CLOTHES_EN: ClothesSnapshot = Object.freeze({
+  items: DEFAULT_CLOTHES_EN,
+  seeded: true,
+});
+
+function seededClothesSnapshot(locale: Locale): ClothesSnapshot {
+  return locale === "en" ? SEEDED_CLOTHES_EN : SEEDED_CLOTHES_ZH;
+}
+
+const EMPTY_CLOTHES_SNAPSHOT: ClothesSnapshot = Object.freeze({
+  items: EMPTY_CLOTHES,
+  seeded: false,
+});
+
 let clothesMemoryRaw: string | null | undefined = undefined;
-let clothesMemoryItems: ClothesItem[] = EMPTY_CLOTHES;
-let clothesMemorySeeded = false;
+let clothesMemoryLocale: Locale | undefined = undefined;
+let clothesMemorySnapshot: ClothesSnapshot = EMPTY_CLOTHES_SNAPSHOT;
 
 export function invalidateClothesMemory() {
   clothesMemoryRaw = undefined;
-  clothesMemoryItems = EMPTY_CLOTHES;
-  clothesMemorySeeded = false;
+  clothesMemoryLocale = undefined;
+  clothesMemorySnapshot = EMPTY_CLOTHES_SNAPSHOT;
 }
 
 export function readCachedClothes(
   getRaw: () => string | null,
   locale: Locale = "zh",
-): { items: ClothesItem[]; seeded: boolean } {
+): ClothesSnapshot {
   const raw = getRaw();
-  if (raw === clothesMemoryRaw && clothesMemoryRaw !== undefined) {
-    return { items: clothesMemoryItems, seeded: clothesMemorySeeded };
+  // Locale only affects seeded defaults. A persisted store is locale-agnostic,
+  // so skip the locale check when the cached snapshot is not seeded.
+  if (
+    raw === clothesMemoryRaw &&
+    clothesMemoryRaw !== undefined &&
+    (clothesMemoryLocale === locale || !clothesMemorySnapshot.seeded)
+  ) {
+    return clothesMemorySnapshot;
   }
   const parsed = parseClothesJson(raw, locale);
   clothesMemoryRaw = raw;
+  clothesMemoryLocale = locale;
   if (parsed.seeded) {
-    clothesMemoryItems = defaultClothesItems(locale);
-    clothesMemorySeeded = true;
-    return { items: clothesMemoryItems, seeded: true };
+    clothesMemorySnapshot = seededClothesSnapshot(locale);
+    return clothesMemorySnapshot;
   }
-  clothesMemoryItems =
-    parsed.items.length === 0 ? EMPTY_CLOTHES : parsed.items;
-  clothesMemorySeeded = false;
-  return { items: clothesMemoryItems, seeded: false };
+  clothesMemorySnapshot =
+    parsed.items.length === 0
+      ? EMPTY_CLOTHES_SNAPSHOT
+      : { items: parsed.items, seeded: false };
+  return clothesMemorySnapshot;
 }
 
 /** SSR-safe read. Missing store returns locale defaults without writing. */
-export function readClothes(locale: Locale = "zh"): {
-  items: ClothesItem[];
-  seeded: boolean;
-} {
+export function readClothes(locale: Locale = "zh"): ClothesSnapshot {
   if (typeof window === "undefined") {
-    return { items: defaultClothesItems(locale), seeded: true };
+    return seededClothesSnapshot(locale);
   }
   try {
     return readCachedClothes(
@@ -341,7 +369,7 @@ export function readClothes(locale: Locale = "zh"): {
       locale,
     );
   } catch {
-    return { items: defaultClothesItems(locale), seeded: true };
+    return seededClothesSnapshot(locale);
   }
 }
 
@@ -351,8 +379,11 @@ export function writeClothes(items: readonly ClothesItem[]): void {
     const raw = serializeClothes(items);
     window.localStorage.setItem(CLOTHES_STORAGE_KEY, raw);
     clothesMemoryRaw = raw;
-    clothesMemoryItems = items.length === 0 ? EMPTY_CLOTHES : items.slice();
-    clothesMemorySeeded = false;
+    clothesMemoryLocale = undefined;
+    clothesMemorySnapshot =
+      items.length === 0
+        ? EMPTY_CLOTHES_SNAPSHOT
+        : { items: items.slice(), seeded: false };
     window.dispatchEvent(new Event(CLOTHES_CHANGED_EVENT));
   } catch {
     // quota / private mode — ignore

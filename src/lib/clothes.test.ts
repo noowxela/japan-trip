@@ -4,6 +4,8 @@ import {
   DEFAULT_CLOTHES_EN,
   DEFAULT_CLOTHES_ZH,
   EMPTY_CLOTHES,
+  SEEDED_CLOTHES_EN,
+  SEEDED_CLOTHES_ZH,
   adjustClothesQty,
   clampClothesQty,
   clothesItemName,
@@ -93,21 +95,41 @@ describe("readCachedClothes", () => {
     invalidateClothesMemory();
   });
 
-  it("returns a stable reference for the same raw input", () => {
+  it("returns a stable snapshot reference for the same raw input", () => {
     const item = createClothesItem({ name: "Shirt", needed: 2, packed: 1 });
     const raw = serializeClothes([item]);
     const first = readCachedClothes(() => raw);
     const second = readCachedClothes(() => raw);
     expect(first.seeded).toBe(false);
+    expect(second).toBe(first);
     expect(second.items).toBe(first.items);
   });
 
   it("returns frozen defaults when the store is missing", () => {
     const first = readCachedClothes(() => null, "zh");
     const second = readCachedClothes(() => null, "zh");
+    expect(first).toBe(SEEDED_CLOTHES_ZH);
+    expect(second).toBe(first);
     expect(first.seeded).toBe(true);
     expect(first.items).toBe(DEFAULT_CLOTHES_ZH);
-    expect(second.items).toBe(first.items);
+  });
+
+  it("returns a new seeded snapshot when the locale changes for a missing store", () => {
+    const first = readCachedClothes(() => null, "zh");
+    const second = readCachedClothes(() => null, "en");
+    const third = readCachedClothes(() => null, "en");
+    expect(first).toBe(SEEDED_CLOTHES_ZH);
+    expect(second).toBe(SEEDED_CLOTHES_EN);
+    expect(second).not.toBe(first);
+    expect(third).toBe(second);
+  });
+
+  it("keeps the same persisted snapshot when locale changes", () => {
+    const item = createClothesItem({ name: "Shirt", needed: 2, packed: 1 });
+    const raw = serializeClothes([item]);
+    const first = readCachedClothes(() => raw, "zh");
+    const second = readCachedClothes(() => raw, "en");
+    expect(second).toBe(first);
   });
 
   it("returns EMPTY_CLOTHES after the raw value becomes an empty store", () => {
@@ -116,8 +138,11 @@ describe("readCachedClothes", () => {
     const first = readCachedClothes(() => current);
     current = serializeClothes([]);
     const second = readCachedClothes(() => current);
+    const third = readCachedClothes(() => current);
     expect(second.items).toBe(EMPTY_CLOTHES);
     expect(second.items).not.toBe(first.items);
+    expect(second).not.toBe(first);
+    expect(third).toBe(second);
   });
 });
 
