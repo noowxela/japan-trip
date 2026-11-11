@@ -20,6 +20,7 @@ function buildTripPins(
   const counters = new Map<string, number>();
 
   const withCoords = places
+    .filter((place) => !place.skipped)
     .map((place) => {
       const coords = coordsOfPlace(place);
       if (!coords) return null;
@@ -66,7 +67,8 @@ function buildSheetDays(
     date: day.date,
     city: day.city,
     stopCount: places.filter(
-      (place) => place.dayIds.includes(day.id) && !place.pending,
+      (place) =>
+        place.dayIds.includes(day.id) && !place.pending && !place.skipped,
     ).length,
   }));
 }

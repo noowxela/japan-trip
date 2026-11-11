@@ -9,6 +9,7 @@ import {
   CarryOverBanner,
   DayAgendaBoard,
   PendingPanel,
+  SkippedPanel,
 } from "@/components/day-agenda-board";
 import { CityKanji } from "@/components/city-kanji";
 import { FlightPlaneIcon } from "@/components/flight-plane-icon";
@@ -23,12 +24,29 @@ import { useHiddenMapPinIds } from "@/components/hide-map-pin-button";
 import { useT } from "@/components/i18n-provider";
 import { MapsPinLink } from "@/components/maps-pin-link";
 import { Modal } from "@/components/modal";
+import { useOutbox } from "@/components/outbox-provider";
 import { ScheduleDayTabs } from "@/components/schedule-day-tabs";
 import { flightRoutesFromTransit } from "@/lib/flight-path";
-import { dateKey, formatCachedAt, formatDay, formatTime, formatTripSpan } from "@/lib/format";
+import {
+  dateKey,
+  formatCachedAt,
+  formatDay,
+  formatTime,
+  formatTripSpan,
+} from "@/lib/format";
 import { toggleHiddenMapPin } from "@/lib/hidden-map-pins";
 import { labelMode, labelType } from "@/lib/i18n/dictionaries";
-import type { DayScheduleSlice, SchedulePin } from "@/lib/schedule-pins";
+import {
+  scheduleDrawerOpener,
+  skippedAgendaItems,
+  type ScheduleDrawerTab,
+} from "@/lib/schedule-drawer";
+import {
+  mapPinsForDay,
+  pinsForAllDays,
+  type DayScheduleSlice,
+  type SchedulePin,
+} from "@/lib/schedule-pins";
 import {
   clampSheetHeight,
   cycleSnap,
@@ -67,7 +85,6 @@ export function ScheduleView({
   days,
   places,
   byDay,
-  allPins,
   initialDayId,
   initialMode = "view",
   cachedAt = null,
@@ -111,12 +128,14 @@ export function ScheduleView({
     return Date.now();
   });
   const [pendingOpen, setPendingOpen] = useState(false);
+  const [drawerTab, setDrawerTab] = useState<ScheduleDrawerTab>("pending");
   const scrolledForDayRef = useRef<string | null>(null);
+  const { skippedOverlay } = useOutbox();
 
   const selectedDay =
     selectedId === "all"
       ? null
-      : days.find((day) => day.id === selectedId) ?? days[0] ?? null;
+      : (days.find((day) => day.id === selectedId) ?? days[0] ?? null);
   const slice = selectedDay ? byDay[selectedDay.id] : null;
   const agenda = useMemo(() => slice?.agenda ?? [], [slice]);
   const pending = slice?.pending ?? [];
@@ -124,7 +143,19 @@ export function ScheduleView({
   const selectedDate = dateKey(selectedDay?.date ?? null);
   const dayWeather = selectedDate ? (weather?.[selectedDate] ?? null) : null;
   const selectedDayId = selectedDay?.id ?? null;
-  const mapPins = selectedDay ? (slice?.mapPins ?? []) : allPins;
+  const mapPins = useMemo(
+    () =>
+      selectedDay
+        ? mapPinsForDay(
+            agenda,
+            pending,
+            lodging,
+            selectedDay.date,
+            skippedOverlay,
+          )
+        : pinsForAllDays(days, places, skippedOverlay),
+    [agenda, days, lodging, pending, places, selectedDay, skippedOverlay],
+  );
   const flightRoutes = useMemo(
     () => (selectedDay ? flightRoutesFromTransit(slice?.transit ?? []) : []),
     [selectedDay, slice],
@@ -135,8 +166,7 @@ export function ScheduleView({
   const isSelectedToday = Boolean(
     selectedDay && dateKey(selectedDay.date) === today,
   );
-  const nowModeActive =
-    mode === "now" && isSelectedToday && phase === "during";
+  const nowModeActive = mode === "now" && isSelectedToday && phase === "during";
 
   const focus = useMemo(() => {
     if (!nowModeActive) return null;
@@ -170,6 +200,10 @@ export function ScheduleView({
   const pendingCount = selectedDay
     ? pending.length + dayOtherPending.length + carryOver.length
     : 0;
+  const skippedCount = selectedDay
+    ? skippedAgendaItems(agenda, skippedOverlay).length
+    : 0;
+  const drawer = scheduleDrawerOpener(pendingCount, skippedCount);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => setNowMs(Date.now()));
@@ -266,16 +300,19 @@ export function ScheduleView({
   const [mapFocus, setMapFocus] = useState<
     (DayMapFocus & { dayId: string | null }) | null
   >(null);
-  const focusOnMap = useCallback((id: string) => {
-    setMapFocus((prev) => ({
-      id,
-      dayId: selectedDayId,
-      nonce: (prev?.nonce ?? 0) + 1,
-    }));
-    // Drop the sheet so the map is visible (never raise it).
-    setDragHeight(null);
-    setSnapIndex((index) => Math.min(index, FOCUS_SNAP));
-  }, [selectedDayId]);
+  const focusOnMap = useCallback(
+    (id: string) => {
+      setMapFocus((prev) => ({
+        id,
+        dayId: selectedDayId,
+        nonce: (prev?.nonce ?? 0) + 1,
+      }));
+      // Drop the sheet so the map is visible (never raise it).
+      setDragHeight(null);
+      setSnapIndex((index) => Math.min(index, FOCUS_SNAP));
+    },
+    [selectedDayId],
+  );
 
   const sheetHeight =
     dragHeight != null ? `${dragHeight}px` : `${SNAPS[snapIndex] * 100}%`;
@@ -366,11 +403,15 @@ export function ScheduleView({
     if (event.key === "ArrowUp" || event.key === "Home") {
       event.preventDefault();
       setSnapIndex((index) =>
-        event.key === "Home" ? SNAPS.length - 1 : Math.min(SNAPS.length - 1, index + 1),
+        event.key === "Home"
+          ? SNAPS.length - 1
+          : Math.min(SNAPS.length - 1, index + 1),
       );
     } else if (event.key === "ArrowDown" || event.key === "End") {
       event.preventDefault();
-      setSnapIndex((index) => (event.key === "End" ? 0 : Math.max(0, index - 1)));
+      setSnapIndex((index) =>
+        event.key === "End" ? 0 : Math.max(0, index - 1),
+      );
     }
   }
 
@@ -403,7 +444,9 @@ export function ScheduleView({
     );
     const margin = (sticky?.offsetHeight ?? 56) + 8;
     el.style.scrollMarginTop = `${margin}px`;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduce = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     el.scrollIntoView({
       block: "start",
       behavior: reduce ? "auto" : "smooth",
@@ -563,18 +606,16 @@ export function ScheduleView({
                       {dayWeather ? (
                         <span
                           className="inline-flex min-w-0 max-w-full items-center gap-0.5 tabular-nums"
-                          title={
-                            [
-                              weatherShort(dayWeather),
-                              weatherAt
-                                ? t("weather.asOf", {
-                                    time: formatCachedAt(weatherAt),
-                                  })
-                                : null,
-                            ]
-                              .filter(Boolean)
-                              .join(" · ")
-                          }
+                          title={[
+                            weatherShort(dayWeather),
+                            weatherAt
+                              ? t("weather.asOf", {
+                                  time: formatCachedAt(weatherAt),
+                                })
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
                         >
                           <span aria-hidden className="shrink-0">
                             ·
@@ -584,7 +625,9 @@ export function ScheduleView({
                           </span>
                           <span className="sr-only">
                             {t("weather.aria", {
-                              kind: t(`weather.${weatherKind(dayWeather.code)}`),
+                              kind: t(
+                                `weather.${weatherKind(dayWeather.code)}`,
+                              ),
                               min: Math.round(dayWeather.tMin),
                               max: Math.round(dayWeather.tMax),
                               rain: dayWeather.rainPct ?? 0,
@@ -597,26 +640,34 @@ export function ScheduleView({
                           <span aria-hidden className="shrink-0">
                             · 🏨{" "}
                           </span>
-                          <span className="min-w-0 truncate" title={lodging[0].name}>
+                          <span
+                            className="min-w-0 truncate"
+                            title={lodging[0].name}
+                          >
                             {lodging[0].name}
                           </span>
                         </span>
                       ) : null}
-                      {pendingCount > 0 ? (
+                      {drawer.show ? (
                         <button
                           type="button"
-                          onClick={() => setPendingOpen(true)}
+                          onClick={() => {
+                            setDrawerTab(drawer.defaultTab);
+                            setPendingOpen(true);
+                          }}
                           className="inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap text-[11px] text-ink-muted"
                         >
                           <span aria-hidden>·</span>
-                          {t("schedule.pendingCount", { n: pendingCount })} ›
+                          {t(drawer.key, drawer.vars)} ›
                         </button>
                       ) : null}
                     </p>
                     {lodging.length > 1
-                      ? lodging.slice(1).map((stay) => (
-                          <StayLocationBadge key={stay.id} stay={stay} />
-                        ))
+                      ? lodging
+                          .slice(1)
+                          .map((stay) => (
+                            <StayLocationBadge key={stay.id} stay={stay} />
+                          ))
                       : null}
                   </div>
                   <div className="flex shrink-0 items-center gap-0.5">
@@ -716,25 +767,71 @@ export function ScheduleView({
         <Modal
           open={pendingOpen}
           onClose={() => setPendingOpen(false)}
-          title={t("schedule.pendingTitle")}
+          title={t(
+            drawerTab === "skipped"
+              ? "schedule.skippedTitle"
+              : "schedule.pendingTitle",
+          )}
         >
           <div className="grid gap-4 px-1 pb-4">
-            <CarryOverBanner
-              places={carryOver}
-              dayId={selectedDay.id}
-              title={t("agenda.carryOverPast")}
-            />
-            <CarryOverBanner
-              places={dayOtherPending}
-              dayId={selectedDay.id}
-              title={t("agenda.carryOverOther")}
-            />
-            <PendingPanel
-              pending={pending}
-              dayId={selectedDay.id}
-              dayDate={selectedDay.date}
-              presentation="modal"
-            />
+            <div
+              role="tablist"
+              aria-label={t("schedule.drawerTabs")}
+              className="flex gap-4 border-b border-line"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={drawerTab === "pending"}
+                onClick={() => setDrawerTab("pending")}
+                className={`-mb-px border-b-2 pb-2 text-sm ${
+                  drawerTab === "pending"
+                    ? "border-ink font-medium text-ink"
+                    : "border-transparent text-ink-muted"
+                }`}
+              >
+                {t("schedule.pendingTitle")}
+                {pendingCount > 0 ? ` · ${pendingCount}` : ""}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={drawerTab === "skipped"}
+                onClick={() => setDrawerTab("skipped")}
+                className={`-mb-px border-b-2 pb-2 text-sm ${
+                  drawerTab === "skipped"
+                    ? "border-ink font-medium text-ink"
+                    : "border-transparent text-ink-muted"
+                }`}
+              >
+                {t("schedule.skippedTitle")}
+                {skippedCount > 0 ? ` · ${skippedCount}` : ""}
+              </button>
+            </div>
+            {drawerTab === "pending" ? (
+              <>
+                <CarryOverBanner
+                  places={carryOver}
+                  dayId={selectedDay.id}
+                  title={t("agenda.carryOverPast")}
+                />
+                <CarryOverBanner
+                  places={dayOtherPending}
+                  dayId={selectedDay.id}
+                  title={t("agenda.carryOverOther")}
+                />
+                <PendingPanel
+                  pending={pending}
+                  dayId={selectedDay.id}
+                  dayDate={selectedDay.date}
+                  presentation="modal"
+                />
+              </>
+            ) : (
+              <SkippedPanel
+                items={skippedAgendaItems(agenda, skippedOverlay)}
+              />
+            )}
           </div>
         </Modal>
       ) : null}
@@ -802,7 +899,9 @@ function NowCard({
           <>
             {" · "}
             {chipLabel}
-            {isFlight ? <FlightPlaneIcon className="ml-0.5 text-accent" /> : null}
+            {isFlight ? (
+              <FlightPlaneIcon className="ml-0.5 text-accent" />
+            ) : null}
           </>
         ) : null}
       </p>

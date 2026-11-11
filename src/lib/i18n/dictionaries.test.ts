@@ -5,6 +5,14 @@ describe("t()", () => {
   it("interpolates variables", () => {
     expect(t("en", "schedule.pendingCount", { n: 3 })).toBe("3 pending");
     expect(t("zh", "schedule.pendingCount", { n: 3 })).toBe("3 个待定");
+    expect(t("en", "schedule.skippedCount", { n: 2 })).toBe("2 skipped");
+    expect(t("zh", "schedule.skippedCount", { n: 2 })).toBe("2 个跳过");
+    expect(t("en", "schedule.pendingAndSkippedCount", { n: 3, m: 2 })).toBe(
+      "3 pending · 2 skipped",
+    );
+    expect(t("zh", "schedule.pendingAndSkippedCount", { n: 3, m: 2 })).toBe(
+      "3 个待定 · 2 个跳过",
+    );
   });
 
   it("falls back zh → en → key", () => {

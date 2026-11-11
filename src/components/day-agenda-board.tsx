@@ -39,6 +39,7 @@ import { toggleHiddenMapPin } from "@/lib/hidden-map-pins";
 import { categoryEmoji } from "@/lib/category-icon";
 import { labelMode, labelType } from "@/lib/i18n/dictionaries";
 import { flightListLinks } from "@/lib/flight-path";
+import { isEffectivelySkipped } from "@/lib/schedule-drawer";
 import { isMapFocusable, sightNumbersFromAgenda } from "@/lib/schedule-pins";
 import { compareAgendaItems } from "@/lib/trip-core";
 import type { AgendaItem, Place, TripDay } from "@/lib/types";
@@ -473,6 +474,84 @@ export function PendingPanel({
   );
 }
 
+export function SkippedPanel({
+  items,
+}: {
+  items: AgendaItem[];
+}) {
+  const [busy, startTransition] = useTransition();
+  const canEdit = useCanEdit();
+  const { t, locale } = useT();
+  const { toast } = useToast();
+  const { markSkipped } = useOutbox();
+
+  function unskip(item: AgendaItem) {
+    haptic("success");
+    startTransition(async () => {
+      const result = await markSkipped(item.id, false, item.kind, {
+        silent: true,
+      });
+      if (!result.ok) return;
+      toast(
+        result.message == null
+          ? t("offline.savedQueued")
+          : t("action.markedUnskipped"),
+        {
+          actionLabel: t("common.undo"),
+          onAction: () => {
+            void markSkipped(item.id, true, item.kind, { silent: true });
+          },
+        },
+      );
+    });
+  }
+
+  return (
+    <div className={busy ? "opacity-70" : ""}>
+      {items.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-line px-3 py-6 text-center text-xs text-ink-muted">
+          {t("agenda.noneSkipped")}
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {items.map((item) => {
+            const category =
+              item.kind === "transit"
+                ? labelMode(locale, item.chip) ?? t("mode.Transit")
+                : labelType(locale, item.chip) ?? t("type.Other");
+            const timeLabel = formatTime(item.start);
+            return (
+              <li
+                key={`${item.kind}-${item.id}`}
+                className="rounded-xl border border-line bg-surface p-2.5"
+              >
+                <p className="text-[10px] font-medium text-ink-muted">
+                  {category}
+                  {timeLabel ? ` · ${timeLabel}` : ""}
+                </p>
+                <p className="text-sm font-medium leading-snug break-words">
+                  {item.name}
+                </p>
+                {canEdit ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => unskip(item)}
+                      className="rounded-full bg-canvas px-3 py-1 text-[11px] font-medium text-ink"
+                    >
+                      {t("agenda.markUnskipped")}
+                    </button>
+                  </div>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function CarryOverBanner({
   places,
   dayId,
@@ -583,7 +662,6 @@ export function DayAgendaBoard({
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [popId, setPopId] = useState<string | null>(null);
   const [showVisited, setShowVisited] = useState(() => isPastTripDay(dayDate));
-  const [showSkipped, setShowSkipped] = useState(false);
   const notify = useActionToast();
   const { toast } = useToast();
   const trashWithUndo = useTrashUndo();
@@ -592,26 +670,29 @@ export function DayAgendaBoard({
   const hiddenIds = useHiddenMapPinIds();
   const { t, locale } = useT();
   const { markVisited, markSkipped, visitedOverlay, skippedOverlay } = useOutbox();
-  const isSkipped = (item: AgendaItem) => {
-    return skippedOverlay[item.id] ?? Boolean(item.skipped);
-  };
+  const isSkipped = (item: AgendaItem) =>
+    isEffectivelySkipped(item, skippedOverlay);
   const isVisited = (item: AgendaItem) => {
     if (isSkipped(item)) return false;
     return visitedOverlay[item.id] ?? Boolean(item.visited);
   };
   const visitedCount = agenda.filter((item) => isVisited(item)).length;
-  const skippedCount = agenda.filter((item) => isSkipped(item)).length;
   // Re-sort client-side so visited/completed rows keep wall-clock order even if
   // a cached slice or late-edit left Start dates inconsistent with the day.
   const orderedAgenda = useMemo(
     () => [...agenda].sort(compareAgendaItems),
     [agenda],
   );
-  const sightNumbers = sightNumbersFromAgenda(orderedAgenda);
+  const activeAgenda = useMemo(
+    () =>
+      orderedAgenda.filter((item) => !isEffectivelySkipped(item, skippedOverlay)),
+    [orderedAgenda, skippedOverlay],
+  );
+  const sightNumbers = sightNumbersFromAgenda(activeAgenda, skippedOverlay);
   const listRef = useRef<HTMLOListElement>(null);
   const flightLinks = useMemo(
-    () => flightListLinks(orderedAgenda),
-    [orderedAgenda],
+    () => flightListLinks(activeAgenda),
+    [activeAgenda],
   );
 
   function dropOnAgenda(before: AgendaItem | null) {
@@ -735,31 +816,19 @@ export function DayAgendaBoard({
       className={`grid gap-2 ${showPending ? "lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start" : "max-w-2xl"} ${busy ? "opacity-70" : ""}`}
     >
       <div>
-        {visitedCount > 0 || skippedCount > 0 ? (
+        {visitedCount > 0 ? (
           <div className="mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-            {visitedCount > 0 ? (
-              <button
-                type="button"
-                aria-expanded={showVisited}
-                onClick={() => setShowVisited((value) => !value)}
-                className="inline-flex min-h-9 items-center rounded-lg px-1 text-xs text-ink-muted"
-              >
-                {t("agenda.doneExpand", { n: visitedCount })}
-              </button>
-            ) : null}
-            {skippedCount > 0 ? (
-              <button
-                type="button"
-                aria-expanded={showSkipped}
-                onClick={() => setShowSkipped((value) => !value)}
-                className="inline-flex min-h-9 items-center rounded-lg px-1 text-xs text-ink-muted"
-              >
-                {t("agenda.skippedExpand", { n: skippedCount })}
-              </button>
-            ) : null}
+            <button
+              type="button"
+              aria-expanded={showVisited}
+              onClick={() => setShowVisited((value) => !value)}
+              className="inline-flex min-h-9 items-center rounded-lg px-1 text-xs text-ink-muted"
+            >
+              {t("agenda.doneExpand", { n: visitedCount })}
+            </button>
           </div>
         ) : null}
-        {agenda.length === 0 ? (
+        {activeAgenda.length === 0 ? (
           <div
             onDragOver={(event) => {
               event.preventDefault();
@@ -780,14 +849,11 @@ export function DayAgendaBoard({
         ) : (
           <div className="relative">
           <ol ref={listRef}>
-            {orderedAgenda.map((item, index) => {
+            {activeAgenda.map((item, index) => {
               const food = item.kind === "place" && isFoodChip(item.chip);
               const skipped = isSkipped(item);
               const visited = isVisited(item);
               if (visited && !showVisited && item.id !== highlightId) {
-                return null;
-              }
-              if (skipped && !showSkipped && item.id !== highlightId) {
                 return null;
               }
               const transit = item.kind === "transit";
@@ -795,7 +861,7 @@ export function DayAgendaBoard({
                 item.kind === "place" ? sightNumbers.get(item.id) : undefined;
               const timeLabel = formatTime(item.start) ?? "—";
               const dropId = `before-${item.id}`;
-              const previous = index > 0 ? orderedAgenda[index - 1] : null;
+              const previous = index > 0 ? activeAgenda[index - 1] : null;
               const gapMins =
                 previous && item.start
                   ? minutesBetweenStarts(previous.start, item.start)
@@ -827,13 +893,9 @@ export function DayAgendaBoard({
                 ? t("agenda.hiddenOnMap")
                 : null;
               const detailExpanded = expandedId === item.id;
-              const visibleItems = orderedAgenda.filter((row) => {
+              const visibleItems = activeAgenda.filter((row) => {
                 const rowVisited = isVisited(row);
-                const rowSkipped = isSkipped(row);
                 if (rowVisited && !showVisited && row.id !== highlightId) {
-                  return false;
-                }
-                if (rowSkipped && !showSkipped && row.id !== highlightId) {
                   return false;
                 }
                 return true;
