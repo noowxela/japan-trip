@@ -109,6 +109,7 @@ export const SPEND_KINDS = ["Estimate", "Actual"] as const;
 export const SPEND_CATEGORIES = [
   "Food",
   "Transit",
+  "Airfare",
   "Stay",
   "Ticket",
   "Shop",

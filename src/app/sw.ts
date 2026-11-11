@@ -212,6 +212,8 @@ const KEY_OFFLINE_SHELLS = [
   "/map",
   "/phrases",
   "/prep",
+  "/clothes",
+  "/gifts",
   "/settings",
   "/~offline",
 ];

@@ -110,6 +110,33 @@ export function PrepSkeleton() {
   );
 }
 
+export function ClothesSkeleton() {
+  return (
+    <SkeletonPage>
+      <SkeletonHeader titleWidth="w-16" action="button" />
+      <SkeletonLine box="-mt-1 h-[18px]" bar="h-2.5" width="w-48" />
+      <div className="space-y-2.5" aria-hidden>
+        <SkeletonStrip />
+        <SkeletonRows rows={5} secondary trailing="more" />
+      </div>
+    </SkeletonPage>
+  );
+}
+
+export function GiftsSkeleton() {
+  return (
+    <SkeletonPage>
+      <SkeletonHeader titleWidth="w-16" action="button" />
+      <SkeletonLine box="-mt-1 h-[18px]" bar="h-2.5" width="w-56" />
+      <SkeletonChips count={2} />
+      <div className="space-y-2.5" aria-hidden>
+        <SkeletonStrip />
+        <SkeletonRows rows={4} leading="check" trailing="more" />
+      </div>
+    </SkeletonPage>
+  );
+}
+
 export function SettingsSkeleton() {
   return (
     <SkeletonPage>
@@ -124,7 +151,7 @@ export function SettingsSkeleton() {
       </section>
       <section className="space-y-1.5" aria-hidden>
         <SkeletonSectionHeader />
-        <SkeletonRows rows={6} trailing="chevron" />
+        <SkeletonRows rows={8} trailing="chevron" />
       </section>
       <section className="space-y-1.5" aria-hidden>
         <SkeletonSectionHeader />

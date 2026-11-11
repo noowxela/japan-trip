@@ -4,10 +4,13 @@ import {
   buildAgenda,
   compareAgendaItems,
   isAgendaOpen,
+  isStayCheckoutDay,
   nextAgendaItem,
+  staysForDate,
+  staysForOverviewDate,
   tripPhase,
 } from "@/lib/trip-core";
-import type { AgendaItem, Place, Transit, TripDay } from "@/lib/types";
+import type { AgendaItem, Place, Stay, Transit, TripDay } from "@/lib/types";
 
 const item = (
   id: string,
@@ -307,5 +310,44 @@ describe("buildAgenda sort", () => {
       "utc-noon",
       "afternoon",
     ]);
+  });
+});
+
+describe("staysForDate / staysForOverviewDate", () => {
+  const mitsui: Stay = {
+    id: "mitsui-kyoto",
+    name: "Mitsui Garden Hotel Kyoto Shijo",
+    checkIn: "2026-11-09",
+    checkOut: "2026-11-12",
+    address: "Kyoto",
+    bookingUrl: null,
+    confirmation: "",
+    mapsUrl: null,
+    lat: null,
+    lng: null,
+  };
+
+  it("keeps overnight occupancy exclusive of check-out day", () => {
+    expect(staysForDate([mitsui], "2026-11-09").map((s) => s.id)).toEqual([
+      "mitsui-kyoto",
+    ]);
+    expect(staysForDate([mitsui], "2026-11-11").map((s) => s.id)).toEqual([
+      "mitsui-kyoto",
+    ]);
+    expect(staysForDate([mitsui], "2026-11-12")).toEqual([]);
+    expect(staysForDate([mitsui], "2026-11-13")).toEqual([]);
+  });
+
+  it("includes the hotel on Overview on the check-out date, not the day after", () => {
+    expect(staysForOverviewDate([mitsui], "2026-11-11").map((s) => s.id)).toEqual(
+      ["mitsui-kyoto"],
+    );
+    expect(staysForOverviewDate([mitsui], "2026-11-12").map((s) => s.id)).toEqual(
+      ["mitsui-kyoto"],
+    );
+    expect(staysForOverviewDate([mitsui], "2026-11-13")).toEqual([]);
+    expect(isStayCheckoutDay(mitsui, "2026-11-12")).toBe(true);
+    expect(isStayCheckoutDay(mitsui, "2026-11-11")).toBe(false);
+    expect(isStayCheckoutDay(mitsui, "2026-11-13")).toBe(false);
   });
 });

@@ -31,6 +31,7 @@ describe("spendCategoryEmoji", () => {
 
   it("maps spend-only categories and falls back", () => {
     expect(spendCategoryEmoji("Transit")).toBe("🚆");
+    expect(spendCategoryEmoji("Airfare")).toBe("✈️");
     expect(spendCategoryEmoji("Stay")).toBe("🏨");
     expect(spendCategoryEmoji("Ticket")).toBe("🎫");
     expect(spendCategoryEmoji("Other")).toBe("📦");

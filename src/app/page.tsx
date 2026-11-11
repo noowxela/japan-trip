@@ -37,7 +37,7 @@ import {
   getTransit,
   nextAgendaItem,
   pickFocusDay,
-  staysForDate,
+  staysForOverviewDate,
   tripFlow,
   tripPhase,
 } from "@/lib/trip";
@@ -85,7 +85,7 @@ export default async function OverviewPage() {
   const agenda = buildAgenda(dayPlaces, dayTransit);
   const isFocusToday = Boolean(focus && dateKey(focus.date) === today);
   const next = nextAgendaItem(agenda, { now, isToday: isFocusToday });
-  const lodging = focus ? staysForDate(stays, focus.date) : [];
+  const lodging = focus ? staysForOverviewDate(stays, focus.date) : [];
   const dayMoney = focus
     ? moneySummary(byDay(spend, focus.id), fx.jpyPerRm)
     : { actual: 0, estimate: 0, remaining: 0 };
@@ -184,7 +184,7 @@ export default async function OverviewPage() {
               nextDayName={nextDayName}
               nextDayHref={nextDayHref}
             />
-            <TonightStayRows stays={lodging} isTonight={isTonight} />
+            <TonightStayRows stays={lodging} isTonight={isTonight} today={today} />
             <TodaySpendRow
               actual={dayMoney.actual}
               estimate={dayMoney.estimate}

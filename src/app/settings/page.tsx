@@ -75,9 +75,19 @@ export default async function SettingsPage() {
       detail: t(locale, "more.prepDetail"),
     },
     {
+      href: "/clothes",
+      label: t(locale, "more.clothes"),
+      detail: t(locale, "more.clothesDetail"),
+    },
+    {
       href: "/phrases",
       label: t(locale, "more.phrases"),
       detail: t(locale, "more.phrasesDetail"),
+    },
+    {
+      href: "/gifts",
+      label: t(locale, "more.gifts"),
+      detail: t(locale, "more.giftsDetail"),
     },
     {
       href: "/lists",

@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { DirectionsLink } from "@/components/directions-link";
 import { MapsPinLink } from "@/components/maps-pin-link";
+import { OverviewStayRows } from "@/components/overview-stay-rows";
 import {
   CompactRow,
   CompactRowList,
 } from "@/components/compact";
 import { formatRm, formatTime } from "@/lib/format";
-import { coordsOfPlace, coordsOfStay } from "@/lib/geocode";
+import { coordsOfPlace } from "@/lib/geocode";
 import { labelMode, labelType, t } from "@/lib/i18n/dictionaries";
 import { getLocale } from "@/lib/i18n/server";
 import type { AgendaItem, Stay } from "@/lib/types";
@@ -157,65 +158,17 @@ export async function TripCompleteRow({
 
 export const TripCompleteCard = TripCompleteRow;
 
-export async function TonightStayRows({
+export function TonightStayRows({
   stays,
   isTonight,
+  today,
 }: {
   stays: Stay[];
   isTonight: boolean;
+  today: string;
 }) {
-  const locale = await getLocale();
-  const label = isTonight
-    ? t(locale, "overview.tonight")
-    : t(locale, "overview.stay");
-
-  if (stays.length === 0) {
-    return (
-      <CompactRowList>
-        <li>
-          <CompactRow
-            href="/stays"
-            title={label}
-            meta={t(locale, "overview.noStay")}
-            trailing={
-              <span className="pr-2 text-[12px] text-ink-muted" aria-hidden>
-                ›
-              </span>
-            }
-          />
-        </li>
-      </CompactRowList>
-    );
-  }
-
   return (
-    <CompactRowList>
-      {stays.map((stay) => {
-        const coords = coordsOfStay(stay);
-        return (
-          <li key={stay.id} className="flex min-w-0 w-full items-center">
-            <div className="min-w-0 flex-1">
-              <CompactRow
-                href="/stays"
-                title={
-                  <>
-                    {label}
-                    <span className="font-normal text-ink-muted"> · </span>
-                    {stay.name}
-                  </>
-                }
-                secondary={stay.address || undefined}
-              />
-            </div>
-            <MapsPinLink
-              name={stay.address || stay.name}
-              lat={coords?.lat}
-              lng={coords?.lng}
-            />
-          </li>
-        );
-      })}
-    </CompactRowList>
+    <OverviewStayRows stays={stays} isTonight={isTonight} today={today} />
   );
 }
 

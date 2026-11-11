@@ -22,6 +22,16 @@ import {
 } from "@/components/page-shell";
 import { dateKey, formatTime, tokyoToday } from "@/lib/format";
 import { labelCategory } from "@/lib/i18n/dictionaries";
+import { SpendGiftFields, type SpendGiftValue } from "@/components/spend-gift-fields";
+import type { ActionResult } from "@/lib/action-result";
+import {
+  applySpendGiftFlag,
+  findGiftBySpendId,
+  readGifts,
+  rememberRecipientNow,
+  writeGifts,
+} from "@/lib/gifts";
+import { parseSpendCurrency } from "@/lib/spend";
 import { SPEND_CATEGORIES, type Place, type SpendItem, type TripDay } from "@/lib/types";
 
 function dateForDayId(days: TripDay[], dayId: string) {
@@ -82,6 +92,14 @@ export function SpendForm({
   );
   const [splitWith, setSplitWith] = useState<string[]>(item?.splitWith ?? []);
   const [placeId, setPlaceId] = useState(item?.placeId ?? "");
+  const [gift, setGift] = useState<SpendGiftValue>(() => {
+    const existing = item ? findGiftBySpendId(readGifts(), item.id) : undefined;
+    return {
+      flagged: Boolean(existing),
+      forSelf: existing?.forSelf ?? true,
+      recipient: existing?.recipient ?? "",
+    };
+  });
   const dayId = dayIdForDate(days, dayDate);
   const matchedDay = days.find((day) => day.id === dayId);
   useEffect(() => {
@@ -98,6 +116,29 @@ export function SpendForm({
     return dates;
   }, [days]);
 
+  function onSaved(result: ActionResult, formData: FormData) {
+    const spendId = item?.id ?? (result.ok ? result.id : undefined);
+    const name = String(formData.get("name") ?? "").trim();
+    const amount = Number(formData.get("amount"));
+    const currency = parseSpendCurrency(String(formData.get("currency") ?? ""));
+    writeGifts(
+      applySpendGiftFlag({
+        gifts: readGifts(),
+        spendId,
+        name,
+        amount: Number.isFinite(amount) ? amount : 0,
+        currency,
+        flagged: gift.flagged,
+        forSelf: gift.forSelf,
+        recipient: gift.recipient,
+      }),
+    );
+    if (gift.flagged && !gift.forSelf && gift.recipient.trim()) {
+      rememberRecipientNow(gift.recipient);
+    }
+    goBack();
+  }
+
   function goBack() {
     onSuccess?.();
     if (slide) {
@@ -112,7 +153,7 @@ export function SpendForm({
     <>
       <ActionForm
         action={item ? updateSpend : submitSpend}
-        onSuccess={goBack}
+        onSuccess={onSaved}
         className={`${formShellClass} grid gap-2.5`}
       >
         {item ? <input type="hidden" name="id" value={item.id} /> : null}
@@ -212,6 +253,8 @@ export function SpendForm({
             className={fieldClass}
           />
         </label>
+
+        <SpendGiftFields value={gift} onChange={setGift} />
 
         <div className="flex flex-wrap gap-2">
           <button type="submit" className={btnPrimaryClass}>

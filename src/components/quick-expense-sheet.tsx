@@ -17,6 +17,13 @@ import { haptic } from "@/lib/haptic";
 import { labelCategory } from "@/lib/i18n/dictionaries";
 import { deleteOutboxEntry, listOutbox } from "@/lib/outbox";
 import { foodPlacesForDay } from "@/lib/spend-place";
+import { SpendGiftFields, type SpendGiftValue } from "@/components/spend-gift-fields";
+import {
+  applySpendGiftFlag,
+  readGifts,
+  rememberRecipientNow,
+  writeGifts,
+} from "@/lib/gifts";
 import {
   SPEND_CATEGORIES,
   type Place,
@@ -27,6 +34,16 @@ import {
 const CURRENCY_KEY = "japan-trip-quick-currency";
 const PAYER_KEY = "japan-trip-quick-payer";
 
+export type QuickExpenseGiftPrefill = {
+  giftId?: string;
+  flagged?: boolean;
+  forSelf?: boolean;
+  recipient?: string;
+  name?: string;
+  amount?: number;
+  currency?: SpendCurrency;
+};
+
 export type QuickExpenseDefaults = {
   dayId?: string;
   category?: (typeof SPEND_CATEGORIES)[number];
@@ -34,6 +51,7 @@ export type QuickExpenseDefaults = {
   people?: string[];
   days?: TripDay[];
   places?: Place[];
+  gift?: QuickExpenseGiftPrefill;
 };
 
 function readStoredCurrency(): SpendCurrency {
@@ -107,10 +125,17 @@ function QuickExpenseForm({
     days[0];
   const initialDate = dateKey(initialDay?.date ?? null) ?? tokyoToday();
 
-  const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState<SpendCurrency>(
-    () => defaults.currency ?? readStoredCurrency(),
+  const [amount, setAmount] = useState(() =>
+    defaults.gift?.amount != null ? String(defaults.gift.amount) : "",
   );
+  const [currency, setCurrency] = useState<SpendCurrency>(
+    () => defaults.gift?.currency ?? defaults.currency ?? readStoredCurrency(),
+  );
+  const [gift, setGift] = useState<SpendGiftValue>(() => ({
+    flagged: Boolean(defaults.gift?.flagged || defaults.gift?.giftId),
+    forSelf: defaults.gift?.forSelf ?? true,
+    recipient: defaults.gift?.recipient ?? "",
+  }));
   const [category, setCategory] = useState<
     (typeof SPEND_CATEGORIES)[number]
   >(defaults.category ?? "Food");
@@ -119,7 +144,7 @@ function QuickExpenseForm({
   );
   const [splitWith, setSplitWith] = useState<string[]>([]);
   const [placeId, setPlaceId] = useState("");
-  const [name, setName] = useState("");
+  const [name, setName] = useState(() => defaults.gift?.name ?? "");
   const [dayDate, setDayDate] = useState(initialDate);
   const [time, setTime] = useState(() => tokyoNowTime());
   const [dayId, setDayId] = useState(
@@ -237,6 +262,23 @@ function QuickExpenseForm({
         haptic("error");
         toast(result.error, "error");
         return;
+      }
+
+      writeGifts(
+        applySpendGiftFlag({
+          gifts: readGifts(),
+          spendId: result.id,
+          giftId: defaults.gift?.giftId,
+          name: spendName,
+          amount: parsed,
+          currency,
+          flagged: gift.flagged,
+          forSelf: gift.forSelf,
+          recipient: gift.recipient,
+        }),
+      );
+      if (gift.flagged && !gift.forSelf && gift.recipient.trim()) {
+        rememberRecipientNow(gift.recipient);
       }
 
       haptic("success");
@@ -427,6 +469,8 @@ function QuickExpenseForm({
           options={dayOptions}
         />
       ) : null}
+
+      <SpendGiftFields value={gift} onChange={setGift} compact />
 
       {error ? <p className="text-sm text-accent">{error}</p> : null}
 

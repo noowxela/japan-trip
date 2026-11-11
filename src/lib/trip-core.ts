@@ -76,16 +76,49 @@ export function pickFocusDay(days: TripDay[], today: string) {
   );
 }
 
-export function staysForDate(stays: Stay[], date: string | null) {
+function stayCoversDate(
+  stay: Stay,
+  day: string,
+  occupancy: "overnight" | "overview",
+) {
+  const checkIn = dateKey(stay.checkIn);
+  const checkOut = dateKey(stay.checkOut);
+  if (checkIn && checkOut) {
+    if (occupancy === "overview") return day >= checkIn && day <= checkOut;
+    return day >= checkIn && day < checkOut;
+  }
+  if (checkIn) return day >= checkIn;
+  return false;
+}
+
+/** Overnight occupancy: in-house through the night before check-out. */
+export function staysForDate(stays: readonly Stay[], date: string | null) {
   const day = dateKey(date);
   if (!day) return [];
-  return stays.filter((stay) => {
-    const checkIn = dateKey(stay.checkIn);
-    const checkOut = dateKey(stay.checkOut);
-    if (checkIn && checkOut) return day >= checkIn && day < checkOut;
-    if (checkIn) return day >= checkIn;
-    return false;
-  });
+  return stays.filter((stay) => stayCoversDate(stay, day, "overnight"));
+}
+
+/**
+ * Overview lodging: still show the hotel on the morning of check-out.
+ * The day after check-out remains empty. Map/schedule should keep using
+ * `staysForDate` so pins do not linger after the stay ends.
+ */
+export function staysForOverviewDate(
+  stays: readonly Stay[],
+  date: string | null,
+) {
+  const day = dateKey(date);
+  if (!day) return [];
+  return stays.filter((stay) => stayCoversDate(stay, day, "overview"));
+}
+
+export function isStayCheckoutDay(
+  stay: Pick<Stay, "checkOut">,
+  date: string | null,
+): boolean {
+  const day = dateKey(date);
+  const checkOut = dateKey(stay.checkOut);
+  return Boolean(day && checkOut && day === checkOut);
 }
 
 /**

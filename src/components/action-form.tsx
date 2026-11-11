@@ -31,7 +31,7 @@ export function ActionForm({
   children: ReactNode;
   className?: string;
   successMessage?: string;
-  onSuccess?: () => void;
+  onSuccess?: (result: ActionResult, formData: FormData) => void;
 }) {
   const [pending, startTransition] = useTransition();
   const notify = useActionToast();
@@ -54,7 +54,7 @@ export function ActionForm({
             } else {
               await notify(result);
             }
-            if (result.ok) onSuccess?.();
+            if (result.ok) onSuccess?.(result, formData);
           } catch (error) {
             // A rejected save used to escape this transition and freeze the
             // iOS sheet (body scroll lock + a stuck router, so reload no-ops).

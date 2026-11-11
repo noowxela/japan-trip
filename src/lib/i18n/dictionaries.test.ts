@@ -43,3 +43,22 @@ describe("ingestLog pagination copy", () => {
     expect(t("zh", "ingestLog.next")).toBe("下一页");
   });
 });
+
+describe("clothes, gifts, checkout, and airfare copy", () => {
+  it("has zh and en labels", () => {
+    expect(t("en", "clothes.title")).toBe("Clothes");
+    expect(t("zh", "clothes.title")).toBe("衣物");
+    expect(t("en", "more.clothesDetail")).toBe("Record how many of each to bring");
+    expect(t("zh", "more.clothesDetail")).toBe("记录要带多少件衣服");
+    expect(t("en", "gifts.title")).toBe("Gifts");
+    expect(t("zh", "gifts.title")).toBe("手信");
+    expect(t("en", "gifts.thisIsGift")).toBe("This is a gift");
+    expect(t("zh", "gifts.thisIsGift")).toBe("这是手信");
+    expect(t("en", "overview.checkoutToday")).toBe("Checkout today");
+    expect(t("zh", "overview.checkoutToday")).toBe("今天退房");
+    expect(t("en", "overview.markCheckedOut")).toBe("Checked out");
+    expect(t("zh", "overview.markCheckedOut")).toBe("已退房");
+    expect(t("en", "cat.Airfare")).toBe("Airfare");
+    expect(t("zh", "cat.Airfare")).toBe("飞机票");
+  });
+});

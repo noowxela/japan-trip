@@ -33,9 +33,11 @@ import { CITY_COORDS } from "@/lib/types";
 
 export {
   buildAgenda,
+  isStayCheckoutDay,
   nextAgendaItem,
   pickFocusDay,
   staysForDate,
+  staysForOverviewDate,
   tripPhase,
 } from "@/lib/trip-core";
 

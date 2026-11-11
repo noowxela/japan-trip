@@ -18,6 +18,7 @@ const TRANSIT_MODE_EMOJI: Record<string, string> = {
 const SPEND_CATEGORY_EMOJI: Record<string, string> = {
   Food: "🍽️",
   Transit: "🚆",
+  Airfare: "✈️",
   Stay: "🏨",
   Ticket: "🎫",
   Shop: "🛍️",

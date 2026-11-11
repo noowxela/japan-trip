@@ -82,7 +82,7 @@ Bottom nav (`src/components/bottom-nav.tsx`): Overview `/`, Schedule `/schedule`
 
 Primary day UI is unified Schedule: `/schedule?day=<id|today>&mode=<now|edit>`. Redirects: `/today` → `day=today&mode=now`, `/days/:id` → `day=:id`. `/days` list remains under More.
 
-Secondary: `/map`, `/lists`, `/places`, `/stays`, `/transit`, `/days`, `/prep`, `/phrases` (bundled Japanese phrase cards + hotel address cards from stays; custom phrases in localStorage). `/spend` redirects to `/budget`. Offline shell: `/~offline`. `/phrases` is also in Serwist `additionalPrecacheEntries`.
+Secondary: `/map`, `/lists`, `/places`, `/stays`, `/transit`, `/days`, `/prep`, `/clothes` (packing counts in localStorage), `/phrases` (bundled Japanese phrase cards + hotel address cards from stays; custom phrases in localStorage), `/gifts` (souvenir list in localStorage, optionally linked to a spend). `/spend` redirects to `/budget`. Offline shell: `/~offline`. `/phrases`, `/clothes`, and `/gifts` are also in Serwist `additionalPrecacheEntries`.
 
 i18n: `src/lib/i18n/dictionaries.ts` + `getLocale()` (`lang` cookie) + `I18nProvider` / `useT()`.
 

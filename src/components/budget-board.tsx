@@ -107,7 +107,7 @@ export function BudgetBoard({
       </div>
 
       <section className="max-h-[90px] rounded-xl border border-line bg-surface px-3 py-2 md:max-w-xl">
-        <p className="truncate text-[13px] leading-5 text-ink">
+        <p className="truncate text-right text-[13px] leading-5 text-ink">
           <span className="font-medium">
             {t("budget.spentShort", {
               amount: formatAmount(spentRm, yen, jpyPerRm),
@@ -141,7 +141,7 @@ export function BudgetBoard({
             aria-hidden
           />
         </div>
-        <p className="mt-1 truncate text-[11px] text-ink-muted" title={fxTitle}>
+        <p className="mt-1 truncate text-right text-[11px] text-ink-muted" title={fxTitle}>
           {t("budget.fxCompact", { rm: yen100InRm.toFixed(2) })}
         </p>
       </section>
