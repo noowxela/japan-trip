@@ -202,6 +202,7 @@ const transit = createDatabase("Transit", "🚆", {
 	]),
 	From: { rich_text: {} },
 	To: { rich_text: {} },
+	Notes: { rich_text: {} },
 	Date: { date: {} },
 	"Booking URL": { url: {} },
 	Day: {

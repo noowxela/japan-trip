@@ -182,8 +182,10 @@ function ItemDetailExpand({
 }) {
   const { t } = useT();
   const detail = item.detail?.trim() ?? "";
+  const notes = item.notes?.trim() ?? "";
   const hasFromTo = Boolean(item.from?.trim() || item.to?.trim());
-  if (!detail && !pinHiddenLabel) return null;
+  const preview = hasFromTo ? detail : notes || detail;
+  if (!preview && !pinHiddenLabel) return null;
 
   return (
     <div className="mt-0.5 min-w-0">
@@ -192,7 +194,7 @@ function ItemDetailExpand({
           {pinHiddenLabel}
         </p>
       ) : null}
-      {detail ? (
+      {preview ? (
         <button
           type="button"
           data-no-swipe=""
@@ -233,6 +235,16 @@ function ItemDetailExpand({
                       </p>
                     </div>
                   ) : null}
+                  {notes ? (
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-medium leading-4 text-ink-muted">
+                        {t("form.notes")}
+                      </p>
+                      <p className="whitespace-pre-wrap break-words text-[15px] leading-5 text-ink">
+                        {notes}
+                      </p>
+                    </div>
+                  ) : null}
                 </>
               ) : (
                 <div className="min-w-0">
@@ -240,7 +252,7 @@ function ItemDetailExpand({
                     {t("form.notes")}
                   </p>
                   <p className="whitespace-pre-wrap break-words text-[15px] leading-5 text-ink">
-                    {detail}
+                    {notes || detail}
                   </p>
                 </div>
               )}
@@ -248,7 +260,7 @@ function ItemDetailExpand({
             </div>
           ) : (
             <span className="flex min-w-0 items-center gap-1 text-[13px] leading-5 text-ink-muted">
-              <span className="min-w-0 flex-1 truncate">{detail}</span>
+              <span className="min-w-0 flex-1 truncate">{preview}</span>
               <span className="shrink-0 text-[11px] text-ink-muted" aria-hidden>
                 ▾
               </span>

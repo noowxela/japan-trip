@@ -166,6 +166,10 @@ export function AddTransitForm({
         <span className="text-xs font-medium text-ink-muted">{t("form.order")}</span>
         <input name="order" type="number" className={fieldClass} />
       </label>
+      <label className="grid gap-1">
+        <span className="text-xs font-medium text-ink-muted">{t("form.notes")}</span>
+        <textarea name="notes" rows={2} className={fieldClass} />
+      </label>
       <button type="submit" className={btnPrimaryClass}>
         {t("form.addTransit")}
       </button>

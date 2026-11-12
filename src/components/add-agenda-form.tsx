@@ -242,6 +242,15 @@ export function AddAgendaForm({
         ) : null}
       </div>
 
+      {kind === "transit" ? (
+        <label className="grid gap-1">
+          <span className="text-xs font-medium text-ink-muted">
+            {t("form.notes")}
+          </span>
+          <textarea name="notes" rows={2} className={fieldClass} />
+        </label>
+      ) : null}
+
       <button type="submit" className={btnPrimaryClass}>
         {kind === "place" ? t("form.addPlace") : t("form.addTransit")}
       </button>

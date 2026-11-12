@@ -110,7 +110,7 @@ function AgendaItemEditForm({
   );
   const [mapsUrl, setMapsUrl] = useState(item.mapsUrl ?? "");
   const [notes, setNotes] = useState(
-    item.kind === "place" ? item.detail : "",
+    item.kind === "place" ? item.detail : (item.notes ?? ""),
   );
   const [order, setOrder] = useState(
     item.order != null ? String(item.order) : "",
@@ -164,6 +164,7 @@ function AgendaItemEditForm({
     formData.set("order", order);
     formData.set("from", from);
     formData.set("to", to);
+    formData.set("notes", notes);
     formData.set("date", dayDateKey);
     startTransition(async () => {
       const result = await updateTransit(formData);
@@ -355,6 +356,17 @@ function AgendaItemEditForm({
               value={to}
               onChange={(event) => setTo(event.target.value)}
               className={`${fieldClass} h-auto min-h-[4rem] py-2.5 text-[16px] leading-5`}
+            />
+          </label>
+          <label className="grid gap-1">
+            <span className="text-sm font-medium text-ink-muted">
+              {t("form.notes")}
+            </span>
+            <textarea
+              rows={4}
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              className={`${fieldClass} h-auto min-h-[5.5rem] py-2.5 text-[16px] leading-5`}
             />
           </label>
         </div>

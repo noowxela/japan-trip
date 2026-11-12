@@ -635,6 +635,7 @@ export async function updateTransit(formData: FormData): Promise<ActionResult> {
   const dayId = String(formData.get("dayId") ?? "").trim();
   const start = startValue(formData);
   const order = orderValue(formData);
+  const notes = String(formData.get("notes") ?? "").trim();
   if (!id || !name) return actionErr(await actionT("action.transitNameRequired"));
   const notion = getNotion();
   const dateStart = date || (start ? start.slice(0, 10) : "");
@@ -645,6 +646,7 @@ export async function updateTransit(formData: FormData): Promise<ActionResult> {
       Mode: { select: mode ? { name: mode } : null },
       From: textProp(from),
       To: textProp(to),
+      Notes: textProp(notes),
       Date: { date: dateStart ? { start: dateStart } : null },
       ...(hasBookingUrl
         ? { "Booking URL": { url: bookingUrl || null } }
@@ -875,6 +877,7 @@ export async function addTransit(formData: FormData): Promise<ActionResult> {
   const dayId = String(formData.get("dayId") ?? "").trim();
   const start = startValue(formData);
   const order = orderValue(formData);
+  const notes = String(formData.get("notes") ?? "").trim();
   if (!name) return actionErr(await actionT("action.transitNameRequired"));
   const notion = getNotion();
   await notion.pages.create({
@@ -884,6 +887,7 @@ export async function addTransit(formData: FormData): Promise<ActionResult> {
       ...(mode ? { Mode: { select: { name: mode } } } : {}),
       ...(from ? { From: textProp(from) } : {}),
       ...(to ? { To: textProp(to) } : {}),
+      ...(notes ? { Notes: textProp(notes) } : {}),
       ...(date ? { Date: { date: { start: date } } } : {}),
       ...(bookingUrl ? { "Booking URL": { url: bookingUrl } } : {}),
       ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),

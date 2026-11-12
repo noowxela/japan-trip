@@ -53,6 +53,7 @@ function TransitEditForm({
   const [name, setName] = useState(item.name);
   const [from, setFrom] = useState(item.from);
   const [to, setTo] = useState(item.to);
+  const [notes, setNotes] = useState(item.notes ?? "");
   const [date, setDate] = useState(item.date?.slice(0, 10) ?? "");
   const [dayId, setDayId] = useState(item.dayIds[0] ?? "");
   const [bookingUrl, setBookingUrl] = useState(item.bookingUrl ?? "");
@@ -126,6 +127,16 @@ function TransitEditForm({
           />
         </label>
       </div>
+      <label className={`block ${compactLabelClass}`}>
+        {t("form.notes")}
+        <textarea
+          name="notes"
+          rows={2}
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
+          className={`mt-1 ${compactFieldClass}`}
+        />
+      </label>
       <div className="grid grid-cols-2 gap-2">
         <label className={`block ${compactLabelClass}`}>
           {t("form.date")}
@@ -211,6 +222,7 @@ export function TransitCard({
   });
   const modeLabel = item.mode ? labelMode(locale, item.mode) : null;
   const route = [item.from, item.to].filter(Boolean).join(" → ");
+  const notesPreview = item.notes?.trim() ?? "";
   const dayMeta =
     dayLinks.length > 0
       ? dayLinks.map((day) => day.name).join(", ")
@@ -218,7 +230,7 @@ export function TransitCard({
   const timeLabel = formatTime(item.start);
   const dateLabel = item.date ? formatDay(item.date, locale) : null;
   // Date lives in the leading column when there is no time — don't repeat it.
-  const secondaryBits = [timeLabel && dateLabel ? dateLabel : null, dayMeta]
+  const secondaryBits = [timeLabel && dateLabel ? dateLabel : null, dayMeta, notesPreview]
     .filter(Boolean)
     .join(" · ");
 

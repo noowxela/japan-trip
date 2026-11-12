@@ -108,6 +108,7 @@ function parseTransit(page: Awaited<ReturnType<typeof queryAll>>[number]): Trans
     order: numberOf(page, "Order"),
     visited: checkboxOf(page, "Visited"),
     skipped: checkboxOf(page, "Skipped"),
+    notes: richTextOf(page, "Notes"),
   };
 }
 

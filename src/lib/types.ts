@@ -47,6 +47,7 @@ export type Transit = {
   order: number | null;
   visited: boolean;
   skipped: boolean;
+  notes: string;
 };
 
 export const SPEND_CURRENCIES = ["Yen", "RM"] as const;
@@ -94,6 +95,8 @@ export type AgendaItem = {
   /** Transit endpoints. Flight pairing reads these (detail stays "from → to"). */
   from?: string;
   to?: string;
+  /** Transit remarks. Place remarks stay on `detail`. */
+  notes?: string;
 };
 
 export const CITIES = ["Tokyo", "Kyoto", "Osaka", "Other"] as const;

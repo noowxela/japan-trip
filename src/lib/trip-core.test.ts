@@ -155,6 +155,7 @@ describe("buildAgenda visited", () => {
       order: 1,
       visited: true,
       skipped: false,
+      notes: "",
     }];
     const rows = buildAgenda(places, transit);
     expect(rows.find((row) => row.id === "t1")).toMatchObject({
@@ -198,6 +199,7 @@ describe("buildAgenda visited", () => {
       order: 2,
       visited: false,
       skipped: true,
+      notes: "",
     }];
     const rows = buildAgenda(places, transit);
     expect(rows.find((row) => row.id === "t2")).toMatchObject({
@@ -212,6 +214,64 @@ describe("buildAgenda visited", () => {
     });
     expect(isAgendaOpen(rows[0])).toBe(false);
     expect(rows.some((row) => row.visited)).toBe(false);
+  });
+});
+
+describe("buildAgenda transit notes", () => {
+  const transit = (
+    over: Partial<Transit> & Pick<Transit, "id" | "name">,
+  ): Transit => ({
+    mode: "Metro",
+    from: "",
+    to: "",
+    date: "2026-11-06",
+    bookingUrl: null,
+    dayIds: [],
+    start: "2026-11-06T10:00:00+09:00",
+    order: 1,
+    visited: false,
+    skipped: false,
+    notes: "",
+    ...over,
+  });
+
+  it("copies trimmed notes onto the row and keeps from → to in detail", () => {
+    const [row] = buildAgenda(
+      [],
+      [transit({ id: "t1", name: "Airport", from: "KLIA", to: "KIX", notes: "  seat 12A  " })],
+    );
+    expect(row).toMatchObject({
+      kind: "transit",
+      detail: "KLIA → KIX",
+      from: "KLIA",
+      to: "KIX",
+      notes: "seat 12A",
+    });
+  });
+
+  it("still exposes notes when from and to are empty", () => {
+    const [row] = buildAgenda(
+      [],
+      [transit({ id: "t2", name: "Metro", notes: "platform 3" })],
+    );
+    expect(row).toMatchObject({
+      kind: "transit",
+      detail: "",
+      from: "",
+      to: "",
+      notes: "platform 3",
+    });
+  });
+
+  it("treats missing notes as empty so older cached rows still build", () => {
+    const stale = transit({ id: "t3", name: "Bus", from: "A", to: "B" });
+    delete (stale as { notes?: string }).notes;
+    const [row] = buildAgenda([], [stale]);
+    expect(row).toMatchObject({
+      kind: "transit",
+      detail: "A → B",
+      notes: "",
+    });
   });
 });
 
@@ -266,6 +326,7 @@ describe("buildAgenda sort", () => {
     order,
     visited: false,
     skipped: false,
+    notes: "",
   });
 
   it("keeps date-only late adds after timed stops (not before them)", () => {

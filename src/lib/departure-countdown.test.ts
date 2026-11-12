@@ -67,6 +67,7 @@ function tr(p: Partial<Transit> & { id: string }): Transit {
     start: null,
     order: null,
     visited: false,
+    notes: "",
     skipped: false,
     ...p,
   };

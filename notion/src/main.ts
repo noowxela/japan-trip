@@ -179,6 +179,7 @@ notion.database({
 				},
 				{ resourceId: "transit-from-prop", name: "From", type: "text" },
 				{ resourceId: "transit-to-prop", name: "To", type: "text" },
+				{ resourceId: "transit-notes-prop", name: "Notes", type: "text" },
 				{ resourceId: "transit-date-prop", name: "Date", type: "date" },
 				{
 					resourceId: "transit-booking-prop",

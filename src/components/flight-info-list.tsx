@@ -76,7 +76,9 @@ export async function FlightInfoList({ flights, dayNames }: FlightInfoListProps)
                 }
                 title={flight.name}
                 meta={route}
-                secondary={[when, dayLabel].filter(Boolean).join(" · ")}
+                secondary={[when, dayLabel, flight.notes?.trim() || null]
+                  .filter(Boolean)
+                  .join(" · ")}
                 trailing={
                   <span className="flex shrink-0 items-center gap-2 pr-2">
                     <a

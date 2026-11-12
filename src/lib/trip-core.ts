@@ -182,6 +182,7 @@ export function buildAgenda(places: Place[], transit: Transit[]): AgendaItem[] {
       order: item.order,
       visited: item.visited,
       skipped: item.skipped,
+      notes: item.notes?.trim() ?? "",
     })),
   ];
   return items.sort(sortAgenda);
