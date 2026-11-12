@@ -96,7 +96,7 @@ export default async function MapPage() {
   }
 
   return (
-    <main className="fixed inset-x-0 top-0 bottom-[var(--tab-bar-height,4.25rem)] z-10 overflow-hidden">
+    <main className="fixed inset-x-0 top-[env(safe-area-inset-top,0px)] bottom-[var(--tab-bar-height,4.25rem)] z-10 overflow-hidden">
       <TripMapLoader
         hops={hops}
         hopPoints={hopPoints}

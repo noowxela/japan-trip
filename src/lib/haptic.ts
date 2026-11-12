@@ -1,3 +1,5 @@
+import { getAppScrollTop } from "@/lib/app-shell";
+
 export const HAPTICS_STORAGE_KEY = "japan-trip-haptics";
 export const HAPTICS_CHANGED_EVENT = "japan-trip-haptics-changed";
 
@@ -101,14 +103,7 @@ export function movedBeyondTap(
 }
 
 export function pageScrollOffset(from?: Element | null): number {
-  let total = window.scrollY;
-  let node: HTMLElement | null =
-    from instanceof HTMLElement ? from : (from?.parentElement ?? null);
-  while (node && node !== document.body && node !== document.documentElement) {
-    total += node.scrollTop;
-    node = node.parentElement;
-  }
-  return total;
+  return getAppScrollTop(from);
 }
 
 export function captureGestureOrigin(

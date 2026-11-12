@@ -459,7 +459,7 @@ export function ScheduleView({
   const editTransit = slice?.transit ?? [];
 
   return (
-    <div ref={rootRef} className="flex h-dvh flex-col overflow-hidden">
+    <div ref={rootRef} className="flex h-full min-h-0 flex-col overflow-hidden">
       <Link
         href="/"
         aria-label={t("nav.backOverview")}

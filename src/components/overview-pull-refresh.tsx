@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useAppUpdate } from "@/components/app-update-provider";
 import { useT } from "@/components/i18n-provider";
+import { getAppScrollTop } from "@/lib/app-shell";
 import {
   PULL_THRESHOLD_PX,
   pullDistance,
@@ -67,7 +68,7 @@ export function OverviewPullRefresh({ children }: { children: ReactNode }) {
     const onStart = (event: TouchEvent) => {
       if (phaseRef.current === "checking") return;
       if (event.touches.length !== 1) return;
-      const scrollTop = window.scrollY || root.scrollTop;
+      const scrollTop = getAppScrollTop();
       if (scrollTop > 0) return;
       pullingRef.current = true;
       startYRef.current = event.touches[0]!.clientY;
@@ -78,7 +79,7 @@ export function OverviewPullRefresh({ children }: { children: ReactNode }) {
       if (phaseRef.current === "checking") return;
       const touch = event.touches[0];
       if (!touch) return;
-      const scrollTop = window.scrollY || root.scrollTop;
+      const scrollTop = getAppScrollTop();
       const next = pullDistance(startYRef.current, touch.clientY, scrollTop);
       if (next > 0) {
         if (event.cancelable) event.preventDefault();

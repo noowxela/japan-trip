@@ -9,6 +9,7 @@ import {
   btnPrimaryClass,
   cardClass,
 } from "@/components/page-shell";
+import { isStandaloneDisplay as sharedStandaloneDisplay } from "@/lib/app-shell";
 import type { PushPrefs } from "@/lib/push-store";
 
 type SupportState =
@@ -32,12 +33,7 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 }
 
 function isStandaloneDisplay(): boolean {
-  if (typeof window === "undefined") return false;
-  const mq = window.matchMedia("(display-mode: standalone)").matches;
-  const iosStandalone =
-    "standalone" in navigator &&
-    Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
-  return mq || iosStandalone;
+  return sharedStandaloneDisplay();
 }
 
 function isIos(): boolean {

@@ -12,6 +12,10 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { useT } from "@/components/i18n-provider";
+import {
+  isStandaloneDisplay,
+  shouldHandleEdgeBackSwipe,
+} from "@/lib/app-shell";
 
 const SLIDE_MS = 380;
 const EDGE_PX = 28;
@@ -37,7 +41,7 @@ export function SlideInPage({
 }) {
   const router = useRouter();
   const { t } = useT();
-  const label = backLabel ?? t("nav.expenses");
+  const label = backLabel ?? t("common.back");
   const [shown, setShown] = useState(false);
   const [dragX, setDragX] = useState(0);
   const [grabbing, setGrabbing] = useState(false);
@@ -79,6 +83,7 @@ export function SlideInPage({
   }, [backHref, onClose, router]);
 
   function onTouchStart(event: TouchEvent<HTMLDivElement>) {
+    if (!shouldHandleEdgeBackSwipe(isStandaloneDisplay())) return;
     if (closingRef.current || event.touches.length !== 1) return;
     const touch = event.touches[0];
     if (touch.clientX > EDGE_PX) return;
@@ -122,7 +127,7 @@ export function SlideInPage({
         role="dialog"
         aria-modal="true"
         aria-label={label}
-        className="fixed inset-0 z-40 overflow-y-auto overscroll-x-none overscroll-contain bg-canvas will-change-transform motion-reduce:transition-none"
+        className="fixed inset-0 z-40 overflow-x-clip overflow-y-auto overscroll-none bg-canvas will-change-transform motion-reduce:transition-none"
         style={{
           transform: shown
             ? `translate3d(${dragX}px,0,0)`

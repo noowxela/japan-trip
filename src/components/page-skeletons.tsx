@@ -367,7 +367,7 @@ const SCHEDULE_ROWS = 6;
  */
 export function ScheduleSkeleton() {
   return (
-    <SkeletonStatus className="flex h-dvh flex-col overflow-hidden">
+    <SkeletonStatus className="flex h-full min-h-0 flex-col overflow-hidden">
       <div className="relative z-0 min-h-0 flex-1 overflow-hidden bg-canvas" aria-hidden>
         <SkeletonBar className="absolute inset-0 rounded-none bg-ink/[0.04]" />
         <span className="absolute left-2 top-[max(0.5rem,env(safe-area-inset-top,0px))] h-9 w-9 rounded-full bg-surface/90 shadow-sm" />

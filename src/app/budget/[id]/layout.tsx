@@ -1,10 +1,17 @@
-import { SlideInPage } from "@/components/slide-in-page";
 import type { ReactNode } from "react";
+import { SlideInPage } from "@/components/slide-in-page";
+import { t } from "@/lib/i18n/dictionaries";
+import { getLocale } from "@/lib/i18n/server";
 
-export default function ExpenseDetailLayout({
+export default async function ExpenseDetailLayout({
   children,
 }: {
   children: ReactNode;
 }) {
-  return <SlideInPage>{children}</SlideInPage>;
+  const locale = await getLocale();
+  return (
+    <SlideInPage backHref="/budget" backLabel={t(locale, "nav.expenses")}>
+      {children}
+    </SlideInPage>
+  );
 }

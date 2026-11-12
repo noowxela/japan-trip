@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useT } from "@/components/i18n-provider";
+import { getAppScrollElement, getAppScrollTop } from "@/lib/app-shell";
 
 const TOP_PX = 24;
 const DELTA_PX = 10;
@@ -19,12 +20,13 @@ function useScrollHideTabBar() {
   }
 
   useEffect(() => {
-    let lastY = window.scrollY;
+    const scroller = getAppScrollElement();
+    let lastY = getAppScrollTop();
     let frame = 0;
 
     const apply = () => {
       frame = 0;
-      const y = Math.max(0, window.scrollY);
+      const y = Math.max(0, getAppScrollTop());
       const delta = y - lastY;
       lastY = y;
 
@@ -41,9 +43,10 @@ function useScrollHideTabBar() {
       frame = window.requestAnimationFrame(apply);
     };
 
-    window.addEventListener("scroll", onScroll, { passive: true });
+    const target: EventTarget = scroller ?? window;
+    target.addEventListener("scroll", onScroll, { passive: true });
     return () => {
-      window.removeEventListener("scroll", onScroll);
+      target.removeEventListener("scroll", onScroll);
       if (frame) window.cancelAnimationFrame(frame);
     };
   }, [pathname]);

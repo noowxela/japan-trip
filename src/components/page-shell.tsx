@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 export const pageShellClass =
-  "mx-auto flex w-full min-w-0 max-w-xl flex-col gap-3 overflow-x-hidden px-4 py-4 pb-[calc(var(--tab-bar-height,4.25rem)+1.25rem)] pt-[max(1rem,env(safe-area-inset-top))] md:max-w-5xl md:px-8";
+  "mx-auto flex w-full min-w-0 max-w-xl flex-col gap-3 overflow-x-clip px-4 py-4 pb-[calc(var(--tab-bar-height,4.25rem)+1.25rem)] pt-[max(1rem,env(safe-area-inset-top))] md:max-w-5xl md:px-8";
 
 export const cardGridClass = "grid gap-3 sm:grid-cols-2";
 
@@ -27,7 +27,7 @@ export const btnGhostClass =
   "notebook-btn inline-flex h-9 items-center justify-center px-3 text-[13px] font-medium text-ink-muted";
 
 export const fieldClass =
-  "h-9 w-full min-w-0 rounded-lg border border-line bg-surface px-2.5 text-[14px] text-ink outline-none focus:border-accent";
+  "h-9 w-full min-w-0 rounded-lg border border-line bg-surface px-2.5 text-[16px] text-ink outline-none focus:border-accent";
 
 export const eyebrowClass = "text-[11px] font-medium leading-4 text-ink-muted";
 

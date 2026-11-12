@@ -123,12 +123,66 @@ html[data-tab-bar="hidden"] .tab-bar-follow {
   }
 }
 
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  overflow-x: clip;
+}
+
 body {
   background-color: var(--canvas);
   color: var(--ink);
   font-size: 15px;
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input,
+textarea,
+[contenteditable="true"] {
+  -webkit-touch-callout: default;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.app-shell {
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  overflow-x: clip;
+  overscroll-behavior: none;
+}
+
+.app-safe-top {
+  height: env(safe-area-inset-top, 0px);
+}
+
+.app-scroll {
+  min-width: 0;
+  overflow-x: clip;
+  overflow-y: auto;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+button,
+a,
+.tab-bar,
+.notebook-btn,
+.notebook-press {
+  touch-action: manipulation;
+}
+
+.leaflet-container,
+.leaflet-container * {
+  touch-action: auto;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .type-page {

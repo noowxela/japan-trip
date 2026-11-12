@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Nunito } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { AppShell } from "@/components/app-shell";
 import { AppUpdateProvider } from "@/components/app-update-provider";
 import { BottomNav } from "@/components/bottom-nav";
 import { CacheFallbackProvider } from "@/components/cache-fallback";
@@ -67,6 +68,8 @@ export async function generateMetadata(): Promise<Metadata> {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f6f1e8" },
@@ -89,7 +92,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang={locale === "zh" ? "zh-CN" : "en"}
-      className={`${nunito.variable} h-full overflow-x-hidden antialiased`}
+      className={`${nunito.variable} h-full overflow-hidden overscroll-none antialiased`}
       {...(dataTheme ? { "data-theme": dataTheme } : {})}
       suppressHydrationWarning
     >
@@ -100,7 +103,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           }}
         />
       </head>
-      <body className="min-h-full overflow-x-hidden bg-canvas font-sans text-ink">
+      <body className="h-full overflow-hidden overscroll-none bg-canvas font-sans text-ink">
         <SerwistProvider
           swUrl="/serwist/sw.js"
           disable={process.env.NODE_ENV === "development"}
@@ -117,7 +120,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                       <QuickExpenseProvider>
                         <AppUpdateProvider>
                           <HapticProvider />
-                          {children}
+                          <AppShell>{children}</AppShell>
                           <SyncBadge />
                           <BottomNav />
                         </AppUpdateProvider>
