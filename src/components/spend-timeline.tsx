@@ -98,6 +98,7 @@ export function SpendTimeline({
                           compact
                           timeLabel={time}
                           places={places}
+                          days={days}
                         />
                       </li>
                     );

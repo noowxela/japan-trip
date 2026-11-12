@@ -211,6 +211,7 @@ export function BudgetBoard({
           locale={locale}
           totalLabel={t("budget.total")}
           places={places}
+          days={days}
         />
       ) : null}
 
@@ -228,6 +229,7 @@ export function BudgetBoard({
                   displayYen={yen}
                   compact
                   places={places}
+                  days={days}
                 />
               </li>
             ))}
@@ -246,6 +248,7 @@ export function BudgetBoard({
           jpyPerRm={jpyPerRm}
           fxTitle={fxTitle}
           places={places}
+          days={days}
         />
       ) : null}
     </>
@@ -258,12 +261,14 @@ function SettlePanel({
   jpyPerRm,
   fxTitle,
   places = [],
+  days = [],
 }: {
   settle: ReturnType<typeof settleUp>;
   displayYen: boolean;
   jpyPerRm: number;
   fxTitle: string;
   places?: Place[];
+  days?: TripDay[];
 }) {
   const { t } = useT();
   const money = (rm: number) => formatAmount(rm, displayYen, jpyPerRm);
@@ -363,6 +368,7 @@ function SettlePanel({
                 displayYen={displayYen}
                 compact
                 places={places}
+                days={days}
               />
             ))}
           </div>
@@ -433,6 +439,7 @@ function CategorySummary({
   locale,
   totalLabel,
   places = [],
+  days = [],
 }: {
   rows: ReturnType<typeof categoryBreakdown>;
   items: SpendItem[];
@@ -442,6 +449,7 @@ function CategorySummary({
   locale: ReturnType<typeof useT>["locale"];
   totalLabel: string;
   places?: Place[];
+  days?: TripDay[];
 }) {
   const { t } = useT();
   const largest = useMemo(() => {
@@ -547,6 +555,7 @@ function CategorySummary({
                       displayYen={displayYen}
                       compact
                       places={places}
+                      days={days}
                     />
                   </li>
                 ))}

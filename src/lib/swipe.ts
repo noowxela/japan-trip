@@ -78,6 +78,15 @@ export function shouldSuppressClick(didCommitOrDrag: boolean): boolean {
   return didCommitOrDrag;
 }
 
+/** Movement past the axis lock cancels an in-progress long-press. */
+export function shouldCancelLongPress(
+  dx: number,
+  dy: number,
+  lockPx: number = SWIPE_AXIS_LOCK_PX,
+): boolean {
+  return Math.abs(dx) >= lockPx || Math.abs(dy) >= lockPx;
+}
+
 export function isSwipeIgnoredTarget(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
   if (target.closest("[data-no-swipe]")) return true;

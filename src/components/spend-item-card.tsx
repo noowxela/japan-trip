@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, type MouseEvent, type PointerEvent } from "react";
+import { useRef, useState, type MouseEvent, type PointerEvent } from "react";
 import { useT } from "@/components/i18n-provider";
 import { SpendCategoryIcon } from "@/components/spend-category-icon";
+import { SpendItemContextMenu } from "@/components/spend-item-context-menu";
 import { yenForMyr } from "@/lib/exchange";
 import { spendCategoryEmoji } from "@/lib/category-icon";
 import { formatRm, formatSpend, formatYen } from "@/lib/format";
@@ -11,11 +12,15 @@ import { labelCategory } from "@/lib/i18n/dictionaries";
 import {
   captureGestureOrigin,
   gestureWasScroll,
+  haptic,
   type GestureOrigin,
 } from "@/lib/haptic";
 import { toRm } from "@/lib/spend";
 import { linkedPlaceLabel } from "@/lib/spend-place";
-import { JPY_PER_RM, type Place, type SpendItem } from "@/lib/types";
+import { LONG_PRESS_MS, shouldCancelLongPress } from "@/lib/swipe";
+import { JPY_PER_RM, type Place, type SpendItem, type TripDay } from "@/lib/types";
+
+type AnchorRect = { top: number; left: number; width: number; height: number };
 
 export function SpendItemCard({
   item,
@@ -24,6 +29,7 @@ export function SpendItemCard({
   compact = false,
   timeLabel,
   places = [],
+  days = [],
 }: {
   item: SpendItem;
   jpyPerRm?: number;
@@ -32,9 +38,21 @@ export function SpendItemCard({
   /** Optional time shown before the icon on compact rows (no leading bullet). */
   timeLabel?: string | null;
   places?: Place[];
+  days?: TripDay[];
 }) {
   const { t, locale } = useT();
   const gesture = useRef<GestureOrigin | null>(null);
+  const press = useRef<{
+    pointerId: number;
+    x: number;
+    y: number;
+    timer: number | null;
+    fired: boolean;
+  } | null>(null);
+  const suppressClick = useRef(false);
+  const [menu, setMenu] = useState<{ open: boolean; anchor: AnchorRect | null }>(
+    { open: false, anchor: null },
+  );
   const pendingSync = item.id.startsWith("outbox:");
   const place = linkedPlaceLabel(item, places);
   const placeChip =
@@ -42,18 +60,101 @@ export function SpendItemCard({
       ? place.name
       : null;
 
+  const categoryLabel = labelCategory(locale, item.category);
+  const emoji = spendCategoryEmoji(item.category);
+
+  const bodyProps = {
+    item,
+    compact,
+    timeLabel,
+    pendingSync,
+    placeChip,
+    categoryLabel,
+    emoji,
+    displayYen,
+    jpyPerRm,
+    pendingLabel: t("offline.pendingChip"),
+  };
+
+  function clearPress() {
+    const current = press.current;
+    if (current?.timer != null) window.clearTimeout(current.timer);
+    press.current = null;
+  }
+
+  function openMenuFrom(target: HTMLElement) {
+    const current = press.current;
+    if (current) {
+      if (current.timer != null) window.clearTimeout(current.timer);
+      current.fired = true;
+      current.timer = null;
+    }
+    const rect = target.getBoundingClientRect();
+    suppressClick.current = true;
+    haptic("tap");
+    setMenu({
+      open: true,
+      anchor: {
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+      },
+    });
+  }
+
   const onPointerDown = (event: PointerEvent<HTMLAnchorElement>) => {
     if (!event.isPrimary) return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
     gesture.current = captureGestureOrigin(
       event.clientX,
       event.clientY,
       event.currentTarget,
     );
+    suppressClick.current = false;
+    const current = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      timer: null as number | null,
+      fired: false,
+    };
+    current.timer = window.setTimeout(() => {
+      const active = press.current;
+      if (!active || active.pointerId !== current.pointerId || active.fired) {
+        return;
+      }
+      active.fired = true;
+      active.timer = null;
+      openMenuFrom(event.currentTarget);
+    }, LONG_PRESS_MS);
+    press.current = current;
+  };
+
+  const onPointerMove = (event: PointerEvent<HTMLAnchorElement>) => {
+    const active = press.current;
+    if (!active || active.pointerId !== event.pointerId || active.fired) return;
+    if (shouldCancelLongPress(event.clientX - active.x, event.clientY - active.y)) {
+      clearPress();
+    }
+  };
+
+  const onPointerEnd = (event: PointerEvent<HTMLAnchorElement>) => {
+    const active = press.current;
+    if (!active || active.pointerId !== event.pointerId) return;
+    if (!active.fired) clearPress();
+    else press.current = null;
   };
 
   const onClick = (event: MouseEvent<HTMLAnchorElement>) => {
     const start = gesture.current;
     gesture.current = null;
+    if (suppressClick.current) {
+      event.preventDefault();
+      event.stopPropagation();
+      suppressClick.current = false;
+      return;
+    }
     if (
       start &&
       gestureWasScroll(start, event.clientX, event.clientY, event.currentTarget)
@@ -62,52 +163,143 @@ export function SpendItemCard({
     }
   };
 
-  const categoryLabel = labelCategory(locale, item.category);
-  const emoji = spendCategoryEmoji(item.category);
+  const onContextMenu = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    if (pendingSync) return;
+    // Mouse right-click should open the same menu; touch long-press already did.
+    if (menu.open) return;
+    if (press.current?.fired) return;
+    openMenuFrom(event.currentTarget);
+  };
 
-  const body = compact ? (
-    <>
-      {timeLabel ? (
-        <span className="w-10 shrink-0 text-right text-[11px] font-semibold tabular-nums leading-4 text-ink">
-          {timeLabel}
-        </span>
-      ) : null}
-      <div className="min-w-0 flex-1">
-        <p className="flex min-w-0 items-center gap-1.5 truncate text-[13px] leading-4">
-          <span
-            role="img"
-            aria-label={categoryLabel ?? undefined}
-            title={categoryLabel ?? undefined}
-            className="shrink-0 text-[14px] leading-none"
-          >
-            {emoji}
-          </span>
-          <span className="truncate font-medium">{item.name}</span>
-          {pendingSync ? (
-            <span className="shrink-0 rounded-full bg-maybe-soft px-1.5 py-px text-[10px] font-medium text-maybe">
-              {t("offline.pendingChip")}
-            </span>
-          ) : null}
-          {item.paidBy ? (
-            <span className="shrink-0 rounded-full bg-canvas px-1.5 py-px text-[10px] font-medium text-ink-muted">
-              {item.paidBy}
-            </span>
-          ) : null}
-          {placeChip ? (
-            <span className="shrink-0 rounded-full bg-canvas px-1.5 py-px text-[10px] font-medium text-ink-muted">
-              {placeChip}
-            </span>
-          ) : null}
-        </p>
+  const className = compact
+    ? "spend-item-row notebook-press relative flex min-h-11 min-w-0 touch-pan-y items-center gap-2 py-1.5"
+    : "spend-item-row notebook-press relative flex min-w-0 touch-pan-y items-start gap-3 notebook-card p-3";
+
+  if (pendingSync) {
+    return (
+      <div
+        className={
+          compact
+            ? "spend-item-row relative flex min-h-11 min-w-0 items-center gap-2 py-1.5"
+            : "spend-item-row relative flex min-w-0 items-start gap-3 notebook-card p-3"
+        }
+      >
+        <SpendItemBody {...bodyProps} />
       </div>
-      <SpendAmounts
+    );
+  }
+
+  return (
+    <>
+      <Link
+        href={`/budget/${item.id}`}
+        className={className}
+        scroll={false}
+        data-no-haptic=""
+        draggable={false}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerEnd}
+        onPointerCancel={onPointerEnd}
+        onClick={onClick}
+        onContextMenu={onContextMenu}
+        onDragStart={(event) => event.preventDefault()}
+      >
+        <SpendItemBody {...bodyProps} />
+      </Link>
+      <SpendItemContextMenu
         item={item}
-        displayYen={displayYen}
-        jpyPerRm={jpyPerRm}
-        compact
+        days={days}
+        open={menu.open}
+        anchor={menu.anchor}
+        preview={
+          <div
+            className={
+              compact
+                ? "flex min-h-11 min-w-0 items-center gap-2"
+                : "flex min-w-0 items-start gap-3"
+            }
+          >
+            <SpendItemBody {...bodyProps} />
+          </div>
+        }
+        onClose={() => setMenu({ open: false, anchor: menu.anchor })}
       />
     </>
-  ) : (
+  );
+}
+
+function SpendItemBody({
+  item,
+  compact,
+  timeLabel,
+  pendingSync,
+  placeChip,
+  categoryLabel,
+  emoji,
+  displayYen,
+  jpyPerRm,
+  pendingLabel,
+}: {
+  item: SpendItem;
+  compact: boolean;
+  timeLabel?: string | null;
+  pendingSync: boolean;
+  placeChip: string | null;
+  categoryLabel: string | null;
+  emoji: string;
+  displayYen: boolean;
+  jpyPerRm: number;
+  pendingLabel: string;
+}) {
+  if (compact) {
+    return (
+      <>
+        {timeLabel ? (
+          <span className="w-10 shrink-0 text-right text-[11px] font-semibold tabular-nums leading-4 text-ink">
+            {timeLabel}
+          </span>
+        ) : null}
+        <div className="min-w-0 flex-1">
+          <p className="flex min-w-0 items-center gap-1.5 truncate text-[13px] leading-4">
+            <span
+              role="img"
+              aria-label={categoryLabel ?? undefined}
+              title={categoryLabel ?? undefined}
+              className="shrink-0 text-[14px] leading-none"
+            >
+              {emoji}
+            </span>
+            <span className="truncate font-medium">{item.name}</span>
+            {pendingSync ? (
+              <span className="shrink-0 rounded-full bg-maybe-soft px-1.5 py-px text-[10px] font-medium text-maybe">
+                {pendingLabel}
+              </span>
+            ) : null}
+            {item.paidBy ? (
+              <span className="shrink-0 rounded-full bg-canvas px-1.5 py-px text-[10px] font-medium text-ink-muted">
+                {item.paidBy}
+              </span>
+            ) : null}
+            {placeChip ? (
+              <span className="shrink-0 rounded-full bg-canvas px-1.5 py-px text-[10px] font-medium text-ink-muted">
+                {placeChip}
+              </span>
+            ) : null}
+          </p>
+        </div>
+        <SpendAmounts
+          item={item}
+          displayYen={displayYen}
+          jpyPerRm={jpyPerRm}
+          compact
+        />
+      </>
+    );
+  }
+
+  return (
     <>
       <SpendCategoryIcon category={item.category} />
       <div className="min-w-0 flex-1">
@@ -118,7 +310,7 @@ export function SpendItemCard({
         <div className="mt-1 flex flex-wrap gap-1">
           {pendingSync ? (
             <span className="w-fit rounded-full bg-maybe-soft px-2 py-0.5 text-[11px] font-medium text-maybe">
-              {t("offline.pendingChip")}
+              {pendingLabel}
             </span>
           ) : null}
           {item.paidBy ? (
@@ -135,37 +327,6 @@ export function SpendItemCard({
       </div>
       <SpendAmounts item={item} displayYen={displayYen} jpyPerRm={jpyPerRm} />
     </>
-  );
-
-  if (pendingSync) {
-    return (
-      <div
-        className={
-          compact
-            ? "relative flex min-h-11 min-w-0 items-center gap-2 py-1.5"
-            : "relative flex min-w-0 items-start gap-3 notebook-card p-3"
-        }
-      >
-        {body}
-      </div>
-    );
-  }
-
-  return (
-    <Link
-      href={`/budget/${item.id}`}
-      className={
-        compact
-          ? "notebook-press relative flex min-h-11 min-w-0 touch-pan-y items-center gap-2 py-1.5"
-          : "notebook-press relative flex min-w-0 touch-pan-y items-start gap-3 notebook-card p-3"
-      }
-      scroll={false}
-      data-no-haptic=""
-      onPointerDown={onPointerDown}
-      onClick={onClick}
-    >
-      {body}
-    </Link>
   );
 }
 
@@ -206,3 +367,4 @@ export function SpendAmounts({
     </div>
   );
 }
+

@@ -7,6 +7,7 @@ import {
   commitSwipeDirection,
   decideSwipeAxis,
   rubberBandOffset,
+  shouldCancelLongPress,
   shouldSuppressClick,
 } from "@/lib/swipe";
 
@@ -109,5 +110,19 @@ describe("shouldSuppressClick", () => {
   it("suppresses after swipe/drag", () => {
     expect(shouldSuppressClick(true)).toBe(true);
     expect(shouldSuppressClick(false)).toBe(false);
+  });
+});
+
+describe("shouldCancelLongPress", () => {
+  it("stays held under the axis lock", () => {
+    expect(shouldCancelLongPress(0, 0)).toBe(false);
+    expect(shouldCancelLongPress(SWIPE_AXIS_LOCK_PX - 1, 0)).toBe(false);
+    expect(shouldCancelLongPress(0, SWIPE_AXIS_LOCK_PX - 1)).toBe(false);
+  });
+
+  it("cancels once movement reaches the lock on either axis", () => {
+    expect(shouldCancelLongPress(SWIPE_AXIS_LOCK_PX, 0)).toBe(true);
+    expect(shouldCancelLongPress(0, SWIPE_AXIS_LOCK_PX)).toBe(true);
+    expect(shouldCancelLongPress(-SWIPE_AXIS_LOCK_PX, 2)).toBe(true);
   });
 });

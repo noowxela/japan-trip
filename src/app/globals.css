@@ -200,6 +200,12 @@ input[type="date"]::-webkit-datetime-edit {
   transform: scale(0.95);
 }
 
+.spend-item-row {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 button:disabled > [data-haptic-overlay],
 fieldset:disabled [data-haptic-overlay],
 [aria-disabled="true"] > [data-haptic-overlay] {

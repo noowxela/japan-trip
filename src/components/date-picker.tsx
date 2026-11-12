@@ -96,6 +96,7 @@ export function DatePicker({
   tripDates,
   label,
   compact = false,
+  overlayClassName = "fixed inset-0 z-50",
 }: {
   name: string;
   value: string;
@@ -103,6 +104,8 @@ export function DatePicker({
   tripDates?: ReadonlySet<string>;
   label?: string | null;
   compact?: boolean;
+  /** Portal wrapper classes; raise z-index when opened above another overlay. */
+  overlayClassName?: string;
 }) {
   const { t, locale } = useT();
   const selected = value || tokyoToday();
@@ -218,7 +221,7 @@ export function DatePicker({
   const popover =
     mounted && anchor && typeof document !== "undefined"
       ? createPortal(
-          <div className="fixed inset-0 z-50">
+          <div className={overlayClassName}>
             <button
               type="button"
               aria-label={t("date.close")}

@@ -96,3 +96,18 @@ describe("budget.beforeTrip", () => {
     expect(t("zh", "budget.beforeTrip")).toBe("出发前");
   });
 });
+
+describe("spend item context menu copy", () => {
+  it("has zh and en labels", () => {
+    expect(t("en", "budget.changeCategory")).toBe("Change category");
+    expect(t("zh", "budget.changeCategory")).toBe("改分类");
+    expect(t("en", "budget.moveToDay")).toBe("Move to another day");
+    expect(t("zh", "budget.moveToDay")).toBe("挪到其他日期");
+    expect(t("en", "budget.duplicate")).toBe("Duplicate");
+    expect(t("zh", "budget.duplicate")).toBe("复制");
+    expect(t("en", "budget.chooseCategory")).toBe("Choose category");
+    expect(t("zh", "budget.chooseCategory")).toBe("选择分类");
+    expect(t("en", "budget.chooseDay")).toBe("Choose a date");
+    expect(t("zh", "budget.chooseDay")).toBe("选择日期");
+  });
+});
