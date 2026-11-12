@@ -73,15 +73,15 @@ export function SpendTimeline({
                     : t("budget.expandDay", { date: dateLabel })
                 }
                 onClick={() => toggle(group.key, group.date)}
-                className="sticky top-0 z-10 -mx-1 mb-0.5 flex h-7 w-full items-center justify-between gap-2 bg-canvas/95 px-1 text-left backdrop-blur-sm"
+                className="sticky top-0 z-10 -mx-1 mb-0.5 flex min-h-7 w-full items-start justify-between gap-2 bg-canvas/95 px-1 py-0.5 text-left backdrop-blur-sm"
               >
-                <span className="flex min-w-0 items-center gap-1 truncate text-[11px] font-medium text-ink">
+                <span className="flex min-w-0 items-start gap-1 text-[11px] font-medium text-ink">
                   <span aria-hidden className="shrink-0 text-[10px] text-ink-muted">
                     {open ? "▾" : "▸"}
                   </span>
-                  <span className="truncate">{dateLabel}</span>
+                  <span className="min-w-0 break-words [overflow-wrap:anywhere]">{dateLabel}</span>
                 </span>
-                <span className="shrink-0 text-[11px] font-medium text-ink tabular-nums">
+                <span className="shrink-0 whitespace-nowrap text-[11px] font-medium text-ink tabular-nums">
                   {formatAmount(group.totalRm, displayYen, jpyPerRm)}
                 </span>
               </button>

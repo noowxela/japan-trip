@@ -427,11 +427,11 @@ export default function DayMap({
                 {pin.name}
               </Tooltip>
               <Popup>
-                <div className="text-sm">
+                <div className="min-w-0 max-w-[240px] text-sm">
                   {pin.label ? (
-                    <p className="text-xs font-semibold text-ink-muted">{pin.label}</p>
+                    <p className="min-w-0 break-words [overflow-wrap:anywhere] text-xs font-semibold text-ink-muted">{pin.label}</p>
                   ) : null}
-                  <p className="font-medium">{pin.name}</p>
+                  <p className="min-w-0 break-words [overflow-wrap:anywhere] font-medium">{pin.name}</p>
                   <div className="mt-1 flex items-center justify-between gap-3">
                     <button
                       type="button"

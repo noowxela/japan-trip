@@ -259,8 +259,8 @@ function ItemDetailExpand({
               <p className="text-[12px] font-medium text-ink-muted">▴</p>
             </div>
           ) : (
-            <span className="flex min-w-0 items-center gap-1 text-[13px] leading-5 text-ink-muted">
-              <span className="min-w-0 flex-1 truncate">{preview}</span>
+            <span className="flex min-w-0 items-start gap-1 text-[13px] leading-5 text-ink-muted">
+              <span className="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">{preview}</span>
               <span className="shrink-0 text-[11px] text-ink-muted" aria-hidden>
                 ▾
               </span>
@@ -935,7 +935,7 @@ export function DayAgendaBoard({
                     <div className="grid h-[18px] grid-cols-[2.5rem_1.25rem_minmax(0,1fr)] items-center gap-x-1.5">
                       <span aria-hidden />
                       <TimelineRail />
-                      <p className="truncate text-[11px] leading-[14px] text-ink-muted">
+                      <p className="min-w-0 break-words [overflow-wrap:anywhere] text-[11px] leading-[14px] text-ink-muted">
                         · {between} ·
                       </p>
                     </div>
@@ -957,7 +957,7 @@ export function DayAgendaBoard({
                       isFocus ? "bg-accent/5" : ""
                     }`}
                   >
-                    <p className="w-10 shrink-0 self-center text-right text-[11px] font-semibold tabular-nums leading-4 text-ink">
+                    <p className="w-10 shrink-0 self-start whitespace-nowrap pt-1.5 text-right text-[11px] font-semibold tabular-nums leading-4 text-ink">
                       {timeLabel}
                     </p>
                     <TimelineRail
@@ -1010,7 +1010,7 @@ export function DayAgendaBoard({
                           }`}
                         >
                           <div className="min-w-0 flex-1">
-                            <p className="flex min-w-0 items-center gap-1.5 truncate text-[13px] leading-4">
+                            <p className="flex min-w-0 flex-wrap items-start gap-1.5 text-[13px] leading-4">
                               {visited ? (
                                 <HankoStamp
                                   variant="ok"
@@ -1040,7 +1040,7 @@ export function DayAgendaBoard({
                                 </span>
                               ) : null}
                               <span
-                                className={`truncate font-medium ${
+                                className={`min-w-0 flex-1 break-words [overflow-wrap:anywhere] font-medium ${
                                   visited || skipped
                                     ? "text-ink-muted line-through decoration-line"
                                     : "text-ink"
@@ -1107,7 +1107,7 @@ export function DayAgendaBoard({
                           }`}
                         >
                           <div className="min-w-0 flex-1">
-                            <p className="flex min-w-0 items-center gap-1.5 truncate text-[13px] leading-4">
+                            <p className="flex min-w-0 flex-wrap items-start gap-1.5 text-[13px] leading-4">
                               {visited ? (
                                 <HankoStamp
                                   variant="ok"
@@ -1137,7 +1137,7 @@ export function DayAgendaBoard({
                                 </span>
                               ) : null}
                               <span
-                                className={`truncate font-medium ${
+                                className={`min-w-0 flex-1 break-words [overflow-wrap:anywhere] font-medium ${
                                   visited || skipped
                                     ? "text-ink-muted line-through decoration-line"
                                     : "text-ink"

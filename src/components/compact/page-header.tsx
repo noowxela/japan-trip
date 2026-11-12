@@ -20,7 +20,7 @@ export function PageHeader({
 }) {
   return (
     <div
-      className={`flex items-center justify-between gap-3 ${className}`.trim()}
+      className={`flex items-start justify-between gap-3 ${className}`.trim()}
     >
       <div className="min-w-0">
         {eyebrow ? <p className={compactEyebrowClass}>{eyebrow}</p> : null}

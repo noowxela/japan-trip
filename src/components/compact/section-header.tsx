@@ -13,17 +13,17 @@ export function SectionHeader({
 }) {
   return (
     <div
-      className={`flex h-7 items-center justify-between gap-2 ${
+      className={`flex min-h-7 items-start justify-between gap-2 ${
         sticky
           ? "sticky top-0 z-10 bg-canvas/95 backdrop-blur-sm"
           : ""
       } ${className}`.trim()}
     >
-      <p className="min-w-0 truncate text-[12px] font-medium text-ink-muted">
+      <p className="min-w-0 break-words [overflow-wrap:anywhere] text-[12px] font-medium leading-4 text-ink-muted">
         {title}
       </p>
       {right ? (
-        <p className="shrink-0 text-[12px] tabular-nums text-ink-muted">
+        <p className="shrink-0 whitespace-nowrap text-[12px] tabular-nums text-ink-muted">
           {right}
         </p>
       ) : null}

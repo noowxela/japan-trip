@@ -51,10 +51,10 @@ export async function NextStopBanner({
     return (
       <Link
         href={done && nextDayHref ? nextDayHref : href}
-        className="flex min-h-12 min-w-0 w-full items-center gap-2 rounded-xl border border-line border-l-[3px] border-l-accent bg-surface px-3 py-2 text-inherit no-underline"
+        className="flex min-h-12 min-w-0 w-full items-start gap-2 rounded-xl border border-line border-l-[3px] border-l-accent bg-surface px-3 py-2 text-inherit no-underline"
       >
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[14px] font-medium leading-5 text-ink">
+          <p className="min-w-0 break-words [overflow-wrap:anywhere] text-[14px] font-medium leading-5 text-ink">
             <span className="text-accent">{label}</span>
             <span className="text-ink-muted"> · </span>
             {done
@@ -62,7 +62,7 @@ export async function NextStopBanner({
               : t(locale, "overview.nothingScheduled")}
           </p>
           {secondary ? (
-            <p className="mt-0.5 truncate text-[12px] text-ink-muted">
+            <p className="mt-0.5 min-w-0 break-words [overflow-wrap:anywhere] text-[12px] text-ink-muted">
               {secondary}
             </p>
           ) : null}
@@ -86,9 +86,9 @@ export async function NextStopBanner({
   const time = formatTime(item.start) ?? t(locale, "common.anytime");
 
   return (
-    <div className="flex min-h-12 min-w-0 w-full items-center gap-1 rounded-xl border border-line border-l-[3px] border-l-accent bg-surface py-1 pl-3 pr-1">
+    <div className="flex min-h-12 min-w-0 w-full items-start gap-1 rounded-xl border border-line border-l-[3px] border-l-accent bg-surface py-1 pl-3 pr-1">
       <Link href={href} className="min-w-0 flex-1 text-inherit no-underline">
-        <p className="truncate text-[14px] font-medium leading-5 text-ink">
+        <p className="min-w-0 break-words [overflow-wrap:anywhere] text-[14px] font-medium leading-5 text-ink">
           <span className="text-accent">{label}</span>
           <span className="text-ink-muted"> · </span>
           <span className="tabular-nums">{time}</span>
@@ -99,11 +99,11 @@ export async function NextStopBanner({
           ) : null}
         </p>
         {item.detail ? (
-          <p className="mt-0.5 truncate text-[12px] text-ink-muted">
+          <p className="mt-0.5 min-w-0 break-words [overflow-wrap:anywhere] text-[12px] text-ink-muted">
             {item.detail}
           </p>
         ) : (
-          <p className="mt-0.5 truncate text-[12px] text-ink-muted">{dayName}</p>
+          <p className="mt-0.5 min-w-0 break-words [overflow-wrap:anywhere] text-[12px] text-ink-muted">{dayName}</p>
         )}
       </Link>
       {item.kind === "place" ? (

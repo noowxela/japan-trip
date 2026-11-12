@@ -186,7 +186,7 @@ export function SpendForm({
           tripDates={tripDates}
         />
         {matchedDay ? (
-          <p className="-mt-2 truncate text-xs text-ink-muted">{matchedDay.name}</p>
+          <p className="-mt-2 min-w-0 break-words [overflow-wrap:anywhere] text-xs text-ink-muted">{matchedDay.name}</p>
         ) : null}
 
         <div

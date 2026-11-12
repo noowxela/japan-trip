@@ -21,7 +21,7 @@ function RowBody({
   return (
     <>
       {leading != null ? (
-        <div className="flex w-16 shrink-0 flex-col items-end justify-center self-stretch overflow-hidden text-right text-[12px] font-semibold leading-4 tabular-nums text-ink">
+        <div className="flex w-16 shrink-0 flex-col items-end justify-start self-start pt-1.5 text-right text-[12px] font-semibold leading-4 tabular-nums whitespace-nowrap text-ink">
           {leading}
         </div>
       ) : null}
@@ -63,7 +63,7 @@ export function CompactRow({
   className?: string;
   muted?: boolean;
 }) {
-  const rowClass = `flex min-h-11 w-full min-w-0 max-w-full items-center gap-2 border-b border-line/70 px-1 last:border-b-0 ${
+  const rowClass = `flex min-h-11 w-full min-w-0 max-w-full items-start gap-2 border-b border-line/70 px-1 last:border-b-0 ${
     muted ? "opacity-70" : ""
   } ${className}`.trim();
 
@@ -82,12 +82,12 @@ export function CompactRow({
       <div className={rowClass}>
         <Link
           href={href}
-          className="flex min-w-0 flex-1 items-center gap-2 text-inherit no-underline"
+          className="flex min-w-0 flex-1 items-start gap-2 text-inherit no-underline"
         >
           {body}
         </Link>
         {trailing != null ? (
-          <div className="flex shrink-0 items-center gap-0.5 self-center">
+          <div className="flex shrink-0 items-start gap-0.5 self-start pt-0.5">
             {trailing}
           </div>
         ) : null}
@@ -101,12 +101,12 @@ export function CompactRow({
         <button
           type="button"
           onClick={onClick}
-          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+          className="flex min-w-0 flex-1 items-start gap-2 text-left"
         >
           {body}
         </button>
         {trailing != null ? (
-          <div className="flex shrink-0 items-center gap-0.5 self-center">
+          <div className="flex shrink-0 items-start gap-0.5 self-start pt-0.5">
             {trailing}
           </div>
         ) : null}

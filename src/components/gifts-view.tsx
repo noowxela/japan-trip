@@ -607,12 +607,12 @@ export function GiftsView({
                 key={item.id}
                 type="button"
                 onClick={() => linkGiftItem && linkToSpend(linkGiftItem, item)}
-                className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-line bg-surface px-3 text-left text-[13px]"
+                className="flex min-h-11 items-start justify-between gap-2 rounded-xl border border-line bg-surface px-3 py-2 text-left text-[13px]"
               >
-                <span className="min-w-0 truncate font-medium text-ink">
+                <span className="min-w-0 break-words [overflow-wrap:anywhere] font-medium text-ink">
                   {item.name}
                 </span>
-                <span className="shrink-0 tabular-nums text-ink-muted">
+                <span className="shrink-0 whitespace-nowrap tabular-nums text-ink-muted">
                   {formatSpend(item.amount, item.currency)}
                 </span>
               </button>

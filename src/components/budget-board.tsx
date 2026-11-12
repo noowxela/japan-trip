@@ -106,8 +106,8 @@ export function BudgetBoard({
         </div>
       </div>
 
-      <section className="max-h-[90px] rounded-xl border border-line bg-surface px-3 py-2 md:max-w-xl">
-        <p className="truncate text-right text-[13px] leading-5 text-ink">
+      <section className="rounded-xl border border-line bg-surface px-3 py-2 md:max-w-xl">
+        <p className="min-w-0 break-words [overflow-wrap:anywhere] text-right text-[13px] leading-5 text-ink">
           <span className="font-medium">
             {t("budget.spentShort", {
               amount: formatAmount(spentRm, yen, jpyPerRm),
@@ -141,7 +141,7 @@ export function BudgetBoard({
             aria-hidden
           />
         </div>
-        <p className="mt-1 truncate text-right text-[11px] text-ink-muted" title={fxTitle}>
+        <p className="mt-1 min-w-0 break-words [overflow-wrap:anywhere] text-right text-[11px] text-ink-muted" title={fxTitle}>
           {t("budget.fxCompact", { rm: yen100InRm.toFixed(2) })}
         </p>
       </section>
@@ -293,21 +293,21 @@ function SettlePanel({
             {settle.transfers.map((transfer) => (
               <li
                 key={`${transfer.from}->${transfer.to}`}
-                className="flex min-h-11 items-center gap-2 text-[13px]"
+                className="flex min-h-11 min-w-0 items-start gap-2 py-1.5 text-[13px]"
                 aria-label={t("settle.transferAria", {
                   from: transfer.from,
                   to: transfer.to,
                   amount: money(transfer.rm),
                 })}
               >
-                <span aria-hidden className="min-w-0 truncate font-medium">
+                <span aria-hidden className="min-w-0 break-words [overflow-wrap:anywhere] font-medium">
                   {transfer.from}
                 </span>
-                <span aria-hidden className="text-ink-muted">→</span>
-                <span aria-hidden className="min-w-0 flex-1 truncate font-medium">
+                <span aria-hidden className="shrink-0 text-ink-muted">→</span>
+                <span aria-hidden className="min-w-0 flex-1 break-words [overflow-wrap:anywhere] font-medium">
                   {transfer.to}
                 </span>
-                <span aria-hidden className="shrink-0 font-semibold tabular-nums">
+                <span aria-hidden className="shrink-0 whitespace-nowrap font-semibold tabular-nums">
                   {money(transfer.rm)}
                 </span>
               </li>
@@ -334,7 +334,7 @@ function SettlePanel({
               const cents = Math.round(row.netRm * 100);
               return (
                 <tr key={row.name}>
-                  <th scope="row" className="truncate py-1.5 text-left font-medium">
+                  <th scope="row" className="min-w-0 break-words [overflow-wrap:anywhere] py-1.5 text-left font-medium">
                     {row.name}
                   </th>
                   <td className="py-1.5 text-right tabular-nums">{money(row.paidRm)}</td>
@@ -503,8 +503,8 @@ function CategorySummary({
                 canOpen ? "" : "cursor-default opacity-60"
               }`}
             >
-              <div className="flex items-center justify-between gap-2 text-[13px]">
-                <span className="flex min-w-0 items-center gap-1.5">
+              <div className="flex items-start justify-between gap-2 text-[13px]">
+                <span className="flex min-w-0 items-start gap-1.5">
                   {canOpen ? (
                     <span
                       aria-hidden
@@ -526,12 +526,12 @@ function CategorySummary({
                       aria-hidden
                     />
                   ) : null}
-                  <span className="truncate font-medium">{label}</span>
+                  <span className="min-w-0 break-words [overflow-wrap:anywhere] font-medium">{label}</span>
                   <span className="text-[11px] text-ink-muted tabular-nums">
                     {row.percent}%
                   </span>
                 </span>
-                <span className="shrink-0 font-medium tabular-nums">
+                <span className="shrink-0 whitespace-nowrap font-medium tabular-nums">
                   {formatAmount(row.amountRm, displayYen, jpyPerRm)}
                 </span>
               </div>
@@ -565,13 +565,13 @@ function CategorySummary({
         );
       })}
       <li className="py-1.5">
-        <div className="flex items-center justify-between gap-2 text-[13px]">
-          <span className="flex items-center gap-1.5">
+        <div className="flex items-start justify-between gap-2 text-[13px]">
+          <span className="flex min-w-0 items-start gap-1.5">
             <span className="h-2 w-2 shrink-0 rounded-full bg-ink" />
-            <span className="font-medium">{totalLabel}</span>
-            <span className="text-[11px] text-ink-muted tabular-nums">100%</span>
+            <span className="min-w-0 break-words [overflow-wrap:anywhere] font-medium">{totalLabel}</span>
+            <span className="shrink-0 text-[11px] text-ink-muted tabular-nums">100%</span>
           </span>
-          <span className="font-medium tabular-nums">
+          <span className="shrink-0 whitespace-nowrap font-medium tabular-nums">
             {formatAmount(totalRm, displayYen, jpyPerRm)}
           </span>
         </div>

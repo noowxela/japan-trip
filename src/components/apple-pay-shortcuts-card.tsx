@@ -72,7 +72,7 @@ export function ApplePayShortcutsCard({
             <dt className="text-[11px] text-ink-muted">
               {t(locale, "more.applePayUrl")}
             </dt>
-            <dd className="truncate font-mono text-[12px] text-ink">{postUrl}</dd>
+            <dd className="min-w-0 break-words [overflow-wrap:anywhere] font-mono text-[12px] text-ink">{postUrl}</dd>
           </div>
           <CopyButton value={postUrl} icon />
         </div>
@@ -81,7 +81,7 @@ export function ApplePayShortcutsCard({
             <dt className="text-[11px] text-ink-muted">
               {t(locale, "more.applePayAuth")}
             </dt>
-            <dd className="truncate font-mono text-[12px] text-ink">
+            <dd className="min-w-0 break-words [overflow-wrap:anywhere] font-mono text-[12px] text-ink">
               {AUTH_PLACEHOLDER}
             </dd>
           </div>

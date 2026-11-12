@@ -72,7 +72,7 @@ export default async function ExpenseDetailPage({
         <SpendCategoryIcon category={item.category} />
         <div className="min-w-0 flex-1">
           <PageHeader title={item.name} />
-          <p className="mt-0.5 truncate text-[12px] text-ink-muted">
+          <p className="mt-0.5 min-w-0 break-words [overflow-wrap:anywhere] text-[12px] text-ink-muted">
             {[
               labelCategory(locale, item.category),
               placeLabel && !placeLabel.missing ? placeLabel.name : null,
@@ -106,10 +106,10 @@ export default async function ExpenseDetailPage({
           {rows.map((row) => (
             <div
               key={row.label}
-              className="flex min-h-9 items-center justify-between gap-3 border-b border-line/70 px-3 last:border-b-0"
+              className="flex min-h-9 items-start justify-between gap-3 border-b border-line/70 px-3 py-1.5 last:border-b-0"
             >
               <p className="shrink-0 text-[12px] text-ink-muted">{row.label}</p>
-              <p className="min-w-0 truncate text-right text-[14px] text-ink">
+              <p className="min-w-0 break-words [overflow-wrap:anywhere] text-right text-[14px] text-ink">
                 {row.value}
               </p>
             </div>
@@ -117,7 +117,7 @@ export default async function ExpenseDetailPage({
           <div className="px-3 py-2.5">
             <p className="text-[12px] text-ink-muted">{t(locale, "form.notes")}</p>
             {item.notes ? (
-              <p className="mt-1 whitespace-pre-wrap text-[14px] text-ink">
+              <p className="mt-1 min-w-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-[14px] text-ink">
                 {item.notes}
               </p>
             ) : (

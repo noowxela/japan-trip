@@ -1,16 +1,19 @@
 /** Shared compact type / control classes (Schedule density). */
 
+/** Long titles/names wrap instead of overflowing or ellipsizing. */
+export const textWrapClass = "min-w-0 break-words [overflow-wrap:anywhere]";
+
 export const compactEyebrowClass =
   "text-[11px] font-medium leading-4 text-ink-muted";
 
 export const compactTitleClass =
-  "text-[17px] font-semibold leading-6 tracking-tight text-ink sm:text-[18px]";
+  `${textWrapClass} text-[17px] font-semibold leading-6 tracking-tight text-ink sm:text-[18px]`;
 
 export const compactPrimaryClass =
-  "truncate text-[14px] font-medium leading-5 text-ink";
+  `${textWrapClass} text-[14px] font-medium leading-5 text-ink`;
 
 export const compactMetaClass =
-  "truncate text-[12px] leading-4 text-ink-muted";
+  `${textWrapClass} text-[12px] leading-4 text-ink-muted`;
 
 export const compactLabelClass =
   "text-[12px] font-medium leading-4 text-ink-muted";

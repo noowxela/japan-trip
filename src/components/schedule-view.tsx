@@ -578,9 +578,9 @@ export function ScheduleView({
                 data-sheet-drag
                 className="sticky top-0 z-30 touch-none border-b border-line bg-surface px-3 py-2"
               >
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <h2 className="truncate text-[15px] font-semibold tracking-tight text-ink">
+                    <h2 className="min-w-0 break-words [overflow-wrap:anywhere] text-[15px] font-semibold tracking-tight text-ink">
                       {selectedDay.name}
                     </h2>
                     <p className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 text-[11px] leading-4 text-ink-muted">
@@ -594,7 +594,7 @@ export function ScheduleView({
                           <span aria-hidden className="shrink-0">
                             ·
                           </span>
-                          <span className="min-w-0 truncate">
+                          <span className="min-w-0 break-words [overflow-wrap:anywhere]">
                             {selectedDay.city}
                           </span>
                           <CityKanji
@@ -620,7 +620,7 @@ export function ScheduleView({
                           <span aria-hidden className="shrink-0">
                             ·
                           </span>
-                          <span aria-hidden className="min-w-0 truncate">
+                          <span aria-hidden className="min-w-0 break-words [overflow-wrap:anywhere]">
                             {weatherShort(dayWeather)}
                           </span>
                           <span className="sr-only">
@@ -641,7 +641,7 @@ export function ScheduleView({
                             · 🏨{" "}
                           </span>
                           <span
-                            className="min-w-0 truncate"
+                            className="min-w-0 break-words [overflow-wrap:anywhere]"
                             title={lodging[0].name}
                           >
                             {lodging[0].name}
@@ -852,9 +852,9 @@ function NowCard({
     return (
       <section
         data-now-card
-        className="mb-2 flex h-11 items-center rounded-lg border border-line border-l-[3px] border-l-line bg-surface px-3"
+        className="mb-2 flex min-h-11 items-center rounded-lg border border-line border-l-[3px] border-l-line bg-surface px-3 py-1.5"
       >
-        <p className="truncate text-[13px] font-medium leading-4 text-ink">
+        <p className="min-w-0 break-words [overflow-wrap:anywhere] text-[13px] font-medium leading-4 text-ink">
           {t("schedule.dayDone")}
         </p>
       </section>
@@ -891,9 +891,9 @@ function NowCard({
             }
           : undefined
       }
-      className="mb-2 flex h-12 cursor-pointer items-center gap-1 rounded-lg border border-accent/25 border-l-[3px] border-l-accent bg-accent/5 py-1 pl-3 pr-1"
+      className="mb-2 flex min-h-12 cursor-pointer items-start gap-1 rounded-lg border border-accent/25 border-l-[3px] border-l-accent bg-accent/5 py-1 pl-3 pr-1"
     >
-      <p className="min-w-0 flex-1 truncate text-[13px] font-medium leading-4 text-ink">
+      <p className="min-w-0 flex-1 break-words [overflow-wrap:anywhere] text-[13px] font-medium leading-4 text-ink">
         <span className="tabular-nums">{line}</span>
         {chipLabel ? (
           <>
@@ -940,7 +940,7 @@ function StayLocationBadge({ stay }: { stay: Stay }) {
   return (
     <div
       title={stay.address || stay.name}
-      className={`mt-1.5 flex max-w-full items-center gap-1.5 text-xs ${
+      className={`mt-1.5 flex max-w-full items-start gap-1.5 text-xs ${
         hidden ? "text-ink-muted" : "text-ink-muted"
       }`}
     >
@@ -956,7 +956,7 @@ function StayLocationBadge({ stay }: { stay: Stay }) {
       >
         <path d="M3 10h18M5 10V8l7-4 7 4v2M5 10v10h14V10M9 20v-6h6v6" />
       </svg>
-      <span className="min-w-0 truncate leading-5">{stay.name}</span>
+      <span className="min-w-0 break-words [overflow-wrap:anywhere] leading-5">{stay.name}</span>
       <button
         type="button"
         aria-label={label}

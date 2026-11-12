@@ -175,15 +175,15 @@ export function AgendaEditTable({
                   onClick={() => toggle(item.id)}
                   className="min-w-0 text-left"
                 >
-                  <span className="flex min-w-0 items-center gap-1.5">
+                  <span className="flex min-w-0 items-start gap-1.5">
                     <span aria-hidden className="shrink-0 text-[14px]">
                       {emoji}
                     </span>
-                    <span className="min-w-0 truncate text-[14px] font-medium text-ink">
+                    <span className="min-w-0 break-words [overflow-wrap:anywhere] text-[14px] font-medium text-ink">
                       {item.name}
                     </span>
                   </span>
-                  <span className="mt-0.5 block truncate text-[11px] text-ink-muted">
+                  <span className="mt-0.5 block min-w-0 break-words [overflow-wrap:anywhere] text-[11px] text-ink-muted">
                     {[kindLabel, item.detail].filter(Boolean).join(" · ")}
                   </span>
                 </button>

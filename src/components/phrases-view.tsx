@@ -290,8 +290,8 @@ export function PhrasesView({
 
       {showCustom ? (
         <section className="space-y-1.5">
-          <div className="flex h-7 items-center justify-between gap-2">
-            <p className="min-w-0 truncate text-[12px] font-medium text-ink-muted">
+          <div className="flex min-h-7 items-start justify-between gap-2">
+            <p className="min-w-0 break-words [overflow-wrap:anywhere] text-[12px] font-medium leading-4 text-ink-muted">
               {t("phrases.cat.custom")}
             </p>
             <button

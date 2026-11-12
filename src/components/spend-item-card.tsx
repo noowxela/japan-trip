@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRef, useState, type MouseEvent, type PointerEvent } from "react";
+import { textWrapClass } from "@/components/compact/classes";
 import { useT } from "@/components/i18n-provider";
 import { SpendCategoryIcon } from "@/components/spend-category-icon";
 import { SpendItemContextMenu } from "@/components/spend-item-context-menu";
@@ -173,7 +174,7 @@ export function SpendItemCard({
   };
 
   const className = compact
-    ? "spend-item-row notebook-press relative flex min-h-11 min-w-0 touch-pan-y items-center gap-2 py-1.5"
+    ? "spend-item-row notebook-press relative flex min-h-11 min-w-0 touch-pan-y items-start gap-2 py-1.5"
     : "spend-item-row notebook-press relative flex min-w-0 touch-pan-y items-start gap-3 notebook-card p-3";
 
   if (pendingSync) {
@@ -181,7 +182,7 @@ export function SpendItemCard({
       <div
         className={
           compact
-            ? "spend-item-row relative flex min-h-11 min-w-0 items-center gap-2 py-1.5"
+            ? "spend-item-row relative flex min-h-11 min-w-0 items-start gap-2 py-1.5"
             : "spend-item-row relative flex min-w-0 items-start gap-3 notebook-card p-3"
         }
       >
@@ -217,7 +218,7 @@ export function SpendItemCard({
           <div
             className={
               compact
-                ? "flex min-h-11 min-w-0 items-center gap-2"
+                ? "flex min-h-11 min-w-0 items-start gap-2"
                 : "flex min-w-0 items-start gap-3"
             }
           >
@@ -257,12 +258,12 @@ function SpendItemBody({
     return (
       <>
         {timeLabel ? (
-          <span className="w-10 shrink-0 text-right text-[11px] font-semibold tabular-nums leading-4 text-ink">
+          <span className="w-10 shrink-0 whitespace-nowrap text-right text-[11px] font-semibold tabular-nums leading-4 text-ink">
             {timeLabel}
           </span>
         ) : null}
         <div className="min-w-0 flex-1">
-          <p className="flex min-w-0 items-center gap-1.5 truncate text-[13px] leading-4">
+          <p className="flex min-w-0 items-start gap-1.5 text-[13px] leading-4">
             <span
               role="img"
               aria-label={categoryLabel ?? undefined}
@@ -271,23 +272,27 @@ function SpendItemBody({
             >
               {emoji}
             </span>
-            <span className="truncate font-medium">{item.name}</span>
-            {pendingSync ? (
-              <span className="shrink-0 rounded-full bg-maybe-soft px-1.5 py-px text-[10px] font-medium text-maybe">
-                {pendingLabel}
-              </span>
-            ) : null}
-            {item.paidBy ? (
-              <span className="shrink-0 rounded-full bg-canvas px-1.5 py-px text-[10px] font-medium text-ink-muted">
-                {item.paidBy}
-              </span>
-            ) : null}
-            {placeChip ? (
-              <span className="shrink-0 rounded-full bg-canvas px-1.5 py-px text-[10px] font-medium text-ink-muted">
-                {placeChip}
-              </span>
-            ) : null}
+            <span className={`${textWrapClass} flex-1 font-medium`}>{item.name}</span>
           </p>
+          {pendingSync || item.paidBy || placeChip ? (
+            <div className="mt-0.5 flex flex-wrap gap-1">
+              {pendingSync ? (
+                <span className="w-fit rounded-full bg-maybe-soft px-1.5 py-px text-[10px] font-medium text-maybe">
+                  {pendingLabel}
+                </span>
+              ) : null}
+              {item.paidBy ? (
+                <span className="w-fit rounded-full bg-canvas px-1.5 py-px text-[10px] font-medium text-ink-muted">
+                  {item.paidBy}
+                </span>
+              ) : null}
+              {placeChip ? (
+                <span className="w-fit max-w-full break-words [overflow-wrap:anywhere] rounded-full bg-canvas px-1.5 py-px text-[10px] font-medium text-ink-muted">
+                  {placeChip}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
         <SpendAmounts
           item={item}
@@ -303,9 +308,9 @@ function SpendItemBody({
     <>
       <SpendCategoryIcon category={item.category} />
       <div className="min-w-0 flex-1">
-        <p className="font-medium break-words">{item.name}</p>
+        <p className={`font-medium ${textWrapClass}`}>{item.name}</p>
         {item.notes ? (
-          <p className="mt-0.5 truncate text-xs text-ink-muted">{item.notes}</p>
+          <p className={`mt-0.5 text-xs text-ink-muted ${textWrapClass}`}>{item.notes}</p>
         ) : null}
         <div className="mt-1 flex flex-wrap gap-1">
           {pendingSync ? (
