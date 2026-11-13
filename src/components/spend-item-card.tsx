@@ -31,6 +31,7 @@ export function SpendItemCard({
   timeLabel,
   places = [],
   days = [],
+  shareRm = null,
 }: {
   item: SpendItem;
   jpyPerRm?: number;
@@ -40,6 +41,8 @@ export function SpendItemCard({
   timeLabel?: string | null;
   places?: Place[];
   days?: TripDay[];
+  /** When set, show this RM share as the primary amount, with the full amount second. */
+  shareRm?: number | null;
 }) {
   const { t, locale } = useT();
   const gesture = useRef<GestureOrigin | null>(null);
@@ -74,6 +77,7 @@ export function SpendItemCard({
     emoji,
     displayYen,
     jpyPerRm,
+    shareRm,
     pendingLabel: t("offline.pendingChip"),
   };
 
@@ -241,6 +245,7 @@ function SpendItemBody({
   emoji,
   displayYen,
   jpyPerRm,
+  shareRm,
   pendingLabel,
 }: {
   item: SpendItem;
@@ -252,6 +257,7 @@ function SpendItemBody({
   emoji: string;
   displayYen: boolean;
   jpyPerRm: number;
+  shareRm?: number | null;
   pendingLabel: string;
 }) {
   if (compact) {
@@ -299,6 +305,7 @@ function SpendItemBody({
           displayYen={displayYen}
           jpyPerRm={jpyPerRm}
           compact
+          shareRm={shareRm}
         />
       </>
     );
@@ -330,7 +337,7 @@ function SpendItemBody({
           ) : null}
         </div>
       </div>
-      <SpendAmounts item={item} displayYen={displayYen} jpyPerRm={jpyPerRm} />
+      <SpendAmounts item={item} displayYen={displayYen} jpyPerRm={jpyPerRm} shareRm={shareRm} />
     </>
   );
 }
@@ -340,16 +347,21 @@ export function SpendAmounts({
   displayYen,
   jpyPerRm,
   compact = false,
+  shareRm = null,
 }: {
   item: SpendItem;
   displayYen: boolean;
   jpyPerRm: number;
   compact?: boolean;
+  shareRm?: number | null;
 }) {
+  const { t } = useT();
   const rm = toRm(item.amount, item.currency, jpyPerRm);
+  const showShare = shareRm != null && Math.abs(shareRm - rm) > 1e-9;
   const showConversion =
-    (displayYen && item.currency === "RM") ||
-    (!displayYen && item.currency === "Yen");
+    !showShare &&
+    ((displayYen && item.currency === "RM") ||
+      (!displayYen && item.currency === "Yen"));
 
   return (
     <div className="shrink-0 text-right">
@@ -358,9 +370,21 @@ export function SpendAmounts({
           compact ? "text-[13px] leading-4" : "text-sm"
         }`}
       >
-        {formatSpend(item.amount, item.currency)}
+        {showShare
+          ? formatAmount(shareRm, displayYen, jpyPerRm)
+          : formatSpend(item.amount, item.currency)}
       </p>
-      {showConversion ? (
+      {showShare ? (
+        <p
+          className={`whitespace-nowrap tabular-nums text-ink-muted ${
+            compact ? "text-[10px] leading-3" : "mt-0.5 text-xs"
+          }`}
+        >
+          {t("budget.fullAmount", {
+            amount: formatAmount(rm, displayYen, jpyPerRm),
+          })}
+        </p>
+      ) : showConversion ? (
         <p
           className={`whitespace-nowrap tabular-nums text-ink-muted ${
             compact ? "text-[11px] leading-3" : "mt-0.5 text-xs"
@@ -371,5 +395,9 @@ export function SpendAmounts({
       ) : null}
     </div>
   );
+}
+
+function formatAmount(rm: number, displayYen: boolean, jpyPerRm: number) {
+  return displayYen ? formatYen(yenForMyr(rm, jpyPerRm)) : formatRm(rm);
 }
 

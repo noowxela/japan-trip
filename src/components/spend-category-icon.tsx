@@ -8,6 +8,7 @@ export const CATEGORY_TINT: Record<
 > = {
   Food: { bg: "var(--maybe-soft)", fg: "var(--ink)" },
   Transit: { bg: "var(--transit-soft)", fg: "var(--ink)" },
+  "Ride-hailing": { bg: "var(--transit-soft)", fg: "var(--ink)" },
   Airfare: { bg: "var(--transit-soft)", fg: "var(--ink)" },
   Stay: { bg: "var(--ok-soft)", fg: "var(--ink)" },
   Ticket: { bg: "var(--transit-soft)", fg: "var(--ink)" },
@@ -19,6 +20,7 @@ export const CATEGORY_TINT: Record<
 export const CATEGORY_COLOR: Record<(typeof SPEND_CATEGORIES)[number], string> = {
   Food: "#a86b0c",
   Transit: "#55697a",
+  "Ride-hailing": "#8a5a32",
   Airfare: "#3b6d8c",
   Stay: "#3f7d4e",
   Ticket: "#6b7280",
@@ -98,6 +100,15 @@ function iconFor(category: string | null, className: string): ReactNode {
     return (
       <svg {...props}>
         <path d="M3 11h18L14 4M10 20h4M5 16h14a2 2 0 0 0 2-2v-3H3v3a2 2 0 0 0 2 2Z" />
+      </svg>
+    );
+  }
+  if (category === "Ride-hailing") {
+    return (
+      <svg {...props}>
+        <path d="M5 16a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM19 16a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" />
+        <path d="M7 16h10M3 13h18l-1.8-5.2A2 2 0 0 0 17.3 6H6.7a2 2 0 0 0-1.9 1.8L3 13Z" />
+        <path d="M3 13v3h18v-3" />
       </svg>
     );
   }

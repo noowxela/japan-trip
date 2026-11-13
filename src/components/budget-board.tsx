@@ -9,12 +9,23 @@ import { categoryColor } from "@/components/spend-category-icon";
 import { SpendItemCard } from "@/components/spend-item-card";
 import { SpendTimeline, formatAmount } from "@/components/spend-timeline";
 import { labelCategory } from "@/lib/i18n/dictionaries";
-import { categoryBreakdown, settleUp, topSpend, toRm } from "@/lib/spend";
+import {
+  categoryBreakdown,
+  filterSpendItems,
+  settleUp,
+  spendFilterPeople,
+  sumPersonShareRm,
+  sumRm,
+  topSpend,
+  toRm,
+} from "@/lib/spend";
 import { SPEND_CATEGORIES, type Place, type SpendItem, type TripDay } from "@/lib/types";
 
 type Tab = "timeline" | "category" | "top" | "split";
 type DisplayCurrency = "MYR" | "YEN";
 type CategoryFilter = "all" | (typeof SPEND_CATEGORIES)[number];
+type PersonFilter = "all" | string;
+type PersonFilterMode = "payer" | "split";
 
 const TAB_IDS: Tab[] = ["timeline", "category", "top", "split"];
 const TAB_KEY: Record<Tab, string> = {
@@ -53,6 +64,8 @@ export function BudgetBoard({
   const [tab, setTab] = useState<Tab>("timeline");
   const [display, setDisplay] = useState<DisplayCurrency>("MYR");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
+  const [personFilter, setPersonFilter] = useState<PersonFilter>("all");
+  const [personMode, setPersonMode] = useState<PersonFilterMode>("payer");
   const yen = display === "YEN";
   const mergedActuals = useMemo(() => {
     const pending = pendingSpend.filter(
@@ -60,10 +73,43 @@ export function BudgetBoard({
     );
     return [...pending, ...actuals];
   }, [actuals, pendingSpend]);
-  const filteredActuals = useMemo(() => {
-    if (categoryFilter === "all") return mergedActuals;
-    return mergedActuals.filter((item) => item.category === categoryFilter);
-  }, [categoryFilter, mergedActuals]);
+  const filterPeople = useMemo(
+    () => spendFilterPeople(people, mergedActuals),
+    [people, mergedActuals],
+  );
+  const filteredActuals = useMemo(
+    () =>
+      filterSpendItems(mergedActuals, {
+        category: categoryFilter,
+        person: personFilter,
+        mode: personMode,
+        people: filterPeople,
+      }),
+    [categoryFilter, filterPeople, mergedActuals, personFilter, personMode],
+  );
+  const sharePerson = personFilter !== "all" && personMode === "split" ? personFilter : null;
+  const filteredFullRm = useMemo(
+    () => sumRm(filteredActuals, undefined, jpyPerRm),
+    [filteredActuals, jpyPerRm],
+  );
+  const filteredSpentRm = useMemo(() => {
+    if (personFilter === "all") return spentRm;
+    if (sharePerson) {
+      return sumPersonShareRm(filteredActuals, sharePerson, filterPeople, jpyPerRm);
+    }
+    return filteredFullRm;
+  }, [
+    filterPeople,
+    filteredActuals,
+    filteredFullRm,
+    jpyPerRm,
+    personFilter,
+    sharePerson,
+    spentRm,
+  ]);
+  const showFilteredSpent = personFilter !== "all";
+  // Share mode: full amount of the visible rows. Payer mode: whole-trip spent.
+  const secondaryFullRm = sharePerson ? filteredFullRm : spentRm;
   const usedPct =
     estimateRm > 0 ? Math.round((spentRm / estimateRm) * 100) : null;
   const remainingRm = estimateRm - spentRm;
@@ -110,10 +156,19 @@ export function BudgetBoard({
         <p className="min-w-0 break-words [overflow-wrap:anywhere] text-right text-[13px] leading-5 text-ink">
           <span className="font-medium">
             {t("budget.spentShort", {
-              amount: formatAmount(spentRm, yen, jpyPerRm),
+              amount: formatAmount(filteredSpentRm, yen, jpyPerRm),
             })}
           </span>
-          {usedPct != null ? (
+          {showFilteredSpent && filteredSpentRm !== secondaryFullRm ? (
+            <>
+              <span className="text-ink-muted"> · </span>
+              <span className="text-ink-muted">
+                {t("budget.fullAmount", {
+                  amount: formatAmount(secondaryFullRm, yen, jpyPerRm),
+                })}
+              </span>
+            </>
+          ) : usedPct != null && !showFilteredSpent ? (
             <>
               <span className="text-ink-muted"> · </span>
               <span>
@@ -134,13 +189,15 @@ export function BudgetBoard({
             </>
           ) : null}
         </p>
-        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-canvas">
-          <div
-            className="h-full rounded-full transition-[width]"
-            style={{ width: `${barPct}%`, backgroundColor: barColor }}
-            aria-hidden
-          />
-        </div>
+        {showFilteredSpent ? null : (
+          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-canvas">
+            <div
+              className="h-full rounded-full transition-[width]"
+              style={{ width: `${barPct}%`, backgroundColor: barColor }}
+              aria-hidden
+            />
+          </div>
+        )}
         <p className="mt-1 min-w-0 break-words [overflow-wrap:anywhere] text-right text-[11px] text-ink-muted" title={fxTitle}>
           {t("budget.fxCompact", { rm: yen100InRm.toFixed(2) })}
         </p>
@@ -189,6 +246,61 @@ export function BudgetBoard({
               ))}
             </div>
           </div>
+          {filterPeople.length > 0 ? (
+            <div className="mt-1.5 flex min-w-0 items-center gap-2 md:max-w-xl">
+              <div
+                role="group"
+                aria-label={t("budget.personFilter")}
+                className="flex h-7 shrink-0 rounded-full bg-canvas p-0.5"
+              >
+                <button
+                  type="button"
+                  aria-pressed={personMode === "payer"}
+                  onClick={() => setPersonMode("payer")}
+                  className={`rounded-full px-2.5 text-xs font-medium ${
+                    personMode === "payer"
+                      ? "bg-surface text-ink shadow-sm"
+                      : "text-ink-muted"
+                  }`}
+                >
+                  {t("budget.filterPayer")}
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={personMode === "split"}
+                  onClick={() => setPersonMode("split")}
+                  className={`rounded-full px-2.5 text-xs font-medium ${
+                    personMode === "split"
+                      ? "bg-surface text-ink shadow-sm"
+                      : "text-ink-muted"
+                  }`}
+                >
+                  {t("budget.filterSplit")}
+                </button>
+              </div>
+              <div className="chip-scroll-fade min-w-0 flex-1">
+                <div
+                  role="toolbar"
+                  aria-label={t("budget.personFilter")}
+                  className="scrollbar-none -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5"
+                >
+                  <CategoryChip
+                    active={personFilter === "all"}
+                    onClick={() => setPersonFilter("all")}
+                    label={t("budget.filterAll")}
+                  />
+                  {filterPeople.map((name) => (
+                    <CategoryChip
+                      key={name}
+                      active={personFilter === name}
+                      onClick={() => setPersonFilter(name)}
+                      label={name}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : null}
           <div className="mt-2 md:max-w-xl">
             <SpendTimeline
               items={filteredActuals}
@@ -196,6 +308,8 @@ export function BudgetBoard({
               jpyPerRm={jpyPerRm}
               displayYen={yen}
               places={places}
+              sharePerson={sharePerson}
+              people={filterPeople}
             />
           </div>
         </>

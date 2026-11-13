@@ -248,6 +248,8 @@ notion.database({
 					options: [
 						{ name: "Food", color: "orange" },
 						{ name: "Transit", color: "blue" },
+						{ name: "Ride-hailing", color: "brown" },
+						{ name: "Airfare", color: "purple" },
 						{ name: "Stay", color: "green" },
 						{ name: "Ticket", color: "purple" },
 						{ name: "Shop", color: "yellow" },

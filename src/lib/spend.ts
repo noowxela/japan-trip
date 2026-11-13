@@ -67,6 +67,8 @@ export type TimelineGroup = {
   date: string | null;
   items: SpendItem[];
   totalRm: number;
+  /** Sum of each item's full amount in RM, before any share override. */
+  fullTotalRm: number;
 };
 
 export function firstDatedTripDay(days: TripDay[]): string | null {
@@ -95,10 +97,16 @@ export function timelineGroupLabel(
   return formatTimelineDate(group.date, locale) ?? "—";
 }
 
+export type TimelineGroupOptions = {
+  /** Override the RM amount used for group totals (e.g. one person's share). */
+  itemRm?: (item: SpendItem) => number;
+};
+
 export function timelineGroups(
   items: SpendItem[],
   days: TripDay[],
   jpyPerRm = JPY_PER_RM,
+  options?: TimelineGroupOptions,
 ): TimelineGroup[] {
   const firstTrip = firstDatedTripDay(days);
   const map = new Map<string, SpendItem[]>();
@@ -125,11 +133,16 @@ export function timelineGroups(
       if (timeA !== timeB) return timeA.localeCompare(timeB);
       return a.name.localeCompare(b.name);
     });
+    const amountRm = (item: SpendItem) =>
+      options?.itemRm
+        ? options.itemRm(item)
+        : toRm(item.amount, item.currency, jpyPerRm);
     return {
       key,
       date: key === BEFORE_TRIP_KEY ? null : key,
       items: groupItems,
-      totalRm: sumRm(groupItems, undefined, jpyPerRm),
+      totalRm: groupItems.reduce((sum, item) => sum + amountRm(item), 0),
+      fullTotalRm: sumRm(groupItems, undefined, jpyPerRm),
     };
   });
 }
@@ -274,4 +287,101 @@ export function topSpend(
         toRm(a.amount, a.currency, jpyPerRm),
     )
     .slice(0, n);
+}
+
+export type PersonFilterMode = "payer" | "split";
+
+/** People to offer in the spend person filter: editors, plus any payer/splitter names. */
+export function spendFilterPeople(people: string[], items: SpendItem[]): string[] {
+  const names = new Set(people.map((name) => name.trim()).filter(Boolean));
+  for (const item of items) {
+    if (item.paidBy?.trim()) names.add(item.paidBy.trim());
+    for (const name of item.splitWith) {
+      if (name.trim()) names.add(name.trim());
+    }
+  }
+  return [...names].sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * Who shares an expense. Empty `splitWith` means everyone (same rule as settle-up).
+ * If there is no people list, fall back to the payer so a personal item still has a share.
+ */
+export function splitParticipants(item: SpendItem, people: string[]): string[] {
+  const listed = [
+    ...new Set(item.splitWith.map((name) => name.trim()).filter(Boolean)),
+  ];
+  const everyone =
+    people.length > 0 ? people : item.paidBy ? [item.paidBy] : [];
+  const participants = listed.length > 0 ? listed : everyone;
+  if (participants.length > 0) return participants;
+  return item.paidBy ? [item.paidBy] : [];
+}
+
+export function personHasShare(
+  item: SpendItem,
+  person: string,
+  people: string[],
+): boolean {
+  return splitParticipants(item, people).includes(person);
+}
+
+/** This person's equal share in RM, or null when they are not a splitter. */
+export function personShareRm(
+  item: SpendItem,
+  person: string,
+  people: string[],
+  jpyPerRm = JPY_PER_RM,
+): number | null {
+  const split = splitParticipants(item, people);
+  if (split.length === 0 || !split.includes(person)) return null;
+  return toRm(item.amount, item.currency, jpyPerRm) / split.length;
+}
+
+export function sumPersonShareRm(
+  items: SpendItem[],
+  person: string,
+  people: string[],
+  jpyPerRm = JPY_PER_RM,
+): number {
+  return items.reduce((sum, item) => {
+    const share = personShareRm(item, person, people, jpyPerRm);
+    return sum + (share ?? 0);
+  }, 0);
+}
+
+export function filterSpendByPerson(
+  items: SpendItem[],
+  person: string | "all" | null | undefined,
+  mode: PersonFilterMode,
+  people: string[],
+): SpendItem[] {
+  if (!person || person === "all") return items;
+  if (mode === "payer") {
+    return items.filter((item) => item.paidBy === person);
+  }
+  return items.filter((item) => personHasShare(item, person, people));
+}
+
+/** Category and person filters combined with AND. `"all"` (or empty) clears that filter. */
+export function filterSpendItems(
+  items: SpendItem[],
+  options: {
+    category?: "all" | string | null;
+    person?: "all" | string | null;
+    mode?: PersonFilterMode;
+    people?: string[];
+  } = {},
+): SpendItem[] {
+  const category = options.category ?? "all";
+  const byCategory =
+    !category || category === "all"
+      ? items
+      : items.filter((item) => item.category === category);
+  return filterSpendByPerson(
+    byCategory,
+    options.person,
+    options.mode ?? "payer",
+    options.people ?? [],
+  );
 }

@@ -12,7 +12,12 @@ import {
   isPastTripDay,
   tokyoToday,
 } from "@/lib/format";
-import { spendWhen, timelineGroupLabel, timelineGroups } from "@/lib/spend";
+import {
+  personShareRm,
+  spendWhen,
+  timelineGroupLabel,
+  timelineGroups,
+} from "@/lib/spend";
 import type { Place, SpendItem, TripDay } from "@/lib/types";
 
 export function SpendTimeline({
@@ -21,15 +26,30 @@ export function SpendTimeline({
   jpyPerRm,
   displayYen,
   places = [],
+  sharePerson = null,
+  people = [],
 }: {
   items: SpendItem[];
   days: TripDay[];
   jpyPerRm: number;
   displayYen: boolean;
   places?: Place[];
+  /** When set, row amounts and group totals use this person's share. */
+  sharePerson?: string | null;
+  people?: string[];
 }) {
   const { t, locale } = useT();
-  const groups = timelineGroups(items, days, jpyPerRm);
+  const groups = timelineGroups(
+    items,
+    days,
+    jpyPerRm,
+    sharePerson
+      ? {
+          itemRm: (item) =>
+            personShareRm(item, sharePerson, people, jpyPerRm) ?? 0,
+        }
+      : undefined,
+  );
   const today = useMemo(() => tokyoToday(), []);
   const [openByKey, setOpenByKey] = useState<Record<string, boolean>>({});
 
@@ -81,14 +101,26 @@ export function SpendTimeline({
                   </span>
                   <span className="min-w-0 break-words [overflow-wrap:anywhere]">{dateLabel}</span>
                 </span>
-                <span className="shrink-0 whitespace-nowrap text-[11px] font-medium text-ink tabular-nums">
-                  {formatAmount(group.totalRm, displayYen, jpyPerRm)}
+                <span className="shrink-0 text-right">
+                  <span className="block whitespace-nowrap text-[11px] font-medium text-ink tabular-nums">
+                    {formatAmount(group.totalRm, displayYen, jpyPerRm)}
+                  </span>
+                  {sharePerson && group.fullTotalRm !== group.totalRm ? (
+                    <span className="block whitespace-nowrap text-[10px] font-medium text-ink-muted tabular-nums">
+                      {t("budget.fullAmount", {
+                        amount: formatAmount(group.fullTotalRm, displayYen, jpyPerRm),
+                      })}
+                    </span>
+                  ) : null}
                 </span>
               </button>
               {open ? (
                 <ul className="divide-y divide-line/70">
                   {group.items.map((item) => {
                     const time = formatTime(spendWhen(item, days));
+                    const shareRm = sharePerson
+                      ? personShareRm(item, sharePerson, people, jpyPerRm)
+                      : null;
                     return (
                       <li key={item.id} className="min-w-0">
                         <SpendItemCard
@@ -99,6 +131,7 @@ export function SpendTimeline({
                           timeLabel={time}
                           places={places}
                           days={days}
+                          shareRm={shareRm}
                         />
                       </li>
                     );
