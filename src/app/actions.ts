@@ -20,6 +20,7 @@ import { ds, getNotion, textProp, titleProp } from "@/lib/notion";
 import { notionStartProperty } from "@/lib/notion-date";
 import { isStayMapsSchemaError, notionErrorCode } from "@/lib/notion-error";
 import { parseSpendCurrency } from "@/lib/spend";
+import { spendStartFromFormData } from "@/lib/spend-item-form";
 import {
   THEME_COOKIE,
   THEME_MAX_AGE_SEC,
@@ -163,10 +164,6 @@ function startValue(formData: FormData) {
     return tokyoWallDateTime(dayDate, hm);
   }
   return "";
-}
-
-function spendStartValue(formData: FormData) {
-  return startValue(formData) || String(formData.get("dayDate") ?? "").trim().slice(0, 10);
 }
 
 function startProp(start: string | null) {
@@ -918,7 +915,7 @@ export async function addSpend(formData: FormData): Promise<ActionResult> {
   const firstAttemptAt = String(formData.get("firstAttemptAt") ?? "").trim();
   const start = clientCreatedAt
     ? ensureTokyoOffset(clientCreatedAt)
-    : spendStartValue(formData);
+    : spendStartFromFormData(formData);
   if (!name) return actionErr(await actionT("action.spendNameRequired"));
   if (!Number.isFinite(amount)) return actionErr(await actionT("action.amountRequired"));
   // Dedupe only on outbox retries (lost response after the request reached Notion).
@@ -983,7 +980,7 @@ export async function updateSpend(formData: FormData): Promise<ActionResult> {
   const placeId = placeIdFrom(formData);
   const currency = parseSpendCurrency(String(formData.get("currency") ?? ""));
   const amount = Number(amountRaw);
-  const start = spendStartValue(formData);
+  const start = spendStartFromFormData(formData);
   if (!id || !name) return actionErr(await actionT("action.spendNameRequired"));
   if (!Number.isFinite(amount)) return actionErr(await actionT("action.amountRequired"));
   try {

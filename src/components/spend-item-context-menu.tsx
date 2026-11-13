@@ -20,6 +20,7 @@ import { useT } from "@/components/i18n-provider";
 import { useOutbox } from "@/components/outbox-provider";
 import { useTrashUndo } from "@/components/use-trash-undo";
 import { useEditOrUnlock } from "@/components/unlock-provider";
+import { lockAppScroll } from "@/lib/app-shell";
 import { dateKey } from "@/lib/format";
 import { labelCategory } from "@/lib/i18n/dictionaries";
 import {
@@ -101,11 +102,10 @@ export function SpendItemContextMenu({
       }
     }
     window.addEventListener("keydown", onKey);
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const unlock = lockAppScroll(undefined, { preventTouchMove: true });
     return () => {
       window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = previous;
+      unlock();
     };
   }, [mounted, onClose, confirmDelete]);
 
@@ -358,7 +358,7 @@ export function SpendItemContextMenu({
                 }}
                 tripDates={tripDates}
                 label={null}
-                overlayClassName="fixed inset-0 z-[220]"
+                overlayClassName="fixed inset-0 z-[300]"
               />
             </div>
           ) : null}

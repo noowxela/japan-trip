@@ -11,13 +11,19 @@ import {
 import { createPortal } from "react-dom";
 import { fieldClass } from "@/components/page-shell";
 import { useT } from "@/components/i18n-provider";
+import { lockAppScroll } from "@/lib/app-shell";
+import {
+  datePickerAnchorsEqual,
+  getViewportSize,
+  placeDatePicker,
+  type DatePickerAnchor,
+} from "@/lib/date-picker";
 import { formatDay, tokyoToday } from "@/lib/format";
 
 const SWIPE_PX = 48;
 const ANIM_MS = 220;
 const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
 const PANEL_ESTIMATE = 360;
-const GAP = 8;
 
 function ymd(year: number, month: number, day: number) {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -67,28 +73,6 @@ function monthCells(year: number, month: number): Cell[] {
   return cells;
 }
 
-type Anchor = {
-  top: number;
-  left: number;
-  width: number;
-  origin: "top" | "bottom";
-};
-
-function anchorFromButton(
-  button: HTMLElement,
-  panelHeight = PANEL_ESTIMATE,
-): Anchor {
-  const rect = button.getBoundingClientRect();
-  const spaceBelow = window.innerHeight - rect.bottom - GAP - 16;
-  const above = spaceBelow < panelHeight && rect.top > spaceBelow;
-  return {
-    left: rect.left,
-    width: rect.width,
-    top: above ? rect.top - panelHeight - GAP : rect.bottom + GAP,
-    origin: above ? "bottom" : "top",
-  };
-}
-
 export function DatePicker({
   name,
   value,
@@ -96,7 +80,7 @@ export function DatePicker({
   tripDates,
   label,
   compact = false,
-  overlayClassName = "fixed inset-0 z-50",
+  overlayClassName = "fixed inset-0 z-[300]",
 }: {
   name: string;
   value: string;
@@ -112,7 +96,7 @@ export function DatePicker({
   const [mounted, setMounted] = useState(false);
   const [shown, setShown] = useState(false);
   const [{ year, month }, setView] = useState(() => monthParts(selected));
-  const [anchor, setAnchor] = useState<Anchor | null>(null);
+  const [anchor, setAnchor] = useState<DatePickerAnchor | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const closingRef = useRef(false);
@@ -145,21 +129,40 @@ export function DatePicker({
 
   useEffect(() => {
     if (!mounted) return;
+    return lockAppScroll(buttonRef.current, { preventTouchMove: true });
+  }, [mounted]);
+
+  useEffect(() => {
+    if (!mounted) return;
 
     function sync() {
       const button = buttonRef.current;
       if (!button) return;
-      setAnchor(
-        anchorFromButton(button, panelRef.current?.offsetHeight ?? PANEL_ESTIMATE),
-      );
+      const rect = button.getBoundingClientRect();
+      const next = placeDatePicker({
+        button: {
+          top: rect.top,
+          left: rect.left,
+          bottom: rect.bottom,
+          width: rect.width,
+        },
+        panelHeight: panelRef.current?.offsetHeight ?? PANEL_ESTIMATE,
+        viewport: getViewportSize(),
+      });
+      setAnchor((prev) => (datePickerAnchorsEqual(prev, next) ? prev : next));
     }
 
     sync();
     window.addEventListener("resize", sync);
     window.addEventListener("scroll", sync, true);
+    const viewport = window.visualViewport;
+    viewport?.addEventListener("resize", sync);
+    viewport?.addEventListener("scroll", sync);
     return () => {
       window.removeEventListener("resize", sync);
       window.removeEventListener("scroll", sync, true);
+      viewport?.removeEventListener("resize", sync);
+      viewport?.removeEventListener("scroll", sync);
     };
   }, [mounted, year, month]);
 
@@ -186,7 +189,21 @@ export function DatePicker({
     closingRef.current = false;
     setView(monthParts(selected));
     const button = buttonRef.current;
-    if (button) setAnchor(anchorFromButton(button));
+    if (button) {
+      const rect = button.getBoundingClientRect();
+      setAnchor(
+        placeDatePicker({
+          button: {
+            top: rect.top,
+            left: rect.left,
+            bottom: rect.bottom,
+            width: rect.width,
+          },
+          panelHeight: PANEL_ESTIMATE,
+          viewport: getViewportSize(),
+        }),
+      );
+    }
     setMounted(true);
   }
 
@@ -236,7 +253,7 @@ export function DatePicker({
               ref={panelRef}
               role="dialog"
               aria-label={t("date.choose")}
-              className="absolute rounded-2xl border border-line bg-surface p-3 shadow-xl will-change-transform"
+              className="fixed rounded-2xl border border-line bg-surface p-3 shadow-xl will-change-transform"
               style={{
                 top: anchor.top,
                 left: anchor.left,

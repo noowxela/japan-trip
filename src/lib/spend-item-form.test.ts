@@ -5,6 +5,7 @@ import {
   formDataForDuplicateSpend,
   formDataFromSpendItem,
   isBeforeTripDate,
+  spendStartFromFormData,
 } from "@/lib/spend-item-form";
 import type { SpendItem, TripDay } from "@/lib/types";
 
@@ -139,5 +140,58 @@ describe("formDataFromSpendItem", () => {
     expect(formData.get("name")).toBe("Ramen");
     expect(formData.get("dayId")).toBe("d1");
     expect(formData.get("time")).toBe("12:15");
+  });
+});
+
+describe("spendStartFromFormData", () => {
+  const lunch = item({
+    id: "sp1",
+    name: "Ramen",
+    amount: 1200,
+    currency: "Yen",
+    kind: "Actual",
+    category: "Food",
+    notes: "near Namba",
+    dayIds: ["d1"],
+    start: "2026-11-06T12:15:00+09:00",
+    paidBy: "Alex",
+    splitWith: ["Alex", "Sam"],
+    placeId: "place-1",
+  });
+
+  it("remaps the Tokyo start when moving a timed spend to another day", () => {
+    const formData = formDataFromSpendItem(lunch, days, {
+      dayDate: "2026-11-07",
+    });
+    expect(spendStartFromFormData(formData)).toBe("2026-11-07T12:15:00+09:00");
+  });
+
+  it("writes a date-only Start when the spend has no time", () => {
+    const formData = formDataFromSpendItem(
+      item({
+        id: "c",
+        amount: 10,
+        currency: "RM",
+        dayIds: ["d1"],
+        start: "2026-11-06",
+      }),
+      days,
+      { dayDate: "2026-11-07" },
+    );
+    expect(spendStartFromFormData(formData)).toBe("2026-11-07");
+  });
+
+  it("clears Start when moving to the undated 出发前 group", () => {
+    const formData = formDataFromSpendItem(lunch, days, { dayDate: "" });
+    expect(formData.get("dayDate")).toBeNull();
+    expect(formData.get("time")).toBe("12:15");
+    expect(spendStartFromFormData(formData)).toBe("");
+  });
+
+  it("keeps an explicit pre-trip calendar date", () => {
+    const formData = formDataFromSpendItem(lunch, days, {
+      dayDate: "2026-10-20",
+    });
+    expect(spendStartFromFormData(formData)).toBe("2026-10-20T12:15:00+09:00");
   });
 });

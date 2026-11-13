@@ -1,5 +1,18 @@
-import { dateKey, formatTime } from "@/lib/format";
+import { dateKey, ensureTokyoOffset, formatTime, tokyoWallDateTime } from "@/lib/format";
 import type { SpendItem, TripDay } from "@/lib/types";
+
+/** Start value updateSpend / addSpend write to Notion's Start property. */
+export function spendStartFromFormData(formData: FormData): string {
+  const start = String(formData.get("start") ?? "").trim();
+  const time = String(formData.get("time") ?? "").trim();
+  const dayDate = String(formData.get("dayDate") ?? "").trim().slice(0, 10);
+  if (start) return ensureTokyoOffset(start);
+  if (time && dayDate) {
+    const hm = time.length >= 5 ? time.slice(0, 5) : time;
+    return tokyoWallDateTime(dayDate, hm);
+  }
+  return dayDate;
+}
 
 export type SpendItemFormOverrides = {
   category?: string | null;
