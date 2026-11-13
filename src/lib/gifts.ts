@@ -5,6 +5,7 @@ export const GIFTS_STORAGE_KEY = "japan-trip:gifts-v1";
 export const GIFT_RECIPIENTS_STORAGE_KEY = "japan-trip:gift-recipients-v1";
 export const GIFTS_VERSION = 1 as const;
 export const GIFTS_CHANGED_EVENT = "japan-trip-gifts";
+export const GIFT_RECIPIENTS_CHANGED_EVENT = "japan-trip-gift-recipients";
 export const MAX_RECENT_RECIPIENTS = 8;
 
 export type GiftItem = {
@@ -21,7 +22,7 @@ export type GiftItem = {
   updatedAt?: string;
 };
 
-export type GiftTab = "others" | "self";
+export type GiftTab = "all" | "others" | "self";
 
 export type GiftsStore = {
   v: typeof GIFTS_VERSION;
@@ -33,6 +34,29 @@ Object.freeze(EMPTY_GIFTS);
 
 export const EMPTY_RECIPIENTS: string[] = [];
 Object.freeze(EMPTY_RECIPIENTS);
+
+let recipientsMemoryRaw: string | null | undefined;
+let recipientsMemory: string[] = EMPTY_RECIPIENTS;
+
+function setRecipientsMemory(raw: string | null, names: string[]) {
+  recipientsMemoryRaw = raw;
+  recipientsMemory = names.length === 0 ? EMPTY_RECIPIENTS : names;
+}
+
+export function subscribeRecentRecipients(onChange: () => void) {
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === null || event.key === GIFT_RECIPIENTS_STORAGE_KEY) {
+      recipientsMemoryRaw = undefined;
+      onChange();
+    }
+  };
+  window.addEventListener("storage", onStorage);
+  window.addEventListener(GIFT_RECIPIENTS_CHANGED_EVENT, onChange);
+  return () => {
+    window.removeEventListener("storage", onStorage);
+    window.removeEventListener(GIFT_RECIPIENTS_CHANGED_EVENT, onChange);
+  };
+}
 
 function newGiftId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -238,6 +262,7 @@ export function giftsForTab(
   items: readonly GiftItem[],
   tab: GiftTab,
 ): GiftItem[] {
+  if (tab === "all") return items.slice();
   return items.filter((item) => (tab === "self" ? item.forSelf : !item.forSelf));
 }
 
@@ -489,10 +514,12 @@ export function writeGifts(items: readonly GiftItem[]): void {
 export function readRecentRecipients(): string[] {
   if (typeof window === "undefined") return EMPTY_RECIPIENTS;
   try {
-    const parsed = parseRecentRecipients(
-      window.localStorage.getItem(GIFT_RECIPIENTS_STORAGE_KEY),
-    );
-    return parsed.length === 0 ? EMPTY_RECIPIENTS : parsed;
+    const raw = window.localStorage.getItem(GIFT_RECIPIENTS_STORAGE_KEY);
+    if (raw === recipientsMemoryRaw) return recipientsMemory;
+    const parsed = parseRecentRecipients(raw);
+    const names = parsed.length === 0 ? EMPTY_RECIPIENTS : parsed;
+    setRecipientsMemory(raw, names);
+    return recipientsMemory;
   } catch {
     return EMPTY_RECIPIENTS;
   }
@@ -501,10 +528,11 @@ export function readRecentRecipients(): string[] {
 export function writeRecentRecipients(names: readonly string[]): void {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(
-      GIFT_RECIPIENTS_STORAGE_KEY,
-      JSON.stringify(names.slice(0, MAX_RECENT_RECIPIENTS)),
-    );
+    const trimmed = names.slice(0, MAX_RECENT_RECIPIENTS);
+    const raw = JSON.stringify(trimmed);
+    window.localStorage.setItem(GIFT_RECIPIENTS_STORAGE_KEY, raw);
+    setRecipientsMemory(raw, trimmed);
+    window.dispatchEvent(new Event(GIFT_RECIPIENTS_CHANGED_EVENT));
   } catch {
     // ignore
   }

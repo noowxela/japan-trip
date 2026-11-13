@@ -14,6 +14,7 @@ import {
   CompactRowList,
   PageHeader,
   RowMoreButton,
+  SectionHeader,
   SummaryStrip,
   compactBtnGhostClass,
   compactBtnPrimaryClass,
@@ -202,7 +203,7 @@ export function GiftsView({
     }
     setFormOpen(false);
     setEditing(null);
-    setTab(next.forSelf ? "self" : "others");
+    if (tab !== "all") setTab(next.forSelf ? "self" : "others");
   }
 
   function toggleBought(gift: GiftItem) {
@@ -290,6 +291,7 @@ export function GiftsView({
         onChange={setTab}
         label={t("gifts.title")}
         options={[
+          { value: "all", label: t("gifts.tabAll") },
           { value: "others", label: t("gifts.tabOthers") },
           { value: "self", label: t("gifts.tabSelf") },
         ]}
@@ -305,73 +307,55 @@ export function GiftsView({
       </SummaryStrip>
 
       {visible.length === 0 ? (
-        <p className="px-1 text-[13px] text-ink-muted">
-          {tab === "self" ? t("gifts.emptySelf") : t("gifts.emptyOthers")}
+        <p className="min-w-0 break-words [overflow-wrap:anywhere] px-1 text-[13px] text-ink-muted">
+          {tab === "all"
+            ? t("gifts.emptyAll")
+            : tab === "self"
+              ? t("gifts.emptySelf")
+              : t("gifts.emptyOthers")}
         </p>
-      ) : (
-        <CompactRowList>
-          {visible.map((gift) => {
-            const spend = findSpendForGift(gift, spends);
-            const money = giftMoney(gift, spends);
-            const linkedMissing = Boolean(gift.spendId && !spend);
-            const secondaryBits = [
-              gift.forSelf ? t("gifts.myself") : gift.recipient,
-              money ? formatSpend(money.amount, money.currency) : null,
-              spend ? spend.name : linkedMissing ? t("gifts.spendMissing") : null,
-              gift.notes || null,
-            ].filter(Boolean);
+      ) : tab === "all" ? (
+        <div className="grid gap-3">
+          {(["others", "self"] as const).map((group) => {
+            const rows = giftsForTab(visible, group);
+            if (rows.length === 0) return null;
             return (
-              <li key={gift.id}>
-                <CompactRow
-                  muted={!gift.bought}
-                  leading={
-                    <button
-                      type="button"
-                      disabled={!canEdit}
-                      onClick={() => toggleBought(gift)}
-                      aria-label={
-                        gift.bought
-                          ? t("gifts.markUnbought")
-                          : t("gifts.markBought")
-                      }
-                      className="flex h-10 w-10 items-center justify-center disabled:opacity-60"
-                    >
-                      <span
-                        className={`flex h-6 w-6 items-center justify-center rounded-full border-2 ${
-                          gift.bought
-                            ? "border-ok bg-ok text-white"
-                            : "border-line bg-surface"
-                        }`}
-                      >
-                        {gift.bought ? (
-                          <svg
-                            aria-hidden
-                            viewBox="0 0 16 16"
-                            className="h-2.5 w-2.5"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth={2.5}
-                          >
-                            <path d="M3.5 8.5 6.5 11.5 12.5 4.5" />
-                          </svg>
-                        ) : null}
-                      </span>
-                    </button>
-                  }
-                  title={gift.name}
-                  secondary={secondaryBits.join(" · ")}
-                  trailing={
-                    canEdit ? (
-                      <RowMoreButton
-                        label={t("agenda.actionsFor", { name: gift.name })}
-                        onClick={() => setMenuGift(gift)}
-                      />
-                    ) : null
+              <section key={group} className="grid gap-1.5">
+                <SectionHeader
+                  title={
+                    group === "self" ? t("gifts.tabSelf") : t("gifts.tabOthers")
                   }
                 />
-              </li>
+                <CompactRowList>
+                  {rows.map((gift) => (
+                    <GiftRow
+                      key={gift.id}
+                      gift={gift}
+                      spends={spends}
+                      canEdit={canEdit}
+                      t={t}
+                      onToggleBought={() => toggleBought(gift)}
+                      onMore={() => setMenuGift(gift)}
+                    />
+                  ))}
+                </CompactRowList>
+              </section>
             );
           })}
+        </div>
+      ) : (
+        <CompactRowList>
+          {visible.map((gift) => (
+            <GiftRow
+              key={gift.id}
+              gift={gift}
+              spends={spends}
+              canEdit={canEdit}
+              t={t}
+              onToggleBought={() => toggleBought(gift)}
+              onMore={() => setMenuGift(gift)}
+            />
+          ))}
         </CompactRowList>
       )}
 
@@ -634,4 +618,79 @@ export function GiftsView({
 
 export function GiftsOfflineFallback() {
   return <GiftsView initialSpends={[]} />;
+}
+
+function GiftRow({
+  gift,
+  spends,
+  canEdit,
+  t,
+  onToggleBought,
+  onMore,
+}: {
+  gift: GiftItem;
+  spends: SpendItem[];
+  canEdit: boolean;
+  t: ReturnType<typeof useT>["t"];
+  onToggleBought: () => void;
+  onMore: () => void;
+}) {
+  const spend = findSpendForGift(gift, spends);
+  const money = giftMoney(gift, spends);
+  const linkedMissing = Boolean(gift.spendId && !spend);
+  const secondaryBits = [
+    gift.forSelf ? t("gifts.myself") : gift.recipient,
+    money ? formatSpend(money.amount, money.currency) : null,
+    spend ? spend.name : linkedMissing ? t("gifts.spendMissing") : null,
+    gift.notes || null,
+  ].filter(Boolean);
+  return (
+    <li>
+      <CompactRow
+        muted={!gift.bought}
+        leading={
+          <button
+            type="button"
+            disabled={!canEdit}
+            onClick={onToggleBought}
+            aria-label={
+              gift.bought ? t("gifts.markUnbought") : t("gifts.markBought")
+            }
+            className="flex h-10 w-10 items-center justify-center disabled:opacity-60"
+          >
+            <span
+              className={`flex h-6 w-6 items-center justify-center rounded-full border-2 ${
+                gift.bought
+                  ? "border-ok bg-ok text-white"
+                  : "border-line bg-surface"
+              }`}
+            >
+              {gift.bought ? (
+                <svg
+                  aria-hidden
+                  viewBox="0 0 16 16"
+                  className="h-2.5 w-2.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                >
+                  <path d="M3.5 8.5 6.5 11.5 12.5 4.5" />
+                </svg>
+              ) : null}
+            </span>
+          </button>
+        }
+        title={gift.name}
+        secondary={secondaryBits.join(" · ")}
+        trailing={
+          canEdit ? (
+            <RowMoreButton
+              label={t("agenda.actionsFor", { name: gift.name })}
+              onClick={onMore}
+            />
+          ) : null
+        }
+      />
+    </li>
+  );
 }

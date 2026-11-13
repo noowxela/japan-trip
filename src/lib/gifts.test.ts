@@ -121,6 +121,8 @@ describe("tabs and recipients", () => {
     const me = createGift({ name: "Socks", forSelf: true });
     expect(giftsForTab([mum, me], "others").map((g) => g.id)).toEqual([mum.id]);
     expect(giftsForTab([mum, me], "self").map((g) => g.id)).toEqual([me.id]);
+    expect(giftsForTab([mum, me], "all").map((g) => g.id)).toEqual([mum.id, me.id]);
+    expect(giftsForTab([], "all")).toEqual([]);
   });
 
   it("remembers recent recipient names without inventing defaults", () => {

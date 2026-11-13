@@ -13,7 +13,9 @@ import {
 import {
   APP_COMMIT,
   APP_VERSION,
+  classifyAppUpdateCheck,
   shortCommit,
+  type AppUpdateCheckResult,
   type AppVersionPayload,
 } from "@/lib/app-version";
 import { useT } from "@/components/i18n-provider";
@@ -29,7 +31,7 @@ type AppUpdateContextValue = {
   updateAvailable: boolean;
   checking: boolean;
   reloading: boolean;
-  checkNow: (options?: { reveal?: boolean }) => Promise<boolean>;
+  checkNow: (options?: { reveal?: boolean }) => Promise<AppUpdateCheckResult>;
   reloadToLatest: () => Promise<void>;
   dismissBanner: () => void;
   bannerVisible: boolean;
@@ -109,26 +111,25 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
   const [checking, setChecking] = useState(false);
   const [reloading, setReloading] = useState(false);
   const [dismissed, setDismissed] = useState(false);
-  const inFlight = useRef<Promise<boolean> | null>(null);
+  const inFlight = useRef<Promise<AppUpdateCheckResult> | null>(null);
 
   const checkNow = useCallback(async (options?: { reveal?: boolean }) => {
     const pending = inFlight.current;
-    const available = pending
+    const result = pending
       ? await pending
       : await (inFlight.current = (async () => {
           setChecking(true);
           try {
             const payload = await fetchLatestVersion();
-            if (!payload) return false;
-            setLatest(payload);
-            return payload.commit !== APP_COMMIT;
+            if (payload) setLatest(payload);
+            return classifyAppUpdateCheck(payload, APP_COMMIT);
           } finally {
             inFlight.current = null;
             setChecking(false);
           }
         })());
-    if (options?.reveal && available) setDismissed(false);
-    return available;
+    if (options?.reveal && result === "update-available") setDismissed(false);
+    return result;
   }, []);
 
   const handleReload = useCallback(async () => {

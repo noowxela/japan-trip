@@ -66,6 +66,15 @@ describe("clothes, gifts, checkout, and airfare copy", () => {
     expect(t("zh", "budget.filterPayer")).toBe("付款人");
     expect(t("en", "budget.filterSplit")).toBe("Split with");
     expect(t("zh", "budget.filterSplit")).toBe("分摊人");
+    expect(t("en", "gifts.tabAll")).toBe("All");
+    expect(t("zh", "gifts.tabAll")).toBe("全部");
+    expect(t("en", "version.upToDateWithVersion", { version: "0.1.87" })).toBe(
+      "You're already on the latest version v0.1.87",
+    );
+    expect(t("zh", "version.upToDateWithVersion", { version: "0.1.87" })).toBe(
+      "已是最新版本 v0.1.87",
+    );
+    expect(t("zh", "version.checkFailed")).toBe("检查更新失败");
   });
 });
 

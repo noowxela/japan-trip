@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { compactFieldClass, compactLabelClass } from "@/components/compact";
 import { useT } from "@/components/i18n-provider";
-import { readRecentRecipients } from "@/lib/gifts";
+import {
+  EMPTY_RECIPIENTS,
+  readRecentRecipients,
+  subscribeRecentRecipients,
+} from "@/lib/gifts";
 
 export type SpendGiftValue = {
   flagged: boolean;
@@ -21,11 +25,11 @@ export function SpendGiftFields({
   compact?: boolean;
 }) {
   const { t } = useT();
-  const [recent, setRecent] = useState<string[]>([]);
-
-  useEffect(() => {
-    setRecent(readRecentRecipients());
-  }, []);
+  const recent = useSyncExternalStore(
+    subscribeRecentRecipients,
+    readRecentRecipients,
+    () => EMPTY_RECIPIENTS,
+  );
 
   return (
     <div className={compact ? "grid gap-1.5" : "grid gap-2"}>

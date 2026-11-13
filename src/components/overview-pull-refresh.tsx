@@ -45,9 +45,9 @@ export function OverviewPullRefresh({ children }: { children: ReactNode }) {
     setPhaseBoth("checking");
     setDistanceBoth(PULL_THRESHOLD_PX);
     try {
-      const available = await checkNow({ reveal: true });
+      const result = await checkNow({ reveal: true });
       router.refresh();
-      if (available) {
+      if (result === "update-available") {
         setPhaseBoth("updateAvailable");
         await new Promise((resolve) => window.setTimeout(resolve, 400));
       } else {
