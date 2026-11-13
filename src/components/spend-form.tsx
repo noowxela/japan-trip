@@ -32,6 +32,13 @@ import {
   writeGifts,
 } from "@/lib/gifts";
 import { parseSpendCurrency } from "@/lib/spend";
+import {
+  spendPartyChipClass,
+  spendPartyChipOffClass,
+  spendPartyChipOnClass,
+  spendPartyFieldClass,
+  spendPartyRowClass,
+} from "@/lib/spend-party-row";
 import { SPEND_CATEGORIES, type Place, type SpendItem, type TripDay } from "@/lib/types";
 
 function dateForDayId(days: TripDay[], dayId: string) {
@@ -242,8 +249,10 @@ export function SpendForm({
           />
         </label>
 
-        <PaidByField people={people} value={paidBy} onChange={setPaidBy} />
-        <SplitWithField people={people} value={splitWith} onChange={setSplitWith} />
+        <div className={spendPartyRowClass}>
+          <PaidByField people={people} value={paidBy} onChange={setPaidBy} />
+          <SplitWithField people={people} value={splitWith} onChange={setSplitWith} />
+        </div>
 
         <label className="grid gap-1">
           <span className="text-[12px] font-medium text-ink-muted">{t("form.notes")}</span>
@@ -308,12 +317,12 @@ function PaidByField({
   }
 
   return (
-    <div className="grid gap-1">
-      <span className="text-[12px] font-medium text-ink-muted">{t("form.paidBy")}</span>
+    <div className={spendPartyFieldClass}>
+      <span className="text-xs font-medium text-ink-muted">{t("form.paidBy")}</span>
       {tags.length > 0 ? (
         <>
           <input type="hidden" name="paidBy" value={value} />
-          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t("form.paidBy")}>
+          <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={t("form.paidBy")}>
             {tags.map((name) => {
               const selected = name.toLowerCase() === value.toLowerCase();
               return (
@@ -323,10 +332,8 @@ function PaidByField({
                   role="radio"
                   aria-checked={selected}
                   onClick={() => onChange(selected ? "" : name)}
-                  className={`notebook-btn inline-flex min-h-11 items-center px-3.5 text-sm font-medium ${
-                    selected
-                      ? "bg-accent text-white"
-                      : "border border-line bg-surface text-ink"
+                  className={`${spendPartyChipClass} ${
+                    selected ? spendPartyChipOnClass : spendPartyChipOffClass
                   }`}
                 >
                   {name}
