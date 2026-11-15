@@ -19,12 +19,17 @@ import { TRANSIT_MODES, type TripDay } from "@/lib/types";
 export function AddTransitForm({
   days,
   defaultDayId,
+  dayDate,
   embedded = false,
+  lockDay = false,
   onSuccess,
 }: {
   days: TripDay[];
   defaultDayId?: string;
+  dayDate?: string | null;
   embedded?: boolean;
+  /** Pin the leg to defaultDayId (schedule add). Hides day and date pickers. */
+  lockDay?: boolean;
   onSuccess?: () => void;
 }) {
   const { t, locale } = useT();
@@ -48,6 +53,7 @@ export function AddTransitForm({
     }
     return set;
   }, [days]);
+  const resolvedDate = lockDay ? (dateKey(dayDate ?? date) ?? date) : date;
 
   return (
     <ActionForm
@@ -89,37 +95,51 @@ export function AddTransitForm({
             setFrom(fill.from);
             setTo(fill.to);
             setBookingUrl(fill.bookingUrl);
-            if (fill.date) setDate(fill.date);
             if (fill.time) setTime(fill.time);
-            const matched = days.find((day) => dateKey(day.date) === fill.date);
-            if (matched) setDayId(matched.id);
+            if (!lockDay) {
+              if (fill.date) setDate(fill.date);
+              const matched = days.find((day) => dateKey(day.date) === fill.date);
+              if (matched) setDayId(matched.id);
+            }
           }}
         />
       ) : null}
-      <DatePicker
-        name="date"
-        value={date}
-        onChange={setDate}
-        tripDates={tripDates}
-        label={t("form.date")}
-      />
-      <div className="grid grid-cols-2 gap-3">
-        <label className="grid gap-1">
-          <span className="text-xs font-medium text-ink-muted">{t("form.from")}</span>
+      {lockDay ? (
+        <input
+          type="hidden"
+          name="date"
+          value={resolvedDate}
+        />
+      ) : (
+        <DatePicker
+          name="date"
+          value={date}
+          onChange={setDate}
+          tripDates={tripDates}
+          label={t("form.date")}
+        />
+      )}
+      <div className="grid min-w-0 grid-cols-2 gap-3">
+        <label className="grid min-w-0 gap-1">
+          <span className="text-xs font-medium text-ink-muted break-words">
+            {t("form.from")}
+          </span>
           <input
             name="from"
             value={from}
             onChange={(event) => setFrom(event.target.value)}
-            className={fieldClass}
+            className={`${fieldClass} min-w-0`}
           />
         </label>
-        <label className="grid gap-1">
-          <span className="text-xs font-medium text-ink-muted">{t("form.to")}</span>
+        <label className="grid min-w-0 gap-1">
+          <span className="text-xs font-medium text-ink-muted break-words">
+            {t("form.to")}
+          </span>
           <input
             name="to"
             value={to}
             onChange={(event) => setTo(event.target.value)}
-            className={fieldClass}
+            className={`${fieldClass} min-w-0`}
           />
         </label>
       </div>
@@ -135,7 +155,9 @@ export function AddTransitForm({
           className={fieldClass}
         />
       </label>
-      {days.length > 0 ? (
+      {lockDay ? (
+        <input type="hidden" name="dayId" value={defaultDayId ?? dayId} />
+      ) : days.length > 0 ? (
         <ChipGroup
           name="dayId"
           label={t("form.day")}
@@ -146,26 +168,32 @@ export function AddTransitForm({
       ) : (
         <input type="hidden" name="dayId" value="" />
       )}
-      <input type="hidden" name="dayDate" value={date} />
+      <input
+        type="hidden"
+        name="dayDate"
+        value={resolvedDate}
+      />
       <input
         type="hidden"
         name="start"
-        value={date && time ? tokyoWallDateTime(date, time) : ""}
+        value={resolvedDate && time ? tokyoWallDateTime(resolvedDate, time) : ""}
       />
-      <label className="grid gap-1">
-        <span className="text-xs font-medium text-ink-muted">{t("form.time")}</span>
-        <input
-          type="time"
-          step={60}
-          value={time}
-          onChange={(event) => setTime(event.target.value)}
-          className={`${fieldClass} cursor-pointer`}
-        />
-      </label>
-      <label className="grid gap-1">
-        <span className="text-xs font-medium text-ink-muted">{t("form.order")}</span>
-        <input name="order" type="number" className={fieldClass} />
-      </label>
+      <div className="grid min-w-0 grid-cols-2 gap-3">
+        <label className="grid min-w-0 gap-1">
+          <span className="text-xs font-medium text-ink-muted">{t("form.time")}</span>
+          <input
+            type="time"
+            step={60}
+            value={time}
+            onChange={(event) => setTime(event.target.value)}
+            className={`${fieldClass} min-w-0 cursor-pointer tabular-nums`}
+          />
+        </label>
+        <label className="grid min-w-0 gap-1">
+          <span className="text-xs font-medium text-ink-muted">{t("form.order")}</span>
+          <input name="order" type="number" className={`${fieldClass} min-w-0 tabular-nums`} />
+        </label>
+      </div>
       <label className="grid gap-1">
         <span className="text-xs font-medium text-ink-muted">{t("form.notes")}</span>
         <textarea name="notes" rows={2} className={fieldClass} />

@@ -313,7 +313,6 @@ const en = {
 
   "fab.quickAdd": "Quick add",
   "fab.close": "Close",
-  "fab.addPlace": "Add place",
   "fab.addAgenda": "Add to agenda",
   "fab.addSpend": "Add expense",
 
@@ -775,7 +774,8 @@ const en = {
   "form.bookingUrl": "Booking URL",
   "form.confirmation": "Confirmation code",
   "form.dayNameHint": "Day 1 — Shibuya",
-  "form.maybePending": "Save as maybe (pending)",
+  "form.planTimed": "Set a time",
+  "form.planPending": "Pending",
   "form.transitExample": "Nozomi 12",
   "form.kindPlace": "Place",
   "form.kindTransit": "Transit",
@@ -1282,7 +1282,6 @@ const zh: Record<DictKey, string> = {
 
   "fab.quickAdd": "快速添加",
   "fab.close": "关闭",
-  "fab.addPlace": "添加地点",
   "fab.addAgenda": "加入行程",
   "fab.addSpend": "记一笔",
 
@@ -1742,7 +1741,8 @@ const zh: Record<DictKey, string> = {
   "form.bookingUrl": "预订链接",
   "form.confirmation": "确认码",
   "form.dayNameHint": "第 1 天 — 涩谷",
-  "form.maybePending": "存为待定",
+  "form.planTimed": "排时间",
+  "form.planPending": "待定",
   "form.transitExample": "希望号 12",
   "form.kindPlace": "地点",
   "form.kindTransit": "交通",

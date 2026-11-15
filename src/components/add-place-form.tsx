@@ -47,12 +47,15 @@ export function AddPlaceForm({
   defaultDayId,
   compact = false,
   embedded = false,
+  lockDay = false,
   onSuccess,
 }: {
   days: TripDay[];
   defaultDayId?: string;
   compact?: boolean;
   embedded?: boolean;
+  /** Pin the place to defaultDayId (schedule add). Hides the day picker. */
+  lockDay?: boolean;
   onSuccess?: () => void;
 }) {
   const { t, locale } = useT();
@@ -71,6 +74,7 @@ export function AddPlaceForm({
     return dateKey(matched?.date ?? null) ?? tokyoToday();
   });
   const [startTime, setStartTime] = useState("");
+  const [plan, setPlan] = useState<"timed" | "pending">("timed");
   const [moreOpen, setMoreOpen] = useState(false);
   const [error, setError] = useState("");
   const [pending, startSearch] = useTransition();
@@ -155,8 +159,11 @@ export function AddPlaceForm({
 
   // Date alone must not become Start: day linkage uses the Day relation, and a
   // date-only Start sorts ahead of every timed stop (see compareAgendaItems).
+  // Pending places keep the Day relation and omit Start (addPlace skips it).
   const startValue =
-    startDate && startTime ? tokyoWallDateTime(startDate, startTime) : "";
+    plan === "timed" && startDate && startTime
+      ? tokyoWallDateTime(startDate, startTime)
+      : "";
 
   return (
     <div className={shellClass}>
@@ -255,7 +262,9 @@ export function AddPlaceForm({
             label: labelType(locale, value) ?? value,
           }))}
         />
-        {days.length > 0 ? (
+        {lockDay ? (
+          <input type="hidden" name="dayId" value={defaultDayId ?? dayId} />
+        ) : days.length > 0 ? (
           <ChipGroup
             name="dayId"
             label={t("form.day")}
@@ -271,33 +280,45 @@ export function AddPlaceForm({
         ) : (
           <input type="hidden" name="dayId" value="" />
         )}
-        <div className="grid gap-1.5">
-          <span className="text-[12px] font-medium text-ink-muted">{t("form.start")}</span>
-          <div className="flex flex-wrap gap-2">
-            <DatePicker
-              name="startDate"
-              value={startDate}
-              onChange={setStartDate}
-              tripDates={tripDates}
-              label={null}
-              compact
-            />
-            <label className="notebook-btn inline-flex min-h-11 items-center border border-line bg-surface px-3 text-sm">
-              <span className="sr-only">{t("form.time")}</span>
-              <input
-                type="time"
-                step={60}
-                value={startTime}
-                onChange={(event) => setStartTime(event.target.value)}
-                className="border-0 bg-transparent outline-none tabular-nums"
-              />
-            </label>
+        <ChipGroup
+          value={plan}
+          onChange={setPlan}
+          options={[
+            { value: "timed", label: t("form.planTimed") },
+            { value: "pending", label: t("form.planPending") },
+          ]}
+        />
+        {plan === "pending" ? (
+          <input type="hidden" name="pending" value="true" />
+        ) : (
+          <div className="grid min-w-0 gap-1.5">
+            <span className="text-[12px] font-medium text-ink-muted">
+              {t("form.start")}
+            </span>
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              {lockDay ? null : (
+                <DatePicker
+                  name="startDate"
+                  value={startDate}
+                  onChange={setStartDate}
+                  tripDates={tripDates}
+                  label={null}
+                  compact
+                />
+              )}
+              <label className="notebook-btn inline-flex min-h-11 min-w-0 shrink-0 items-center border border-line bg-surface px-3 text-sm">
+                <span className="sr-only">{t("form.time")}</span>
+                <input
+                  type="time"
+                  step={60}
+                  value={startTime}
+                  onChange={(event) => setStartTime(event.target.value)}
+                  className="w-[7.5rem] border-0 bg-transparent outline-none tabular-nums"
+                />
+              </label>
+            </div>
           </div>
-        </div>
-        <label className="flex min-h-11 items-center gap-2 text-sm text-ink">
-          <input type="checkbox" name="pending" value="true" className="rounded" />
-          {t("form.maybePending")}
-        </label>
+        )}
         <label className="grid gap-1">
           <span className="text-[12px] font-medium text-ink-muted">{t("form.notes")}</span>
           <textarea name="notes" rows={2} className={fieldClass} />

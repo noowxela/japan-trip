@@ -82,6 +82,10 @@ describe("clothes, gifts, checkout, and airfare copy", () => {
     expect(t("zh", "mode.Ride-hailing")).toBe("网约车");
     expect(t("en", "mode.Train")).toBe("Train");
     expect(t("zh", "mode.Train")).toBe("电车");
+    expect(t("en", "form.planTimed")).toBe("Set a time");
+    expect(t("zh", "form.planTimed")).toBe("排时间");
+    expect(t("en", "form.planPending")).toBe("Pending");
+    expect(t("zh", "form.planPending")).toBe("待定");
     expect(t("zh", "agenda.addSpend")).toBe("＋ 记一笔花费");
     expect(t("zh", "agenda.linkSpend")).toBe("关联已有花费");
     expect(t("en", "budget.filterPayer")).toBe("Payer");

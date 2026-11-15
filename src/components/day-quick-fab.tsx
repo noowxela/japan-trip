@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { AddAgendaForm } from "@/components/add-agenda-form";
-import { AddPlaceForm } from "@/components/add-place-form";
 import { useEditOrUnlock } from "@/components/unlock-provider";
 import { useQuickExpense } from "@/components/quick-expense-provider";
 import { Modal } from "@/components/modal";
@@ -23,7 +22,7 @@ export function DayQuickFab({
   const { t } = useT();
   const editOrUnlock = useEditOrUnlock();
   const { openQuickExpense } = useQuickExpense();
-  const [open, setOpen] = useState<null | "menu" | "place" | "agenda">(null);
+  const [open, setOpen] = useState<null | "menu" | "agenda">(null);
 
   return (
     <>
@@ -44,15 +43,8 @@ export function DayQuickFab({
           <div className="grid gap-2">
             <button
               type="button"
-              onClick={() => setOpen("place")}
-              className="notebook-press rounded-xl bg-canvas px-4 py-3 text-left text-sm font-medium"
-            >
-              {t("fab.addPlace")}
-            </button>
-            <button
-              type="button"
               onClick={() => setOpen("agenda")}
-              className="notebook-press rounded-xl bg-canvas px-4 py-3 text-left text-sm font-medium"
+              className="notebook-press rounded-xl bg-canvas px-4 py-3 text-left text-sm font-medium break-words [overflow-wrap:anywhere]"
             >
               {t("fab.addAgenda")}
             </button>
@@ -62,7 +54,7 @@ export function DayQuickFab({
                 setOpen(null);
                 openQuickExpense({ days, people, dayId });
               }}
-              className="notebook-press rounded-xl bg-canvas px-4 py-3 text-left text-sm font-medium"
+              className="notebook-press rounded-xl bg-canvas px-4 py-3 text-left text-sm font-medium break-words [overflow-wrap:anywhere]"
             >
               {t("fab.addSpend")}
             </button>
@@ -71,24 +63,17 @@ export function DayQuickFab({
       ) : null}
 
       <Modal
-        open={open === "place"}
-        onClose={() => setOpen(null)}
-        title={t("form.addPlace")}
-      >
-        <AddPlaceForm
-          days={days}
-          defaultDayId={dayId}
-          embedded
-          onSuccess={() => setOpen(null)}
-        />
-      </Modal>
-
-      <Modal
         open={open === "agenda"}
         onClose={() => setOpen(null)}
         title={t("fab.addAgenda")}
       >
-        <AddAgendaForm days={days} defaultDayId={dayId} dayDate={dayDate} />
+        <AddAgendaForm
+          days={days}
+          defaultDayId={dayId}
+          dayDate={dayDate}
+          embedded
+          onSuccess={() => setOpen(null)}
+        />
       </Modal>
     </>
   );
