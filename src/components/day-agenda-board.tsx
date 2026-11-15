@@ -27,6 +27,7 @@ import { MapsPinLink } from "@/components/maps-pin-link";
 import { Modal } from "@/components/modal";
 import { useOutbox } from "@/components/outbox-provider";
 import { useToast } from "@/components/toast-provider";
+import { useAgendaParkAndSkip } from "@/components/use-agenda-park-skip";
 import { useTrashUndo } from "@/components/use-trash-undo";
 import { haptic } from "@/lib/haptic";
 import {
@@ -772,6 +773,7 @@ export function DayAgendaBoard({
   const notify = useActionToast();
   const { toast } = useToast();
   const trashWithUndo = useTrashUndo();
+  const { parkPlaces } = useAgendaParkAndSkip();
   const canEdit = useCanEdit();
   const editOrUnlock = useEditOrUnlock();
   const { openQuickExpense } = useQuickExpense();
@@ -822,11 +824,11 @@ export function DayAgendaBoard({
   }
 
   function parkPlace(id: string) {
-    const formData = new FormData();
-    formData.set("id", id);
-    formData.set("dayId", dayId);
+    const item = agenda.find((row) => row.id === id);
     setMenuId(null);
-    startTransition(async () => notify(await parkPlaceAsPending(formData)));
+    startTransition(async () => {
+      await parkPlaces([{ id, start: item?.start ?? null }], dayId);
+    });
   }
 
   function setVisited(id: string, visited: boolean) {

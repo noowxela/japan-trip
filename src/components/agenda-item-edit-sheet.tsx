@@ -18,6 +18,7 @@ import {
   btnPrimaryClass,
   fieldClass,
 } from "@/components/page-shell";
+import { useAgendaParkAndSkip } from "@/components/use-agenda-park-skip";
 import { useTrashUndo } from "@/components/use-trash-undo";
 import { categoryEmoji } from "@/lib/category-icon";
 import { dateKey, formatDay, formatTime } from "@/lib/format";
@@ -95,6 +96,7 @@ function AgendaItemEditForm({
   const { t, locale } = useT();
   const notify = useActionToast();
   const trashWithUndo = useTrashUndo();
+  const { parkPlaces, skipItems } = useAgendaParkAndSkip();
   const [pending, startTransition] = useTransition();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [mapsError, setMapsError] = useState("");
@@ -183,6 +185,23 @@ function AgendaItemEditForm({
     });
   }
 
+  function onPark() {
+    startTransition(async () => {
+      const succeeded = await parkPlaces(
+        [{ id: item.id, start: item.start }],
+        dayId,
+      );
+      if (succeeded.length > 0) onClose();
+    });
+  }
+
+  function onSkip() {
+    startTransition(async () => {
+      const succeeded = await skipItems([{ id: item.id, kind: item.kind }]);
+      if (succeeded.length > 0) onClose();
+    });
+  }
+
   function onDelete() {
     const formData = new FormData();
     formData.set("id", item.id);
@@ -260,6 +279,29 @@ function AgendaItemEditForm({
           })}
         </select>
       </label>
+
+      <div className="grid grid-cols-2 gap-2">
+        {item.kind === "place" ? (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={onPark}
+            className="notebook-btn min-h-11 border border-line bg-surface px-3 text-sm font-medium text-maybe disabled:opacity-60"
+          >
+            {t("agenda.park")}
+          </button>
+        ) : null}
+        <button
+          type="button"
+          disabled={pending}
+          onClick={onSkip}
+          className={`notebook-btn min-h-11 border border-line bg-surface px-3 text-sm font-medium text-ink disabled:opacity-60 ${
+            item.kind === "place" ? "" : "col-span-2"
+          }`}
+        >
+          {t("agenda.skipPending")}
+        </button>
+      </div>
 
       {item.kind === "place" ? (
         <ChipGroup

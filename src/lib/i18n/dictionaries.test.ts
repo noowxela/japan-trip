@@ -36,6 +36,35 @@ describe("agenda.skipPending", () => {
   });
 });
 
+describe("pending and skip move copy", () => {
+  it("includes the old time and batch counts in zh and en", () => {
+    expect(t("en", "action.movedToPendingWithTime", { time: "14:30" })).toBe(
+      "Moved to pending · was 14:30",
+    );
+    expect(t("zh", "action.movedToPendingWithTime", { time: "14:30" })).toBe(
+      "已移到待定 · 原时间 14:30",
+    );
+    expect(t("en", "action.movedToPendingCount", { n: 3 })).toBe(
+      "Moved 3 to pending",
+    );
+    expect(t("zh", "action.movedToPendingCount", { n: 3 })).toBe(
+      "已将 3 项移到待定",
+    );
+    expect(t("en", "action.transitLeftUnchanged", { n: 2 })).toBe(
+      "2 transit left unchanged",
+    );
+    expect(t("zh", "action.transitLeftUnchanged", { n: 2 })).toBe(
+      "2 项交通未改",
+    );
+    expect(t("en", "action.markedSkippedCount", { n: 3 })).toBe(
+      "Marked 3 skipped",
+    );
+    expect(t("zh", "action.markedSkippedCount", { n: 3 })).toBe(
+      "已将 3 项标记跳过",
+    );
+  });
+});
+
 describe("schedule.visitedOnlyHint", () => {
   it("has zh and en copy with a count", () => {
     expect(t("en", "schedule.visitedOnlyHint", { n: 4 })).toBe("Visited only · 4");

@@ -9,10 +9,14 @@ import {
 import { useActionToast } from "@/components/action-form";
 import { AgendaItemEditSheet } from "@/components/agenda-item-edit-sheet";
 import { useT } from "@/components/i18n-provider";
+import { Modal } from "@/components/modal";
+import { useOutbox } from "@/components/outbox-provider";
+import { useAgendaParkAndSkip } from "@/components/use-agenda-park-skip";
 import { useTrashUndo } from "@/components/use-trash-undo";
 import { categoryEmoji } from "@/lib/category-icon";
 import { dateKey, formatDay, formatTime } from "@/lib/format";
 import { labelMode, labelType } from "@/lib/i18n/dictionaries";
+import { isEffectivelySkipped } from "@/lib/schedule-drawer";
 import { buildAgenda } from "@/lib/trip-core";
 import type { AgendaItem, Place, Transit, TripDay } from "@/lib/types";
 
@@ -34,18 +38,35 @@ export function AgendaEditTable({
   const { t, locale } = useT();
   const notify = useActionToast();
   const trashWithUndo = useTrashUndo();
+  const { skippedOverlay } = useOutbox();
+  const { parkPlaces, skipItems } = useAgendaParkAndSkip();
   const [pending, startTransition] = useTransition();
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [targetDayId, setTargetDayId] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
+  const [menuId, setMenuId] = useState<string | null>(null);
+  const [pendingOverlay, setPendingOverlay] = useState<Record<string, boolean>>(
+    {},
+  );
 
   const agenda = useMemo(
     () =>
       buildAgenda(
-        places.filter((place) => !place.pending),
-        transit,
+        places.filter(
+          (place) =>
+            !place.pending &&
+            !place.skipped &&
+            !pendingOverlay[place.id] &&
+            !isEffectivelySkipped(place, skippedOverlay),
+        ),
+        transit.filter(
+          (item) =>
+            !item.skipped &&
+            !pendingOverlay[item.id] &&
+            !isEffectivelySkipped(item, skippedOverlay),
+        ),
       ),
-    [places, transit],
+    [places, transit, pendingOverlay, skippedOverlay],
   );
 
   const otherDays = useMemo(
@@ -54,8 +75,10 @@ export function AgendaEditTable({
   );
 
   const editItem = agenda.find((item) => item.id === editId) ?? null;
+  const menuItem = agenda.find((item) => item.id === menuId) ?? null;
   const selectedCount = selected.size;
   const allSelected = agenda.length > 0 && selectedCount === agenda.length;
+  const selectedItems = agenda.filter((item) => selected.has(item.id));
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -77,15 +100,24 @@ export function AgendaEditTable({
     setSelected(new Set());
   }
 
+  function dropFromLists(ids: string[]) {
+    if (ids.length === 0) return;
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) next.delete(id);
+      return next;
+    });
+    if (editId && ids.includes(editId)) setEditId(null);
+    if (menuId && ids.includes(menuId)) setMenuId(null);
+  }
+
   function moveSelected() {
     if (!targetDayId || selectedCount === 0) return;
-    const items = agenda
-      .filter((item) => selected.has(item.id))
-      .map((item) => ({
-        id: item.id,
-        kind: item.kind,
-        start: item.start,
-      }));
+    const items = selectedItems.map((item) => ({
+      id: item.id,
+      kind: item.kind,
+      start: item.start,
+    }));
     if (items.length === 0) return;
     const formData = new FormData();
     formData.set("targetDayId", targetDayId);
@@ -100,6 +132,45 @@ export function AgendaEditTable({
     });
   }
 
+  function parkItems(items: AgendaItem[]) {
+    const placesToPark = items.filter((item) => item.kind === "place");
+    const transitLeft = items.length - placesToPark.length;
+    const ids = placesToPark.map((item) => item.id);
+    setPendingOverlay((current) => {
+      const next = { ...current };
+      for (const id of ids) next[id] = true;
+      return next;
+    });
+    setMenuId(null);
+    startTransition(async () => {
+      const succeeded = await parkPlaces(
+        placesToPark.map((item) => ({ id: item.id, start: item.start })),
+        dayId,
+        transitLeft,
+      );
+      const failed = ids.filter((id) => !succeeded.includes(id));
+      if (failed.length > 0) {
+        setPendingOverlay((current) => {
+          const next = { ...current };
+          for (const id of failed) delete next[id];
+          return next;
+        });
+      }
+      dropFromLists(succeeded);
+    });
+  }
+
+  function skipAgendaItems(items: AgendaItem[]) {
+    if (items.length === 0) return;
+    setMenuId(null);
+    startTransition(async () => {
+      const succeeded = await skipItems(
+        items.map((item) => ({ id: item.id, kind: item.kind })),
+      );
+      if (succeeded.length > 0) dropFromLists(succeeded);
+    });
+  }
+
   async function removeItem(item: AgendaItem) {
     const formData = new FormData();
     formData.set("id", item.id);
@@ -108,12 +179,7 @@ export function AgendaEditTable({
     } else {
       await trashWithUndo(await deletePlace(formData), item.id, "place");
     }
-    setSelected((prev) => {
-      if (!prev.has(item.id)) return prev;
-      const next = new Set(prev);
-      next.delete(item.id);
-      return next;
-    });
+    dropFromLists([item.id]);
   }
 
   if (agenda.length === 0) {
@@ -187,7 +253,7 @@ export function AgendaEditTable({
                     {[kindLabel, item.detail].filter(Boolean).join(" · ")}
                   </span>
                 </button>
-                <div className="flex shrink-0 items-center gap-0.5">
+                <div className="flex shrink-0 items-center">
                   <button
                     type="button"
                     onClick={() => setEditId(item.id)}
@@ -197,14 +263,15 @@ export function AgendaEditTable({
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      startTransition(async () => {
-                        await removeItem(item);
-                      });
-                    }}
-                    className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg text-[12px] text-ink-muted"
+                    aria-label={t("agenda.actionsFor", { name: item.name })}
+                    onClick={() => setMenuId(item.id)}
+                    className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg text-ink-muted"
                   >
-                    {t("common.delete")}
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
+                      <circle cx="6" cy="12" r="1.5" fill="currentColor" />
+                      <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+                      <circle cx="18" cy="12" r="1.5" fill="currentColor" />
+                    </svg>
                   </button>
                 </div>
               </div>
@@ -253,16 +320,78 @@ export function AgendaEditTable({
               })}
             </select>
           </label>
-          <button
-            type="button"
-            disabled={!targetDayId || pending}
-            onClick={moveSelected}
-            className="mt-2 inline-flex h-11 w-full items-center justify-center rounded-xl bg-accent px-3 text-[14px] font-medium text-white disabled:opacity-50"
-          >
-            {pending ? t("common.saving") : t("schedule.moveSelected")}
-          </button>
+          <div className="mt-2 grid gap-2">
+            <button
+              type="button"
+              disabled={!targetDayId || pending}
+              onClick={moveSelected}
+              className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-accent px-3 text-[14px] font-medium text-white disabled:opacity-50"
+            >
+              {pending ? t("common.saving") : t("schedule.moveSelected")}
+            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => parkItems(selectedItems)}
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-line bg-canvas px-2 text-[13px] font-medium text-maybe disabled:opacity-50"
+              >
+                {t("agenda.park")}
+              </button>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => skipAgendaItems(selectedItems)}
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-line bg-canvas px-2 text-[13px] font-medium text-ink disabled:opacity-50"
+              >
+                {t("agenda.skipPending")}
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
+
+      <Modal
+        open={menuItem != null}
+        onClose={() => setMenuId(null)}
+        title={menuItem?.name ?? t("common.actions")}
+      >
+        {menuItem ? (
+          <div className="grid gap-2 pb-[calc(env(safe-area-inset-bottom,0px)+0.25rem)]">
+            {menuItem.kind === "place" ? (
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => parkItems([menuItem])}
+                className="notebook-btn min-h-11 w-full border border-line bg-surface px-4 py-3 text-left text-sm font-medium text-maybe disabled:opacity-60"
+              >
+                {t("agenda.park")}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => skipAgendaItems([menuItem])}
+              className="notebook-btn min-h-11 w-full border border-line bg-surface px-4 py-3 text-left text-sm font-medium text-ink disabled:opacity-60"
+            >
+              {t("agenda.skipPending")}
+            </button>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                startTransition(async () => {
+                  setMenuId(null);
+                  await removeItem(menuItem);
+                });
+              }}
+              className="notebook-btn min-h-11 w-full border border-line bg-surface px-4 py-3 text-left text-sm font-medium text-accent disabled:opacity-60"
+            >
+              {t("common.delete")}
+            </button>
+          </div>
+        ) : null}
+      </Modal>
 
       <AgendaItemEditSheet
         open={editId != null}
