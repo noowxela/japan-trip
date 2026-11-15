@@ -410,6 +410,7 @@ function QuickExpenseForm({
       <ScheduleLinkField
         places={places}
         transit={transit}
+        days={days}
         dayId={dayId}
         placeId={placeId}
         transitId={transitId}

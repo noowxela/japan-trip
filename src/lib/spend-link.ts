@@ -1,4 +1,7 @@
+import { categoryEmoji } from "@/lib/category-icon";
+import { formatTime } from "@/lib/format";
 import { toRm } from "@/lib/spend";
+import { compareAgendaItems } from "@/lib/trip-core";
 import {
   JPY_PER_RM,
   SPEND_CATEGORIES,
@@ -6,6 +9,7 @@ import {
   type SpendCurrency,
   type SpendItem,
   type Transit,
+  type TripDay,
 } from "@/lib/types";
 
 export type ScheduleLinkKind = "place" | "transit";
@@ -18,6 +22,15 @@ export type ScheduleLinkRef = {
 export type ScheduleLinkOption = ScheduleLinkRef & {
   name: string;
   chip: string | null;
+  start: string | null;
+  order: number | null;
+  dayIds: string[];
+};
+
+export type ScheduleLinkGroup = {
+  dayId: string;
+  label: string;
+  items: ScheduleLinkOption[];
 };
 
 export function normalizeScheduleLink(
@@ -54,35 +67,81 @@ export function decodeScheduleLink(value: string): {
   return { placeId: "", transitId: "" };
 }
 
+function eligibleScheduleItems(
+  places: Place[],
+  transit: Transit[],
+): ScheduleLinkOption[] {
+  const placeRows = places
+    .filter((place) => !place.skipped && !place.pending)
+    .map((place) => ({
+      kind: "place" as const,
+      id: place.id,
+      name: place.name,
+      chip: place.type,
+      start: place.start,
+      order: null,
+      dayIds: place.dayIds,
+    }));
+  const transitRows = transit
+    .filter((item) => !item.skipped)
+    .map((item) => ({
+      kind: "transit" as const,
+      id: item.id,
+      name: item.name,
+      chip: item.mode,
+      start: item.start,
+      order: item.order,
+      dayIds: item.dayIds,
+    }));
+  return [...placeRows, ...transitRows];
+}
+
 /** Same-day schedule stops a spend can link to (not pending, not skipped). */
 export function scheduleItemsForDay(
   places: Place[],
   transit: Transit[],
   dayId: string,
 ): ScheduleLinkOption[] {
-  if (!dayId) return [];
-  const placeRows = places
-    .filter(
-      (place) =>
-        !place.skipped && !place.pending && place.dayIds.includes(dayId),
-    )
-    .map((place) => ({
-      kind: "place" as const,
-      id: place.id,
-      name: place.name,
-      chip: place.type,
-    }));
-  const transitRows = transit
-    .filter((item) => !item.skipped && item.dayIds.includes(dayId))
-    .map((item) => ({
-      kind: "transit" as const,
-      id: item.id,
-      name: item.name,
-      chip: item.mode,
-    }));
-  return [...placeRows, ...transitRows].sort((a, b) =>
-    a.name.localeCompare(b.name),
-  );
+  const rows = eligibleScheduleItems(places, transit);
+  const filtered = dayId
+    ? rows.filter((item) => item.dayIds.includes(dayId))
+    : rows;
+  return filtered.sort(compareAgendaItems);
+}
+
+/** All eligible stops grouped by trip day (first matching day wins). */
+export function groupScheduleItemsByDay(
+  items: ScheduleLinkOption[],
+  days: TripDay[],
+): ScheduleLinkGroup[] {
+  const used = new Set<string>();
+  const groups: ScheduleLinkGroup[] = [];
+  for (const day of days) {
+    const dayItems = items
+      .filter((item) => item.dayIds.includes(day.id))
+      .sort(compareAgendaItems);
+    if (dayItems.length === 0) continue;
+    groups.push({ dayId: day.id, label: day.name, items: dayItems });
+    for (const item of dayItems) used.add(`${item.kind}:${item.id}`);
+  }
+  const rest = items
+    .filter((item) => !used.has(`${item.kind}:${item.id}`))
+    .sort(compareAgendaItems);
+  if (rest.length > 0) {
+    groups.push({ dayId: "", label: "", items: rest });
+  }
+  return groups;
+}
+
+/** `HH:mm · icon/type · name`. Untimed items show — for the time. */
+export function scheduleLinkOptionLabel(
+  item: Pick<ScheduleLinkOption, "kind" | "chip" | "name" | "start">,
+  typeLabel?: string | null,
+): string {
+  const time = formatTime(item.start) ?? "—";
+  const icon = categoryEmoji(item.kind, item.chip);
+  const mid = [icon, typeLabel].filter(Boolean).join(" ");
+  return `${time} · ${mid || "•"} · ${item.name}`;
 }
 
 export function spendsForScheduleItem(
@@ -121,6 +180,9 @@ export function linkedScheduleOf(
       id: found.id,
       name: found.name,
       chip: found.mode,
+      start: found.start,
+      order: found.order,
+      dayIds: found.dayIds,
     };
   }
   if (link.placeId) {
@@ -131,6 +193,9 @@ export function linkedScheduleOf(
       id: found.id,
       name: found.name,
       chip: found.type,
+      start: found.start,
+      order: null,
+      dayIds: found.dayIds,
     };
   }
   return null;
@@ -167,4 +232,3 @@ export function suggestedSpendCurrency(
 ): SpendCurrency | undefined {
   return category === "Ride-hailing" ? "RM" : undefined;
 }
-

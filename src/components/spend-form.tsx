@@ -230,9 +230,11 @@ export function SpendForm({
         <ScheduleLinkField
           places={places}
           transit={transit}
+          days={days}
           dayId={dayId}
           placeId={placeId}
           transitId={transitId}
+          spendId={item?.id}
           onChange={(next) => {
             setPlaceId(next.placeId);
             setTransitId(next.transitId);

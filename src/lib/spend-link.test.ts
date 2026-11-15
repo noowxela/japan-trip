@@ -2,15 +2,17 @@ import { describe, expect, it } from "vitest";
 import {
   decodeScheduleLink,
   encodeScheduleLink,
+  groupScheduleItemsByDay,
   linkedScheduleLabel,
   linkedSpendTotals,
   normalizeScheduleLink,
   scheduleItemsForDay,
+  scheduleLinkOptionLabel,
   spendsForScheduleItem,
   suggestedSpendCategory,
   suggestedSpendCurrency,
 } from "@/lib/spend-link";
-import type { Place, SpendItem, Transit } from "@/lib/types";
+import type { Place, SpendItem, Transit, TripDay } from "@/lib/types";
 
 const place = (partial: Partial<Place> & Pick<Place, "id" | "name">): Place => ({
   type: partial.type ?? "Sight",
@@ -124,7 +126,88 @@ describe("scheduleItemsForDay", () => {
     expect(scheduleItemsForDay(places, transits, "d2").map((row) => row.id)).toEqual(
       ["temple"],
     );
-    expect(scheduleItemsForDay(places, transits, "")).toEqual([]);
+    expect(scheduleItemsForDay(places, transits, "").map((row) => row.id)).toEqual(
+      ["temple", "grab", "ramen"],
+    );
+  });
+
+  it("sorts by start time, then keeps untimed items in existing order", () => {
+    const timedPlaces = [
+      place({
+        id: "later",
+        name: "Afternoon cafe",
+        type: "Cafe",
+        start: "2026-11-06T15:00:00+09:00",
+      }),
+      place({
+        id: "untimed-b",
+        name: "Z Shop",
+        type: "Shop",
+      }),
+      place({
+        id: "earlier",
+        name: "Morning temple",
+        type: "Sight",
+        start: "2026-11-06T09:30:00+09:00",
+      }),
+      place({
+        id: "untimed-a",
+        name: "A Shop",
+        type: "Shop",
+      }),
+    ];
+    const timedTransit = [
+      transit({
+        id: "noon-train",
+        name: "Metro hop",
+        mode: "Metro",
+        start: "2026-11-06T12:15:00+09:00",
+      }),
+    ];
+    expect(
+      scheduleItemsForDay(timedPlaces, timedTransit, "d1").map((row) => row.id),
+    ).toEqual(["earlier", "noon-train", "later", "untimed-a", "untimed-b"]);
+  });
+
+  it("groups all items by day when the spend has no day", () => {
+    const days: TripDay[] = [
+      { id: "d1", name: "Day 1", date: "2026-11-06", city: null, status: null },
+      { id: "d2", name: "Day 2", date: "2026-11-07", city: null, status: null },
+    ];
+    const groups = groupScheduleItemsByDay(
+      scheduleItemsForDay(places, transits, ""),
+      days,
+    );
+    expect(groups.map((group) => group.dayId)).toEqual(["d1", "d2"]);
+    expect(groups[0].items.map((row) => row.id)).toEqual(["grab", "ramen"]);
+    expect(groups[1].items.map((row) => row.id)).toEqual(["temple"]);
+  });
+});
+
+describe("scheduleLinkOptionLabel", () => {
+  it("formats time, icon/type, and name, and uses — when untimed", () => {
+    expect(
+      scheduleLinkOptionLabel(
+        {
+          kind: "place",
+          chip: "Food",
+          name: "Ichiran",
+          start: "2026-11-06T11:40:00+09:00",
+        },
+        "Food",
+      ),
+    ).toBe("11:40 · 🍽️ Food · Ichiran");
+    expect(
+      scheduleLinkOptionLabel(
+        {
+          kind: "transit",
+          chip: "Metro",
+          name: "Karasuma line",
+          start: null,
+        },
+        "Metro",
+      ),
+    ).toBe("— · 🚇 Metro · Karasuma line");
   });
 });
 
