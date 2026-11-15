@@ -126,3 +126,17 @@ describe("spend item context menu copy", () => {
     expect(t("zh", "budget.chooseDay")).toBe("选择日期");
   });
 });
+
+describe("cookie lab copy", () => {
+  it("has zh and en labels", () => {
+    expect(t("en", "cookieLab.title")).toBe("Cookie lab");
+    expect(t("zh", "cookieLab.title")).toBe("Cookie 实验");
+    expect(t("en", "cookieLab.you")).toBe("You");
+    expect(t("zh", "cookieLab.you")).toBe("你");
+    expect(t("en", "cookieLab.visits", { n: 3 })).toBe("3 visits");
+    expect(t("zh", "cookieLab.visits", { n: 3 })).toBe("3 次访问");
+    expect(t("en", "more.privacyNote")).toContain("visitor ID");
+    expect(t("zh", "more.privacyNote")).toContain("访客 ID");
+  });
+});
+

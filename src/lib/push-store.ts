@@ -1,3 +1,5 @@
+import { isKvConfigured, redisCommand } from "@/lib/kv";
+
 export type PushPrefs = {
   reminders: boolean;
   countdown: boolean;
@@ -20,22 +22,9 @@ const SUBS_KEY = "japan-trip:push-subscriptions";
 
 const DEFAULT_PREFS: PushPrefs = { reminders: true, countdown: true };
 
-function kvEnv(): { url: string; token: string } | null {
-  const url =
-    process.env.KV_REST_API_URL?.trim() ||
-    process.env.UPSTASH_REDIS_REST_URL?.trim() ||
-    "";
-  const token =
-    process.env.KV_REST_API_TOKEN?.trim() ||
-    process.env.UPSTASH_REDIS_REST_TOKEN?.trim() ||
-    "";
-  if (!url || !token) return null;
-  return { url: url.replace(/\/$/, ""), token };
-}
-
 /** True when Upstash/KV REST is configured (writable store). */
 export function isPushStoreWritable(): boolean {
-  return kvEnv() != null;
+  return isKvConfigured();
 }
 
 /** True when any subscription source exists (KV or env fallback). */
@@ -135,26 +124,6 @@ function dedupeByEndpoint(subs: PushSubscriptionJSON[]): PushSubscriptionJSON[] 
   const map = new Map<string, PushSubscriptionJSON>();
   for (const sub of subs) map.set(sub.endpoint, sub);
   return [...map.values()];
-}
-
-async function redisCommand(args: string[]): Promise<unknown> {
-  const kv = kvEnv();
-  if (!kv) throw new Error("KV not configured");
-  const res = await fetch(kv.url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${kv.token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(args),
-    cache: "no-store",
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`KV request failed (${res.status}): ${text.slice(0, 200)}`);
-  }
-  const data = (await res.json()) as { result?: unknown };
-  return data.result;
 }
 
 async function readFromKv(): Promise<PushSubscriptionJSON[]> {

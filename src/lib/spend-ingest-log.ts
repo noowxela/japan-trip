@@ -1,5 +1,7 @@
 /** Ring buffer of Apple Pay / Shortcuts POST /api/spend attempts (KV, not Notion). */
 
+import { isKvConfigured, redisCommand } from "@/lib/kv";
+
 export type SpendIngestAttempt = {
   at: string;
   ok: boolean;
@@ -65,42 +67,8 @@ export function paginateIngestLog<T>(
   };
 }
 
-
-function kvEnv(): { url: string; token: string } | null {
-  const url =
-    process.env.KV_REST_API_URL?.trim() ||
-    process.env.UPSTASH_REDIS_REST_URL?.trim() ||
-    "";
-  const token =
-    process.env.KV_REST_API_TOKEN?.trim() ||
-    process.env.UPSTASH_REDIS_REST_TOKEN?.trim() ||
-    "";
-  if (!url || !token) return null;
-  return { url: url.replace(/\/$/, ""), token };
-}
-
 export function isSpendIngestLogWritable(): boolean {
-  return kvEnv() != null;
-}
-
-async function redisCommand(args: string[]): Promise<unknown> {
-  const kv = kvEnv();
-  if (!kv) throw new Error("KV not configured");
-  const res = await fetch(kv.url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${kv.token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(args),
-    cache: "no-store",
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`KV request failed (${res.status}): ${text.slice(0, 200)}`);
-  }
-  const data = (await res.json()) as { result?: unknown };
-  return data.result;
+  return isKvConfigured();
 }
 
 function parseLog(raw: unknown): SpendIngestAttempt[] {
@@ -124,7 +92,7 @@ function parseLog(raw: unknown): SpendIngestAttempt[] {
 export async function recordSpendIngestAttempt(
   entry: Omit<SpendIngestAttempt, "at"> & { at?: string },
 ): Promise<void> {
-  if (!kvEnv()) {
+  if (!isKvConfigured()) {
     console.info("spend-ingest", entry);
     return;
   }
@@ -140,7 +108,7 @@ export async function recordSpendIngestAttempt(
 }
 
 export async function listSpendIngestAttempts(): Promise<SpendIngestAttempt[]> {
-  if (!kvEnv()) return [];
+  if (!isKvConfigured()) return [];
   try {
     return parseLog(await redisCommand(["GET", KEY]));
   } catch (error) {

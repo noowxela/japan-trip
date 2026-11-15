@@ -263,6 +263,16 @@ export default async function SettingsPage() {
 
         <section className="space-y-1.5">
           <SectionHeader title={t(locale, "more.about")} />
+          <CompactRowList>
+            <li>
+              <CompactRow
+                href="/settings/cookies"
+                title={t(locale, "more.cookieLab")}
+                secondary={t(locale, "more.cookieLabDetail")}
+                trailing={<Chevron />}
+              />
+            </li>
+          </CompactRowList>
           <AppVersionCard />
         </section>
 
@@ -273,6 +283,9 @@ export default async function SettingsPage() {
             {t(locale, "more.appName")}
           </p>
           <p className="mt-0.5">{t(locale, "more.aboutBody")}</p>
+          <p className="mt-1.5 text-[11px] leading-snug text-ink-muted">
+            {t(locale, "more.privacyNote")}
+          </p>
           <p className="mt-1.5 text-[11px] leading-snug text-ink-muted">
             {t(locale, "more.mapCredits")}
           </p>

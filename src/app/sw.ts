@@ -251,6 +251,7 @@ const serwist = new Serwist({
       matcher: ({ url: { pathname }, sameOrigin }) =>
         sameOrigin &&
         (pathname === "/api/version" ||
+          pathname.startsWith("/api/visitors") ||
           pathname.startsWith("/api/push") ||
           pathname.startsWith("/api/cron") ||
           pathname.startsWith("/serwist/")),
