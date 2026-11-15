@@ -5,6 +5,7 @@ import {
   useContext,
   useState,
   type ReactNode,
+  Fragment,
 } from "react";
 import { useEditOrUnlock } from "@/components/unlock-provider";
 import { useT } from "@/components/i18n-provider";
@@ -28,19 +29,25 @@ export function ListAddSheet({
   const { t } = useT();
   const editOrUnlock = useEditOrUnlock();
   const [open, setOpen] = useState(false);
+  const [session, setSession] = useState(0);
+
+  function openSheet() {
+    setSession((n) => n + 1);
+    setOpen(true);
+  }
 
   return (
     <>
       <button
         type="button"
-        onClick={() => editOrUnlock(() => setOpen(true))}
+        onClick={() => editOrUnlock(openSheet)}
         className={`shrink-0 ${btnPrimaryClass}`}
       >
         {t("common.add")}
       </button>
       <Modal open={open} onClose={() => setOpen(false)} title={title}>
         <ListAddSheetCloseContext.Provider value={() => setOpen(false)}>
-          {children}
+          <Fragment key={session}>{children}</Fragment>
         </ListAddSheetCloseContext.Provider>
       </Modal>
     </>

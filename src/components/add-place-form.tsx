@@ -48,6 +48,9 @@ export function AddPlaceForm({
   compact = false,
   embedded = false,
   lockDay = false,
+  defaultPlan = "timed",
+  onPlanChange,
+  autoFocus = false,
   onSuccess,
 }: {
   days: TripDay[];
@@ -56,6 +59,9 @@ export function AddPlaceForm({
   embedded?: boolean;
   /** Pin the place to defaultDayId (schedule add). Hides the day picker. */
   lockDay?: boolean;
+  defaultPlan?: "timed" | "pending";
+  onPlanChange?: (plan: "timed" | "pending") => void;
+  autoFocus?: boolean;
   onSuccess?: () => void;
 }) {
   const { t, locale } = useT();
@@ -74,7 +80,7 @@ export function AddPlaceForm({
     return dateKey(matched?.date ?? null) ?? tokyoToday();
   });
   const [startTime, setStartTime] = useState("");
-  const [plan, setPlan] = useState<"timed" | "pending">("timed");
+  const [plan, setPlan] = useState<"timed" | "pending">(defaultPlan);
   const [moreOpen, setMoreOpen] = useState(false);
   const [error, setError] = useState("");
   const [pending, startSearch] = useTransition();
@@ -174,6 +180,7 @@ export function AddPlaceForm({
         </span>
         <div className="flex gap-2">
           <ClearableInput
+            autoFocus={autoFocus}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onPaste={(event) => {
@@ -282,7 +289,10 @@ export function AddPlaceForm({
         )}
         <ChipGroup
           value={plan}
-          onChange={setPlan}
+          onChange={(value) => {
+            setPlan(value);
+            onPlanChange?.(value);
+          }}
           options={[
             { value: "timed", label: t("form.planTimed") },
             { value: "pending", label: t("form.planPending") },

@@ -22,6 +22,7 @@ export function AddTransitForm({
   dayDate,
   embedded = false,
   lockDay = false,
+  autoFocus = false,
   onSuccess,
 }: {
   days: TripDay[];
@@ -30,6 +31,7 @@ export function AddTransitForm({
   embedded?: boolean;
   /** Pin the leg to defaultDayId (schedule add). Hides day and date pickers. */
   lockDay?: boolean;
+  autoFocus?: boolean;
   onSuccess?: () => void;
 }) {
   const { t, locale } = useT();
@@ -72,6 +74,7 @@ export function AddTransitForm({
         <input
           name="name"
           required
+          autoFocus={autoFocus}
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder={t("form.transitExample")}

@@ -67,13 +67,15 @@ export function DayQuickFab({
         onClose={() => setOpen(null)}
         title={t("fab.addAgenda")}
       >
-        <AddAgendaForm
-          days={days}
-          defaultDayId={dayId}
-          dayDate={dayDate}
-          embedded
-          onSuccess={() => setOpen(null)}
-        />
+        {open === "agenda" ? (
+          <AddAgendaForm
+            days={days}
+            defaultDayId={dayId}
+            dayDate={dayDate}
+            embedded
+            onSuccess={() => setOpen(null)}
+          />
+        ) : null}
       </Modal>
     </>
   );

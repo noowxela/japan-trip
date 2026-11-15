@@ -8,6 +8,7 @@ import { useT } from "@/components/i18n-provider";
 import type { TripDay } from "@/lib/types";
 
 type Kind = "place" | "transit";
+type Plan = "timed" | "pending";
 
 export function AddAgendaForm({
   days,
@@ -24,6 +25,15 @@ export function AddAgendaForm({
 }) {
   const { t } = useT();
   const [kind, setKind] = useState<Kind>("place");
+  const [plan, setPlan] = useState<Plan>("timed");
+  const [formKey, setFormKey] = useState(0);
+  const [focusFirst, setFocusFirst] = useState(false);
+
+  function handleSuccess() {
+    setFormKey((n) => n + 1);
+    setFocusFirst(true);
+    onSuccess?.();
+  }
 
   return (
     <div
@@ -52,20 +62,26 @@ export function AddAgendaForm({
 
       {kind === "place" ? (
         <AddPlaceForm
+          key={`place-${formKey}`}
           days={days}
           defaultDayId={defaultDayId}
           embedded
           lockDay
-          onSuccess={onSuccess}
+          defaultPlan={plan}
+          onPlanChange={setPlan}
+          autoFocus={focusFirst}
+          onSuccess={handleSuccess}
         />
       ) : (
         <AddTransitForm
+          key={`transit-${formKey}`}
           days={days}
           defaultDayId={defaultDayId}
           dayDate={dayDate}
           embedded
           lockDay
-          onSuccess={onSuccess}
+          autoFocus={focusFirst}
+          onSuccess={handleSuccess}
         />
       )}
     </div>
