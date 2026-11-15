@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  excludeSkippedByOverlay,
   isEffectivelySkipped,
+  pendingPlaceToAgendaItem,
   scheduleDrawerOpener,
   skippedAgendaItems,
+  skippedListItems,
 } from "@/lib/schedule-drawer";
+import type { Place } from "@/lib/types";
 
 describe("scheduleDrawerOpener", () => {
   it("hides the control when both counts are zero", () => {
@@ -61,5 +65,57 @@ describe("isEffectivelySkipped / skippedAgendaItems", () => {
     expect(
       skippedAgendaItems(items, { a: true, b: false }).map((item) => item.id),
     ).toEqual(["a"]);
+  });
+
+  it("hides pending rows once the overlay marks them skipped", () => {
+    expect(excludeSkippedByOverlay(items, { a: true }).map((item) => item.id)).toEqual(
+      ["c"],
+    );
+    expect(excludeSkippedByOverlay(items).map((item) => item.id)).toEqual([
+      "a",
+      "c",
+    ]);
+  });
+});
+
+const pending = (partial: Partial<Place> & Pick<Place, "id" | "name">): Place => ({
+  type: "Sight",
+  mapsUrl: null,
+  notes: "",
+  visited: false,
+  dayIds: ["d1"],
+  start: null,
+  lat: null,
+  lng: null,
+  pending: true,
+  skipped: false,
+  ...partial,
+});
+
+describe("skippedListItems", () => {
+  it("adds overlay-skipped pending places that are not yet on the agenda", () => {
+    const maybe = pending({ id: "p-maybe", name: "Maybe cafe", type: "Cafe" });
+    const agenda = [
+      {
+        id: "a",
+        kind: "place" as const,
+        name: "Temple",
+        chip: "Sight",
+        detail: "",
+        start: null,
+        order: null,
+        skipped: true,
+      },
+    ];
+    expect(skippedListItems(agenda, [maybe]).map((item) => item.id)).toEqual(["a"]);
+    const combined = skippedListItems(agenda, [maybe], { "p-maybe": true });
+    expect(combined.map((item) => item.id)).toEqual(["a", "p-maybe"]);
+    expect(combined[1]).toMatchObject({
+      kind: "place",
+      name: "Maybe cafe",
+      chip: "Cafe",
+      skipped: true,
+    });
+    expect(pendingPlaceToAgendaItem(maybe).id).toBe("p-maybe");
   });
 });

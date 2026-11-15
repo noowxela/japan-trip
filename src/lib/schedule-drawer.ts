@@ -1,3 +1,5 @@
+import type { AgendaItem, Place } from "@/lib/types";
+
 export type ScheduleDrawerTab = "pending" | "skipped";
 
 export type ScheduleDrawerOpener =
@@ -63,4 +65,47 @@ export function skippedAgendaItems<T extends { id: string; skipped?: boolean }>(
   overlay: Readonly<Record<string, boolean>> = {},
 ): T[] {
   return agenda.filter((item) => isEffectivelySkipped(item, overlay));
+}
+
+/** Hide rows the skipped overlay has already moved off the pending list. */
+export function excludeSkippedByOverlay<T extends { id: string; skipped?: boolean }>(
+  items: T[],
+  overlay: Readonly<Record<string, boolean>> = {},
+): T[] {
+  return items.filter((item) => !isEffectivelySkipped(item, overlay));
+}
+
+/** Agenda shape for a pending place that was just skipped (optimistic list). */
+export function pendingPlaceToAgendaItem(place: Place): AgendaItem {
+  return {
+    id: place.id,
+    kind: "place",
+    name: place.name,
+    chip: place.type,
+    detail: place.notes.trim(),
+    start: place.start,
+    order: null,
+    visited: place.visited,
+    skipped: true,
+    mapsUrl: place.mapsUrl,
+    lat: place.lat,
+    lng: place.lng,
+  };
+}
+
+/**
+ * Skipped tab: agenda rows that are skipped, plus pending places the overlay
+ * has already marked skipped (they are not in `agenda` until refresh).
+ */
+export function skippedListItems(
+  agenda: AgendaItem[],
+  pendingPlaces: Place[],
+  overlay: Readonly<Record<string, boolean>> = {},
+): AgendaItem[] {
+  const fromAgenda = skippedAgendaItems(agenda, overlay);
+  const seen = new Set(fromAgenda.map((item) => item.id));
+  const fromPending = pendingPlaces
+    .filter((place) => isEffectivelySkipped(place, overlay) && !seen.has(place.id))
+    .map(pendingPlaceToAgendaItem);
+  return [...fromAgenda, ...fromPending];
 }

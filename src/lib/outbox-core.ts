@@ -11,6 +11,8 @@ export type ToggleSkippedPayload = {
   id: string;
   skipped: boolean;
   kind: "place" | "transit";
+  /** When unskipping a place that was pending, restore the Pending flag. */
+  restorePending?: boolean;
 };
 
 export type TogglePrepPayload = {
@@ -81,8 +83,12 @@ export function buildToggleSkippedPayload(
   id: string,
   skipped: boolean,
   kind: "place" | "transit",
+  options?: { restorePending?: boolean },
 ): ToggleSkippedPayload {
-  return { id, skipped, kind };
+  const restorePending = Boolean(options?.restorePending) && !skipped && kind === "place";
+  return restorePending
+    ? { id, skipped, kind, restorePending: true }
+    : { id, skipped, kind };
 }
 
 export function buildTogglePrepPayload(id: string, done: boolean): TogglePrepPayload {

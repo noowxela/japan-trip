@@ -69,7 +69,7 @@ type OutboxContextValue = {
     id: string,
     skipped: boolean,
     kind: "place" | "transit",
-    options?: { silent?: boolean },
+    options?: { silent?: boolean; restorePending?: boolean },
   ) => Promise<ActionResult>;
   markPrep: (id: string, done: boolean) => Promise<ActionResult>;
   submitSpend: (
@@ -164,6 +164,7 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
           formData.set("id", payload.id);
           formData.set("skipped", payload.skipped ? "true" : "false");
           formData.set("kind", payload.kind);
+          if (payload.restorePending) formData.set("restorePending", "true");
           result = await toggleSkipped(formData);
         } else if (working.kind === "togglePrep") {
           const payload = working.payload as TogglePrepPayload;
@@ -353,13 +354,15 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
       id: string,
       skipped: boolean,
       kind: "place" | "transit",
-      options?: { silent?: boolean },
+      options?: { silent?: boolean; restorePending?: boolean },
     ) => {
       setSkippedOverlay((current) => ({ ...current, [id]: skipped }));
       if (skipped) {
         setVisitedOverlay((current) => ({ ...current, [id]: false }));
       }
-      const outcome = await runToggleSkipped(id, skipped, kind);
+      const outcome = await runToggleSkipped(id, skipped, kind, {
+        restorePending: options?.restorePending,
+      });
       if (options?.silent) {
         if (outcome.status === "error") void notify(outcome.result);
       } else {

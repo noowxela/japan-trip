@@ -501,10 +501,14 @@ export async function toggleSkipped(formData: FormData): Promise<ActionResult> {
   if (!id) return actionErr(await actionT("action.missingPlace"));
   // Skipped is not visited and not pending. Clear those when skipping so the
   // item leaves the active agenda without landing in the pending list.
+  const restorePending =
+    !skipped && kind === "place" && String(formData.get("restorePending") ?? "") === "true";
   const optional: Record<string, unknown> = {};
   if (skipped) {
     optional.Visited = { checkbox: false };
     if (kind === "place") optional.Pending = { checkbox: false };
+  } else if (restorePending) {
+    optional.Pending = { checkbox: true };
   }
   await updatePageProperties(id, { Skipped: { checkbox: skipped } }, optional);
   bump(TRIP_TAGS.places, TRIP_TAGS.transit);

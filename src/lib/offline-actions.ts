@@ -153,12 +153,14 @@ export async function runToggleSkipped(
   id: string,
   skipped: boolean,
   kind: "place" | "transit",
+  options?: { restorePending?: boolean },
 ): Promise<OfflineEnqueueResult> {
-  const payload = buildToggleSkippedPayload(id, skipped, kind);
+  const payload = buildToggleSkippedPayload(id, skipped, kind, options);
   const formData = new FormData();
   formData.set("id", id);
   formData.set("skipped", skipped ? "true" : "false");
   formData.set("kind", kind);
+  if (payload.restorePending) formData.set("restorePending", "true");
 
   if (typeof navigator !== "undefined" && !navigator.onLine) {
     const entry = await enqueueOutbox("toggleSkipped", payload);

@@ -42,7 +42,7 @@ import { toggleHiddenMapPin } from "@/lib/hidden-map-pins";
 import { categoryEmoji } from "@/lib/category-icon";
 import { labelMode, labelType } from "@/lib/i18n/dictionaries";
 import { flightListLinks } from "@/lib/flight-path";
-import { isEffectivelySkipped } from "@/lib/schedule-drawer";
+import { excludeSkippedByOverlay, isEffectivelySkipped } from "@/lib/schedule-drawer";
 import { isMapFocusable, sightNumbersFromAgenda } from "@/lib/schedule-pins";
 import {
   linkedSpendTotals,
@@ -313,6 +313,39 @@ function ItemMenuButton({
   );
 }
 
+function useSkipPending() {
+  const { markSkipped } = useOutbox();
+  const { toast } = useToast();
+  const { t } = useT();
+  const [, startTransition] = useTransition();
+
+  return function skipPending(
+    id: string,
+    options?: { restorePending?: boolean },
+  ) {
+    const restorePending = options?.restorePending ?? true;
+    haptic("success");
+    startTransition(async () => {
+      const result = await markSkipped(id, true, "place", { silent: true });
+      if (!result.ok) return;
+      toast(
+        result.message == null
+          ? t("offline.savedQueued")
+          : t("action.markedSkipped"),
+        {
+          actionLabel: t("common.undo"),
+          onAction: () => {
+            void markSkipped(id, false, "place", {
+              silent: true,
+              restorePending,
+            });
+          },
+        },
+      );
+    });
+  };
+}
+
 function PendingCard({
   place,
   dayId,
@@ -333,6 +366,7 @@ function PendingCard({
   const [busy, startTransition] = useTransition();
   const notify = useActionToast();
   const { t, locale } = useT();
+  const skipPending = useSkipPending();
 
   function scheduleBefore(before: AgendaItem | null) {
     const formData = new FormData();
@@ -390,6 +424,13 @@ function PendingCard({
         >
           {t("agenda.schedule")}
         </button>
+        <button
+          type="button"
+          onClick={() => skipPending(place.id)}
+          className="rounded-full bg-canvas px-3 py-1 text-[11px] font-medium text-ink"
+        >
+          ⏭ {t("agenda.skipPending")}
+        </button>
       </div>
       ) : null}
     </li>
@@ -430,6 +471,8 @@ export function PendingPanel({
   const notify = useActionToast();
   const canEdit = useCanEdit();
   const { t } = useT();
+  const { skippedOverlay } = useOutbox();
+  const visiblePending = excludeSkippedByOverlay(pending, skippedOverlay);
 
   function dropOnPending(event: React.DragEvent) {
     event.preventDefault();
@@ -473,13 +516,13 @@ export function PendingPanel({
       <p className="mt-1 text-xs text-ink-muted">
         {over ? t("agenda.dropToPark") : t("agenda.parkHere")}
       </p>
-      {pending.length === 0 ? (
+      {visiblePending.length === 0 ? (
         <p className="mt-3 rounded-xl border border-dashed border-line px-3 py-6 text-center text-xs text-ink-muted">
           {t("agenda.nonePending")}
         </p>
       ) : (
         <ul className="mt-3 max-h-64 space-y-2 overflow-y-auto lg:max-h-none">
-          {pending.map((place) => (
+          {visiblePending.map((place) => (
             <PendingCard
               key={place.id}
               place={place}
@@ -586,8 +629,11 @@ export function CarryOverBanner({
   const notify = useActionToast();
   const canEdit = useCanEdit();
   const { t, locale } = useT();
+  const skipPending = useSkipPending();
+  const { skippedOverlay } = useOutbox();
+  const visible = excludeSkippedByOverlay(places, skippedOverlay);
 
-  if (places.length === 0) return null;
+  if (visible.length === 0) return null;
 
   function moveHere(id: string) {
     const formData = new FormData();
@@ -612,7 +658,7 @@ export function CarryOverBanner({
     >
       <p className="text-sm font-medium text-maybe">{title}</p>
       <ul className="mt-3 space-y-2">
-        {places.map((place) => (
+        {visible.map((place) => (
           <li
             key={place.id}
             className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-surface/80 px-3 py-2"
@@ -642,6 +688,15 @@ export function CarryOverBanner({
                   {t("agenda.moveHere")}
                 </button>
               )}
+              <button
+                type="button"
+                onClick={() =>
+                  skipPending(place.id, { restorePending: place.pending })
+                }
+                className="inline-flex min-h-11 items-center rounded-full bg-canvas px-3 text-xs font-medium text-ink"
+              >
+                ⏭ {t("agenda.skipPending")}
+              </button>
             </div>
             ) : null}
           </li>

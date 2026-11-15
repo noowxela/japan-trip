@@ -37,8 +37,9 @@ import {
 import { toggleHiddenMapPin } from "@/lib/hidden-map-pins";
 import { labelMode, labelType } from "@/lib/i18n/dictionaries";
 import {
+  excludeSkippedByOverlay,
   scheduleDrawerOpener,
-  skippedAgendaItems,
+  skippedListItems,
   type ScheduleDrawerTab,
 } from "@/lib/schedule-drawer";
 import {
@@ -201,12 +202,23 @@ export function ScheduleView({
     );
   }, [places, selectedDay]);
 
+  const visiblePending = excludeSkippedByOverlay(pending, skippedOverlay);
+  const visibleOtherPending = excludeSkippedByOverlay(
+    dayOtherPending,
+    skippedOverlay,
+  );
+  const visibleCarryOver = excludeSkippedByOverlay(carryOver, skippedOverlay);
   const pendingCount = selectedDay
-    ? pending.length + dayOtherPending.length + carryOver.length
+    ? visiblePending.length + visibleOtherPending.length + visibleCarryOver.length
     : 0;
-  const skippedCount = selectedDay
-    ? skippedAgendaItems(agenda, skippedOverlay).length
-    : 0;
+  const skippedItems = selectedDay
+    ? skippedListItems(
+        agenda,
+        [...pending, ...dayOtherPending, ...carryOver],
+        skippedOverlay,
+      )
+    : [];
+  const skippedCount = skippedItems.length;
   const drawer = scheduleDrawerOpener(pendingCount, skippedCount);
 
   useEffect(() => {
@@ -819,12 +831,12 @@ export function ScheduleView({
             {drawerTab === "pending" ? (
               <>
                 <CarryOverBanner
-                  places={carryOver}
+                  places={visibleCarryOver}
                   dayId={selectedDay.id}
                   title={t("agenda.carryOverPast")}
                 />
                 <CarryOverBanner
-                  places={dayOtherPending}
+                  places={visibleOtherPending}
                   dayId={selectedDay.id}
                   title={t("agenda.carryOverOther")}
                 />
@@ -837,7 +849,7 @@ export function ScheduleView({
               </>
             ) : (
               <SkippedPanel
-                items={skippedAgendaItems(agenda, skippedOverlay)}
+                items={skippedItems}
               />
             )}
           </div>

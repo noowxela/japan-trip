@@ -64,6 +64,21 @@ describe("desired-state payloads", () => {
       skipped: false,
       kind: "transit",
     });
+    expect(
+      buildToggleSkippedPayload("abc", false, "place", { restorePending: true }),
+    ).toEqual({
+      id: "abc",
+      skipped: false,
+      kind: "place",
+      restorePending: true,
+    });
+    expect(
+      buildToggleSkippedPayload("abc", true, "place", { restorePending: true }),
+    ).toEqual({
+      id: "abc",
+      skipped: true,
+      kind: "place",
+    });
   });
 
   it("builds prep desired state", () => {

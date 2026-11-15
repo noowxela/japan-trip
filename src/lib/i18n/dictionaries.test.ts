@@ -29,6 +29,13 @@ describe("agenda.editItem", () => {
   });
 });
 
+describe("agenda.skipPending", () => {
+  it("has zh and en copy", () => {
+    expect(t("en", "agenda.skipPending")).toBe("Skip");
+    expect(t("zh", "agenda.skipPending")).toBe("跳过");
+  });
+});
+
 describe("ingestLog pagination copy", () => {
   it("has zh and en range and pager labels", () => {
     expect(t("en", "ingestLog.pageRange", { from: 1, to: 10, total: 25 })).toBe(
