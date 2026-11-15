@@ -9,6 +9,8 @@ import {
 } from "react";
 import { haptic } from "@/lib/haptic";
 import {
+  LONG_PRESS_MS,
+  SWIPE_AXIS_LOCK_PX,
   SWIPE_REVEAL_PX,
   commitSwipeDirection,
   decideSwipeAxis,
@@ -27,10 +29,16 @@ type SwipeRowProps = {
   rightReveal?: ReactNode;
   onSwipeLeft?: () => void;
   onSwipeRight?: () => void;
+  /** Fired after a still hold; cancelled by movement or swipe. */
+  onLongPress?: () => void;
   disabled?: boolean;
   className?: string;
   /** Called once when |offset| first crosses threshold while dragging. */
   onThreshold?: (direction: SwipeDirection) => void;
+  /** Optional class for the right (swipe-left) reveal strip. */
+  rightRevealClassName?: string;
+  /** Optional class for the left (swipe-right) reveal strip. */
+  leftRevealClassName?: string;
 };
 
 type Gesture = {
@@ -43,6 +51,8 @@ type Gesture = {
   axis: SwipeAxis;
   thresholdFired: boolean;
   moved: boolean;
+  longPressTimer: number | null;
+  longPressFired: boolean;
 };
 
 export function SwipeRow({
@@ -51,15 +61,25 @@ export function SwipeRow({
   rightReveal,
   onSwipeLeft,
   onSwipeRight,
+  onLongPress,
   disabled = false,
   className = "",
   onThreshold,
+  rightRevealClassName,
+  leftRevealClassName,
 }: SwipeRowProps) {
   const [offset, setOffset] = useState(0);
   const [snapping, setSnapping] = useState(false);
   const gestureRef = useRef<Gesture | null>(null);
   const suppressClickRef = useRef(false);
   const rowRef = useRef<HTMLDivElement | null>(null);
+
+  const clearLongPress = useCallback((gesture: Gesture | null) => {
+    if (gesture?.longPressTimer != null) {
+      window.clearTimeout(gesture.longPressTimer);
+      gesture.longPressTimer = null;
+    }
+  }, []);
 
   const reset = useCallback((animate: boolean) => {
     setSnapping(animate);
@@ -71,10 +91,10 @@ export function SwipeRow({
     if (!event.isPrimary) return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
     if (isSwipeIgnoredTarget(event.target)) return;
-    if (!onSwipeLeft && !onSwipeRight) return;
+    if (!onSwipeLeft && !onSwipeRight && !onLongPress) return;
 
     suppressClickRef.current = false;
-    gestureRef.current = {
+    const gesture: Gesture = {
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
@@ -84,13 +104,29 @@ export function SwipeRow({
       axis: "none",
       thresholdFired: false,
       moved: false,
+      longPressTimer: null,
+      longPressFired: false,
     };
+    if (onLongPress) {
+      gesture.longPressTimer = window.setTimeout(() => {
+        const current = gestureRef.current;
+        if (!current || current.pointerId !== gesture.pointerId) return;
+        if (current.axis !== "none" || current.moved) return;
+        current.longPressFired = true;
+        current.longPressTimer = null;
+        suppressClickRef.current = true;
+        haptic("tap");
+        onLongPress();
+      }, LONG_PRESS_MS);
+    }
+    gestureRef.current = gesture;
     setSnapping(false);
   };
 
   const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     const gesture = gestureRef.current;
     if (!gesture || gesture.pointerId !== event.pointerId) return;
+    if (gesture.longPressFired) return;
 
     const dx = event.clientX - gesture.startX;
     const dy = event.clientY - gesture.startY;
@@ -100,9 +136,22 @@ export function SwipeRow({
     gesture.lastT = event.timeStamp;
 
     if (gesture.axis === "none") {
+      if (
+        Math.abs(dx) >= SWIPE_AXIS_LOCK_PX ||
+        Math.abs(dy) >= SWIPE_AXIS_LOCK_PX
+      ) {
+        clearLongPress(gesture);
+      }
       const axis = decideSwipeAxis(dx, dy);
       if (axis === "none") return;
       if (axis === "vertical") {
+        clearLongPress(gesture);
+        gestureRef.current = null;
+        reset(false);
+        return;
+      }
+      if (!onSwipeLeft && !onSwipeRight) {
+        clearLongPress(gesture);
         gestureRef.current = null;
         reset(false);
         return;
@@ -134,10 +183,16 @@ export function SwipeRow({
   ) => {
     const gesture = gestureRef.current;
     if (!gesture || gesture.pointerId !== event.pointerId) return;
+    clearLongPress(gesture);
     gestureRef.current = null;
 
     if (rowRef.current?.hasPointerCapture(event.pointerId)) {
       rowRef.current.releasePointerCapture(event.pointerId);
+    }
+
+    if (gesture.longPressFired) {
+      reset(false);
+      return;
     }
 
     if (cancelled || gesture.axis !== "horizontal") {
@@ -189,14 +244,18 @@ export function SwipeRow({
       data-swipe-row=""
     >
       <div
-        className="pointer-events-none absolute inset-y-0 left-0 flex w-[5.5rem] items-center justify-center bg-ok text-[11px] font-semibold text-white"
+        className={`pointer-events-none absolute inset-y-0 left-0 flex w-[5.5rem] items-center justify-center text-[11px] font-semibold ${
+          leftRevealClassName ?? "bg-ok text-white"
+        }`}
         aria-hidden
         style={{ opacity: offset > 8 ? Math.min(1, offset / 56) : 0 }}
       >
         {leftReveal}
       </div>
       <div
-        className="pointer-events-none absolute inset-y-0 right-0 flex w-[5.5rem] items-center justify-center bg-canvas text-[11px] font-semibold text-ink-muted"
+        className={`pointer-events-none absolute inset-y-0 right-0 flex w-[5.5rem] items-center justify-center text-[11px] font-semibold ${
+          rightRevealClassName ?? "bg-canvas text-ink-muted"
+        }`}
         aria-hidden
         style={{ opacity: offset < -8 ? Math.min(1, -offset / 56) : 0 }}
       >

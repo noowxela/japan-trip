@@ -6,7 +6,7 @@ import { coordsOfPlace } from "@/lib/geocode";
 import { t } from "@/lib/i18n/dictionaries";
 import { getLocale } from "@/lib/i18n/server";
 import { notionReady } from "@/lib/notion";
-import { pinKind } from "@/lib/schedule-pins";
+import { isNumberedMapStop, pinKind } from "@/lib/schedule-pins";
 import { cityHops, getDays, getPlaces, hopPathCoords } from "@/lib/trip";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +20,7 @@ function buildTripPins(
   const counters = new Map<string, number>();
 
   const withCoords = places
+    .filter((place) => !place.skipped)
     .map((place) => {
       const coords = coordsOfPlace(place);
       if (!coords) return null;
@@ -37,7 +38,7 @@ function buildTripPins(
   return withCoords.map(({ place, coords, dayId }) => {
     const kind = pinKind(place.type);
     let sightNumber: number | null = null;
-    if (kind === "sight" && dayId) {
+    if (isNumberedMapStop(kind) && dayId) {
       const next = (counters.get(dayId) ?? 0) + 1;
       counters.set(dayId, next);
       sightNumber = next;
@@ -66,7 +67,8 @@ function buildSheetDays(
     date: day.date,
     city: day.city,
     stopCount: places.filter(
-      (place) => place.dayIds.includes(day.id) && !place.pending,
+      (place) =>
+        place.dayIds.includes(day.id) && !place.pending && !place.skipped,
     ).length,
   }));
 }
@@ -94,7 +96,7 @@ export default async function MapPage() {
   }
 
   return (
-    <main className="fixed inset-x-0 top-0 bottom-[var(--tab-bar-height,4.25rem)] z-10 overflow-hidden">
+    <main className="fixed inset-x-0 top-[env(safe-area-inset-top,0px)] bottom-[var(--tab-bar-height,4.25rem)] z-10 overflow-hidden">
       <TripMapLoader
         hops={hops}
         hopPoints={hopPoints}

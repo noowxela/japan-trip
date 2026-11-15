@@ -76,7 +76,7 @@ export default async function SchedulePage({
   return (
     <>
       <TripCacheSync snapshot={snapshot} />
-      <QuickExpenseTripSync days={props.days} people={people} />
+      <QuickExpenseTripSync days={props.days} people={people} places={props.places} />
       <ScheduleView
         days={props.days}
         places={props.places}

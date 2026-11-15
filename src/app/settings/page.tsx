@@ -8,6 +8,7 @@ import {
 } from "@/components/compact";
 import { HapticToggle } from "@/components/haptic-toggle";
 import { PushRemindersCard } from "@/components/push-reminders-card";
+import { ShareTodayCard } from "@/components/share-today-card";
 import { UnlockEditorCard } from "@/components/unlock-editor-card";
 import { PageShell, settingsGroupClass } from "@/components/page-shell";
 import { formatAppVersion } from "@/lib/app-version";
@@ -15,8 +16,10 @@ import { t } from "@/lib/i18n/dictionaries";
 import { getLocale } from "@/lib/i18n/server";
 import { notionReady } from "@/lib/notion";
 import { isPushStoreWritable } from "@/lib/push-store";
+import { resolveTodayDayId } from "@/lib/schedule-pins";
 import { getThemePreference } from "@/lib/theme-server";
-import { getDays } from "@/lib/trip";
+import { buildAgenda } from "@/lib/trip-core";
+import { getDays, getPlaces, getTransit } from "@/lib/trip";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +35,19 @@ export default async function SettingsPage() {
   const locale = await getLocale();
   const themePreference = await getThemePreference();
   const ready = notionReady();
-  const days = ready ? await getDays() : [];
+  const [days, places, transit] = ready
+    ? await Promise.all([getDays(), getPlaces(), getTransit()])
+    : [[], [], []];
+  const todayDayId = resolveTodayDayId(days);
+  const todayDay = todayDayId
+    ? (days.find((day) => day.id === todayDayId) ?? null)
+    : null;
+  const todayAgenda = todayDay
+    ? buildAgenda(
+        places.filter((place) => place.dayIds.includes(todayDay.id)),
+        transit.filter((item) => item.dayIds.includes(todayDay.id)),
+      )
+    : [];
   const vapidPublicKey =
     process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim() ||
     process.env.VAPID_PUBLIC_KEY?.trim() ||
@@ -60,9 +75,19 @@ export default async function SettingsPage() {
       detail: t(locale, "more.prepDetail"),
     },
     {
+      href: "/clothes",
+      label: t(locale, "more.clothes"),
+      detail: t(locale, "more.clothesDetail"),
+    },
+    {
       href: "/phrases",
       label: t(locale, "more.phrases"),
       detail: t(locale, "more.phrasesDetail"),
+    },
+    {
+      href: "/gifts",
+      label: t(locale, "more.gifts"),
+      detail: t(locale, "more.giftsDetail"),
     },
     {
       href: "/lists",
@@ -209,11 +234,26 @@ export default async function SettingsPage() {
 
         <section className="space-y-1.5">
           <SectionHeader title={t(locale, "more.device")} />
+          <ShareTodayCard day={todayDay} items={todayAgenda} />
           <HapticToggle />
           <PushRemindersCard
             vapidPublicKey={vapidPublicKey}
             storeWritable={pushStoreWritable}
           />
+        </section>
+
+        <section className="space-y-1.5">
+          <SectionHeader title={t(locale, "more.applePay")} />
+          <CompactRowList>
+            <li>
+              <CompactRow
+                href="/settings/apple-pay"
+                title={t(locale, "more.applePay")}
+                secondary={t(locale, "more.applePayDetail")}
+                trailing={<Chevron />}
+              />
+            </li>
+          </CompactRowList>
         </section>
 
         <section className="space-y-1.5">
@@ -223,6 +263,16 @@ export default async function SettingsPage() {
 
         <section className="space-y-1.5">
           <SectionHeader title={t(locale, "more.about")} />
+          <CompactRowList>
+            <li>
+              <CompactRow
+                href="/settings/cookies"
+                title={t(locale, "more.cookieLab")}
+                secondary={t(locale, "more.cookieLabDetail")}
+                trailing={<Chevron />}
+              />
+            </li>
+          </CompactRowList>
           <AppVersionCard />
         </section>
 
@@ -233,6 +283,12 @@ export default async function SettingsPage() {
             {t(locale, "more.appName")}
           </p>
           <p className="mt-0.5">{t(locale, "more.aboutBody")}</p>
+          <p className="mt-1.5 text-[11px] leading-snug text-ink-muted">
+            {t(locale, "more.privacyNote")}
+          </p>
+          <p className="mt-1.5 text-[11px] leading-snug text-ink-muted">
+            {t(locale, "more.mapCredits")}
+          </p>
           <p className="mt-1.5 text-[11px] tabular-nums text-ink-muted">
             {formatAppVersion()}
           </p>

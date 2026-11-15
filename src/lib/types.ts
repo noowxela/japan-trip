@@ -18,6 +18,7 @@ export type Place = {
   lat: number | null;
   lng: number | null;
   pending: boolean;
+  skipped: boolean;
 };
 
 export type Stay = {
@@ -28,6 +29,9 @@ export type Stay = {
   address: string;
   bookingUrl: string | null;
   confirmation: string;
+  mapsUrl: string | null;
+  lat: number | null;
+  lng: number | null;
 };
 
 export type Transit = {
@@ -41,6 +45,9 @@ export type Transit = {
   dayIds: string[];
   start: string | null;
   order: number | null;
+  visited: boolean;
+  skipped: boolean;
+  notes: string;
 };
 
 export const SPEND_CURRENCIES = ["Yen", "RM"] as const;
@@ -61,6 +68,8 @@ export type SpendItem = {
   paidBy: string | null;
   /** Empty = split among everyone. */
   splitWith: string[];
+  /** Optional relation to a schedule Place (food spend link). */
+  placeId: string | null;
 };
 
 export type PrepItem = {
@@ -79,9 +88,15 @@ export type AgendaItem = {
   start: string | null;
   order: number | null;
   visited?: boolean;
+  skipped?: boolean;
   mapsUrl?: string | null;
   lat?: number | null;
   lng?: number | null;
+  /** Transit endpoints. Flight pairing reads these (detail stays "from → to"). */
+  from?: string;
+  to?: string;
+  /** Transit remarks. Place remarks stay on `detail`. */
+  notes?: string;
 };
 
 export const CITIES = ["Tokyo", "Kyoto", "Osaka", "Other"] as const;
@@ -97,6 +112,8 @@ export const SPEND_KINDS = ["Estimate", "Actual"] as const;
 export const SPEND_CATEGORIES = [
   "Food",
   "Transit",
+  "Ride-hailing",
+  "Airfare",
   "Stay",
   "Ticket",
   "Shop",

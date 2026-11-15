@@ -12,22 +12,53 @@ import {
   setEditorCookie,
   verifyEditorPin,
 } from "@/lib/edit-session";
-import { geocodeJapan, lookupLandmark, searchPlacesJapan } from "@/lib/geocode";
+import { geocodeJapan, lookupLandmark, resolveGoogleMapsUrl, searchPlacesJapan } from "@/lib/geocode";
 import { actionT } from "@/lib/i18n/action";
 import { isLocale } from "@/lib/i18n/dictionaries";
 import { LANG_COOKIE, LANG_MAX_AGE_SEC } from "@/lib/i18n/server";
 import { ds, getNotion, textProp, titleProp } from "@/lib/notion";
+import { notionStartProperty } from "@/lib/notion-date";
+import { isStayMapsSchemaError, notionErrorCode } from "@/lib/notion-error";
 import { parseSpendCurrency } from "@/lib/spend";
+import { spendStartFromFormData } from "@/lib/spend-item-form";
 import {
   THEME_COOKIE,
   THEME_MAX_AGE_SEC,
   isThemePreference,
 } from "@/lib/theme";
-import { ensureTokyoOffset, tokyoWallDateTime } from "@/lib/format";
+import { ensureTokyoOffset, formatTime, tokyoWallDateTime } from "@/lib/format";
 import { findSpendDuplicate, getDay, TRIP_TAGS } from "@/lib/trip";
 
 function bump(...tags: string[]) {
   for (const tag of tags) updateTag(tag);
+}
+
+/**
+ * Write required Notion properties, plus optional extras when the live schema
+ * has them. Skipped may be missing until Alex adds the checkbox; Pending exists
+ * on Places but not Transit. A missing optional field must not block the
+ * required write (visited / pending).
+ */
+async function updatePageProperties(
+  id: string,
+  required: Record<string, unknown>,
+  optional: Record<string, unknown> = {},
+) {
+  const notion = getNotion();
+  const write = (properties: Record<string, unknown>) =>
+    notion.pages.update({
+      page_id: id,
+      properties: properties as never,
+    });
+  if (Object.keys(optional).length === 0) {
+    await write(required);
+    return;
+  }
+  try {
+    await write({ ...required, ...optional });
+  } catch {
+    await write(required);
+  }
 }
 
 /** Days `City` may be select (fresh setup) or multi-select (live workspace). */
@@ -87,6 +118,42 @@ async function withSplitWithFallback<T>(
   }
 }
 
+function placeIdFrom(formData: FormData) {
+  return String(formData.get("placeId") ?? "").trim();
+}
+
+function placeProp(placeId: string) {
+  return { Place: { relation: placeId ? [{ id: placeId }] : [] } };
+}
+
+/**
+ * Until `npm run migrate:spend-place` adds a Spend→Places `Place` relation,
+ * or if the linked page is gone, retry the write without it.
+ */
+async function withPlaceFallback<T>(
+  write: (includePlace: boolean) => Promise<T>,
+): Promise<T> {
+  try {
+    return await write(true);
+  } catch (error) {
+    if (
+      !APIResponseError.isAPIResponseError(error) ||
+      error.code !== APIErrorCode.ValidationError
+    ) {
+      throw error;
+    }
+    const message = error.message;
+    const mentionsPlace = message.includes("Place");
+    const relationIssue =
+      /relation|related page|could not find page/i.test(message);
+    if (!mentionsPlace && !relationIssue) throw error;
+    console.warn(
+      "Spend Place relation skipped; run npm run migrate:spend-place if the column is missing",
+    );
+    return write(false);
+  }
+}
+
 function startValue(formData: FormData) {
   const start = String(formData.get("start") ?? "").trim();
   const time = String(formData.get("time") ?? "").trim();
@@ -99,19 +166,80 @@ function startValue(formData: FormData) {
   return "";
 }
 
-function spendStartValue(formData: FormData) {
-  return startValue(formData) || String(formData.get("dayDate") ?? "").trim().slice(0, 10);
+function startProp(start: string | null) {
+  return notionStartProperty(start);
 }
 
-function startProp(start: string | null) {
-  if (!start) return { date: null };
-  if (!start.includes("T")) return { date: { start } };
-  return {
-    date: {
-      start,
-      time_zone: "Asia/Tokyo",
-    },
-  };
+
+/** Turn a thrown Notion stay failure into a toast instead of React #441. */
+async function stayActionError(error: unknown): Promise<ActionResult> {
+  console.error("stay write failed", error);
+  if (isStayMapsSchemaError(error)) {
+    return actionErr(await actionT("action.stayMapsSchemaMissing"));
+  }
+  const raw = APIResponseError.isAPIResponseError(error)
+    ? error.message
+    : error instanceof Error
+      ? error.message
+      : "";
+  const code = notionErrorCode(raw);
+  if (code) {
+    return actionErr(await actionT("action.spendNotionCode", { code }));
+  }
+  const detail = raw.replace(/\s+/g, " ").trim().slice(0, 180);
+  return actionErr(
+    await actionT("action.staySaveFailed", {
+      detail: detail || "Notion request failed",
+    }),
+  );
+}
+
+/**
+ * Write stay properties; Maps URL / Lat / Lng are optional until
+ * `npm run migrate:stay-maps`. If the user pasted a Maps link and the schema
+ * is missing those columns, return a clear toast instead of throwing #441.
+ */
+async function writeStayProperties(
+  write: (properties: Record<string, unknown>) => Promise<unknown>,
+  required: Record<string, unknown>,
+  maps: Record<string, unknown>,
+  wantsMaps: boolean,
+): Promise<ActionResult | null> {
+  if (Object.keys(maps).length === 0) {
+    await write(required);
+    return null;
+  }
+  try {
+    await write({ ...required, ...maps });
+    return null;
+  } catch (error) {
+    if (!isStayMapsSchemaError(error)) throw error;
+    if (wantsMaps) {
+      return actionErr(await actionT("action.stayMapsSchemaMissing"));
+    }
+    if (Object.keys(required).length > 0) await write(required);
+    return null;
+  }
+}
+
+/** Turn a thrown Notion failure into a toast instead of crashing the sheet. */
+async function spendActionError(error: unknown): Promise<ActionResult> {
+  console.error("spend write failed", error);
+  const raw = APIResponseError.isAPIResponseError(error)
+    ? error.message
+    : error instanceof Error
+      ? error.message
+      : "";
+  const code = notionErrorCode(raw);
+  if (code) {
+    return actionErr(await actionT("action.spendNotionCode", { code }));
+  }
+  const detail = raw.replace(/\s+/g, " ").trim().slice(0, 180);
+  return actionErr(
+    await actionT("action.spendSaveFailed", {
+      detail: detail || "Notion request failed",
+    }),
+  );
 }
 
 function orderValue(formData: FormData) {
@@ -258,18 +386,30 @@ export async function addPlace(formData: FormData): Promise<ActionResult> {
   });
 
   if (!picked) {
-    const day = dayId ? await getDay(dayId) : null;
-    const query = [name, day?.city].filter(Boolean).join(" ");
-    const coords = await geocodeJapan(query, day?.city ?? undefined);
-    if (coords) {
+    const fromMaps = mapsUrl ? await resolveGoogleMapsUrl(mapsUrl) : null;
+    if (fromMaps) {
       await notion.pages.update({
         page_id: page.id,
         properties: {
-          Lat: { number: coords.lat },
-          Lng: { number: coords.lng },
-          ...(coords.mapsUrl ? { "Maps URL": { url: coords.mapsUrl } } : {}),
+          Lat: { number: fromMaps.lat },
+          Lng: { number: fromMaps.lng },
+          "Maps URL": { url: fromMaps.mapsUrl || mapsUrl },
         },
       });
+    } else {
+      const day = dayId ? await getDay(dayId) : null;
+      const query = [name, day?.city].filter(Boolean).join(" ");
+      const coords = await geocodeJapan(query, day?.city ?? undefined);
+      if (coords) {
+        await notion.pages.update({
+          page_id: page.id,
+          properties: {
+            Lat: { number: coords.lat },
+            Lng: { number: coords.lng },
+            ...(coords.mapsUrl ? { "Maps URL": { url: coords.mapsUrl } } : {}),
+          },
+        });
+      }
     }
   }
   bump(TRIP_TAGS.places);
@@ -288,13 +428,35 @@ export async function toggleVisited(formData: FormData): Promise<ActionResult> {
   const id = String(formData.get("id") ?? "");
   const visited = String(formData.get("visited") ?? "") === "true";
   if (!id) return actionErr(await actionT("action.missingPlace"));
-  const notion = getNotion();
-  await notion.pages.update({
-    page_id: id,
-    properties: { Visited: { checkbox: visited } },
-  });
-  bump(TRIP_TAGS.places);
+  // Marking visited clears Skipped so the two flags cannot both be true.
+  await updatePageProperties(
+    id,
+    { Visited: { checkbox: visited } },
+    visited ? { Skipped: { checkbox: false } } : {},
+  );
+  bump(TRIP_TAGS.places, TRIP_TAGS.transit);
   return actionOk(await actionT(visited ? "action.markedVisited" : "action.markedUnvisited"));
+}
+
+export async function toggleSkipped(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
+  const id = String(formData.get("id") ?? "");
+  const skipped = String(formData.get("skipped") ?? "") === "true";
+  const kind = String(formData.get("kind") ?? "").trim();
+  if (!id) return actionErr(await actionT("action.missingPlace"));
+  // Skipped is not visited and not pending. Clear those when skipping so the
+  // item leaves the active agenda without landing in the pending list.
+  const optional: Record<string, unknown> = {};
+  if (skipped) {
+    optional.Visited = { checkbox: false };
+    if (kind === "place") optional.Pending = { checkbox: false };
+  }
+  await updatePageProperties(id, { Skipped: { checkbox: skipped } }, optional);
+  bump(TRIP_TAGS.places, TRIP_TAGS.transit);
+  return actionOk(
+    await actionT(skipped ? "action.markedSkipped" : "action.markedUnskipped"),
+  );
 }
 
 export async function updatePlaceNotes(formData: FormData): Promise<ActionResult> {
@@ -365,22 +527,27 @@ export async function updatePlace(formData: FormData): Promise<ActionResult> {
   if (!id || !name) return actionErr(await actionT("action.placeNameRequired"));
   const notion = getNotion();
   const known = lookupLandmark(name);
+  const fromMaps = mapsUrl ? await resolveGoogleMapsUrl(mapsUrl) : null;
   await notion.pages.update({
     page_id: id,
     properties: {
       Name: titleProp(name),
       Type: { select: type ? { name: type } : null },
-      "Maps URL": { url: mapsUrl || known?.mapsUrl || null },
+      "Maps URL": {
+        url: fromMaps?.mapsUrl || mapsUrl || known?.mapsUrl || null,
+      },
       Notes: textProp(notes),
       Day: { relation: dayId ? [{ id: dayId }] : [] },
       Start: startProp(start || null),
       Pending: { checkbox: false },
-      ...(known
-        ? { Lat: { number: known.lat }, Lng: { number: known.lng } }
-        : {}),
+      ...(fromMaps
+        ? { Lat: { number: fromMaps.lat }, Lng: { number: fromMaps.lng } }
+        : known
+          ? { Lat: { number: known.lat }, Lng: { number: known.lng } }
+          : {}),
     },
   });
-  if (!known && !mapsUrl) {
+  if (!fromMaps && !known && !mapsUrl) {
     const day = dayId ? await getDay(dayId) : null;
     const coords = await geocodeJapan(
       [name, day?.city].filter(Boolean).join(" "),
@@ -436,15 +603,17 @@ export async function parkPlaceAsPending(formData: FormData): Promise<ActionResu
   const id = String(formData.get("id") ?? "").trim();
   const dayId = String(formData.get("dayId") ?? "").trim();
   if (!id) return actionErr(await actionT("action.missingPlace"));
-  const notion = getNotion();
-  await notion.pages.update({
-    page_id: id,
-    properties: {
+  // Parking to pending clears Skipped: an item cannot be both parked for later
+  // and written off as unvisitable this trip.
+  await updatePageProperties(
+    id,
+    {
       Pending: { checkbox: true },
       ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
       Start: startProp(null),
     },
-  });
+    { Skipped: { checkbox: false } },
+  );
   bump(TRIP_TAGS.places);
   return actionOk(await actionT("action.movedToPending"));
 }
@@ -458,10 +627,12 @@ export async function updateTransit(formData: FormData): Promise<ActionResult> {
   const from = String(formData.get("from") ?? "").trim();
   const to = String(formData.get("to") ?? "").trim();
   const date = String(formData.get("date") ?? "").trim();
+  const hasBookingUrl = formData.has("bookingUrl");
   const bookingUrl = String(formData.get("bookingUrl") ?? "").trim();
   const dayId = String(formData.get("dayId") ?? "").trim();
   const start = startValue(formData);
   const order = orderValue(formData);
+  const notes = String(formData.get("notes") ?? "").trim();
   if (!id || !name) return actionErr(await actionT("action.transitNameRequired"));
   const notion = getNotion();
   const dateStart = date || (start ? start.slice(0, 10) : "");
@@ -472,8 +643,11 @@ export async function updateTransit(formData: FormData): Promise<ActionResult> {
       Mode: { select: mode ? { name: mode } : null },
       From: textProp(from),
       To: textProp(to),
+      Notes: textProp(notes),
       Date: { date: dateStart ? { start: dateStart } : null },
-      "Booking URL": { url: bookingUrl || null },
+      ...(hasBookingUrl
+        ? { "Booking URL": { url: bookingUrl || null } }
+        : {}),
       Day: { relation: dayId ? [{ id: dayId }] : [] },
       Start: startProp(start || null),
       Order: { number: order },
@@ -501,19 +675,95 @@ export async function addStay(formData: FormData): Promise<ActionResult> {
   const address = String(formData.get("address") ?? "").trim();
   const bookingUrl = String(formData.get("bookingUrl") ?? "").trim();
   const confirmation = String(formData.get("confirmation") ?? "").trim();
+  const mapsUrl = String(formData.get("mapsUrl") ?? "").trim();
+  const latRaw = String(formData.get("lat") ?? "").trim();
+  const lngRaw = String(formData.get("lng") ?? "").trim();
+  const lat = Number(latRaw);
+  const lng = Number(lngRaw);
+  const picked =
+    latRaw && lngRaw && Number.isFinite(lat) && Number.isFinite(lng)
+      ? { lat, lng }
+      : null;
   if (!name) return actionErr(await actionT("action.stayNameRequired"));
-  const notion = getNotion();
-  await notion.pages.create({
-    parent: { data_source_id: ds("STAYS") },
-    properties: {
+  try {
+    const notion = getNotion();
+    const required: Record<string, unknown> = {
       Name: titleProp(name),
       ...(checkIn ? { "Check-in": { date: { start: checkIn } } } : {}),
       ...(checkOut ? { "Check-out": { date: { start: checkOut } } } : {}),
       ...(address ? { Address: textProp(address) } : {}),
       ...(bookingUrl ? { "Booking URL": { url: bookingUrl } } : {}),
       ...(confirmation ? { Confirmation: textProp(confirmation) } : {}),
-    },
-  });
+    };
+    const maps: Record<string, unknown> = {
+      ...(mapsUrl ? { "Maps URL": { url: mapsUrl } } : {}),
+      ...(picked
+        ? { Lat: { number: picked.lat }, Lng: { number: picked.lng } }
+        : {}),
+    };
+    const wantsMaps = Boolean(mapsUrl || picked);
+    let page: { id: string } | null = null;
+    const created = await writeStayProperties(
+      async (properties) => {
+        page = await notion.pages.create({
+          parent: { data_source_id: ds("STAYS") },
+          properties: properties as never,
+        });
+      },
+      required,
+      maps,
+      wantsMaps,
+    );
+    if (created) return created;
+    if (!page) throw new Error("Stay create returned no page");
+
+    if (!picked) {
+      const fromMaps = mapsUrl ? await resolveGoogleMapsUrl(mapsUrl) : null;
+      if (fromMaps) {
+        const followUp = await writeStayProperties(
+          (properties) =>
+            notion.pages.update({
+              page_id: page!.id,
+              properties: properties as never,
+            }),
+          {},
+          {
+            Lat: { number: fromMaps.lat },
+            Lng: { number: fromMaps.lng },
+            "Maps URL": { url: fromMaps.mapsUrl || mapsUrl },
+          },
+          true,
+        );
+        if (followUp) return followUp;
+      } else {
+        const query = [address, name].filter(Boolean).join(" ");
+        if (query) {
+          const coords = await geocodeJapan(query);
+          if (coords) {
+            const followUp = await writeStayProperties(
+              (properties) =>
+                notion.pages.update({
+                  page_id: page!.id,
+                  properties: properties as never,
+                }),
+              {},
+              {
+                Lat: { number: coords.lat },
+                Lng: { number: coords.lng },
+                ...(coords.mapsUrl || mapsUrl
+                  ? { "Maps URL": { url: coords.mapsUrl || mapsUrl } }
+                  : {}),
+              },
+              Boolean(coords.mapsUrl || mapsUrl),
+            );
+            if (followUp) return followUp;
+          }
+        }
+      }
+    }
+  } catch (error) {
+    return stayActionError(error);
+  }
   bump(TRIP_TAGS.stays);
   return actionOk(await actionT("action.stayAdded"));
 }
@@ -528,19 +778,77 @@ export async function updateStay(formData: FormData): Promise<ActionResult> {
   const address = String(formData.get("address") ?? "").trim();
   const bookingUrl = String(formData.get("bookingUrl") ?? "").trim();
   const confirmation = String(formData.get("confirmation") ?? "").trim();
+  const mapsUrl = String(formData.get("mapsUrl") ?? "").trim();
+  const latRaw = String(formData.get("lat") ?? "").trim();
+  const lngRaw = String(formData.get("lng") ?? "").trim();
+  const lat = Number(latRaw);
+  const lng = Number(lngRaw);
+  const picked =
+    latRaw && lngRaw && Number.isFinite(lat) && Number.isFinite(lng)
+      ? { lat, lng }
+      : null;
   if (!id || !name) return actionErr(await actionT("action.stayNameRequired"));
-  const notion = getNotion();
-  await notion.pages.update({
-    page_id: id,
-    properties: {
+  try {
+    const notion = getNotion();
+    const fromMaps =
+      !picked && mapsUrl ? await resolveGoogleMapsUrl(mapsUrl) : null;
+    const required: Record<string, unknown> = {
       Name: titleProp(name),
       "Check-in": { date: checkIn ? { start: checkIn } : null },
       "Check-out": { date: checkOut ? { start: checkOut } : null },
       Address: textProp(address),
       "Booking URL": { url: bookingUrl || null },
       Confirmation: textProp(confirmation),
-    },
-  });
+    };
+    const maps: Record<string, unknown> = {
+      "Maps URL": {
+        url: fromMaps?.mapsUrl || mapsUrl || null,
+      },
+      ...(picked
+        ? { Lat: { number: picked.lat }, Lng: { number: picked.lng } }
+        : fromMaps
+          ? { Lat: { number: fromMaps.lat }, Lng: { number: fromMaps.lng } }
+          : {}),
+    };
+    const wantsMaps = Boolean(mapsUrl || picked || fromMaps);
+    const schemaErr = await writeStayProperties(
+      (properties) =>
+        notion.pages.update({
+          page_id: id,
+          properties: properties as never,
+        }),
+      required,
+      maps,
+      wantsMaps,
+    );
+    if (schemaErr) return schemaErr;
+
+    if (!picked && !fromMaps && !mapsUrl) {
+      const query = [address, name].filter(Boolean).join(" ");
+      if (query) {
+        const coords = await geocodeJapan(query);
+        if (coords) {
+          const followUp = await writeStayProperties(
+            (properties) =>
+              notion.pages.update({
+                page_id: id,
+                properties: properties as never,
+              }),
+            {},
+            {
+              Lat: { number: coords.lat },
+              Lng: { number: coords.lng },
+              "Maps URL": { url: coords.mapsUrl },
+            },
+            false,
+          );
+          if (followUp) return followUp;
+        }
+      }
+    }
+  } catch (error) {
+    return stayActionError(error);
+  }
   bump(TRIP_TAGS.stays);
   return actionOk(await actionT("action.staySaved"));
 }
@@ -566,6 +874,7 @@ export async function addTransit(formData: FormData): Promise<ActionResult> {
   const dayId = String(formData.get("dayId") ?? "").trim();
   const start = startValue(formData);
   const order = orderValue(formData);
+  const notes = String(formData.get("notes") ?? "").trim();
   if (!name) return actionErr(await actionT("action.transitNameRequired"));
   const notion = getNotion();
   await notion.pages.create({
@@ -575,6 +884,7 @@ export async function addTransit(formData: FormData): Promise<ActionResult> {
       ...(mode ? { Mode: { select: { name: mode } } } : {}),
       ...(from ? { From: textProp(from) } : {}),
       ...(to ? { To: textProp(to) } : {}),
+      ...(notes ? { Notes: textProp(notes) } : {}),
       ...(date ? { Date: { date: { start: date } } } : {}),
       ...(bookingUrl ? { "Booking URL": { url: bookingUrl } } : {}),
       ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
@@ -597,6 +907,7 @@ export async function addSpend(formData: FormData): Promise<ActionResult> {
   const dayId = String(formData.get("dayId") ?? "").trim();
   const paidBy = String(formData.get("paidBy") ?? "").trim();
   const splitWith = splitWithFrom(formData);
+  const placeId = placeIdFrom(formData);
   const currency = parseSpendCurrency(String(formData.get("currency") ?? ""));
   const amount = Number(amountRaw);
   const clientCreatedAt = String(formData.get("clientCreatedAt") ?? "").trim();
@@ -604,7 +915,7 @@ export async function addSpend(formData: FormData): Promise<ActionResult> {
   const firstAttemptAt = String(formData.get("firstAttemptAt") ?? "").trim();
   const start = clientCreatedAt
     ? ensureTokyoOffset(clientCreatedAt)
-    : spendStartValue(formData);
+    : spendStartFromFormData(formData);
   if (!name) return actionErr(await actionT("action.spendNameRequired"));
   if (!Number.isFinite(amount)) return actionErr(await actionT("action.amountRequired"));
   // Dedupe only on outbox retries (lost response after the request reached Notion).
@@ -622,24 +933,34 @@ export async function addSpend(formData: FormData): Promise<ActionResult> {
       return actionOk(await actionT("action.spendAdded"), existing.id);
     }
   }
-  const notion = getNotion();
-  const created = await withSplitWithFallback((includeSplit) =>
-    notion.pages.create({
-      parent: { data_source_id: ds("SPEND") },
-      properties: {
-        Name: titleProp(name),
-        Amount: { number: amount },
-        Currency: { select: { name: currency } },
-        ...(kind ? { Kind: { select: { name: kind } } } : {}),
-        ...(category ? { Category: { select: { name: category } } } : {}),
-        ...(notes ? { Notes: textProp(notes) } : {}),
-        ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
-        ...(start ? { Start: startProp(start) } : {}),
-        ...(paidBy ? { "Paid by": { select: { name: paidBy } } } : {}),
-        ...(includeSplit && splitWith.length > 0 ? splitWithProp(splitWith) : {}),
-      },
-    }),
-  );
+  let created: { id: string };
+  try {
+    const notion = getNotion();
+    created = await withSplitWithFallback((includeSplit) =>
+      withPlaceFallback((includePlace) =>
+        notion.pages.create({
+          parent: { data_source_id: ds("SPEND") },
+          properties: {
+            Name: titleProp(name),
+            Amount: { number: amount },
+            Currency: { select: { name: currency } },
+            ...(kind ? { Kind: { select: { name: kind } } } : {}),
+            ...(category ? { Category: { select: { name: category } } } : {}),
+            ...(notes ? { Notes: textProp(notes) } : {}),
+            ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
+            ...(start ? { Start: startProp(start) } : {}),
+            ...(paidBy ? { "Paid by": { select: { name: paidBy } } } : {}),
+            ...(includeSplit && splitWith.length > 0
+              ? splitWithProp(splitWith)
+              : {}),
+            ...(includePlace && placeId ? placeProp(placeId) : {}),
+          },
+        }),
+      ),
+    );
+  } catch (error) {
+    return spendActionError(error);
+  }
   bump(TRIP_TAGS.spend);
   return actionOk(await actionT("action.spendAdded"), created.id);
 }
@@ -656,29 +977,37 @@ export async function updateSpend(formData: FormData): Promise<ActionResult> {
   const dayId = String(formData.get("dayId") ?? "").trim();
   const paidBy = String(formData.get("paidBy") ?? "").trim();
   const splitWith = splitWithFrom(formData);
+  const placeId = placeIdFrom(formData);
   const currency = parseSpendCurrency(String(formData.get("currency") ?? ""));
   const amount = Number(amountRaw);
-  const start = spendStartValue(formData);
+  const start = spendStartFromFormData(formData);
   if (!id || !name) return actionErr(await actionT("action.spendNameRequired"));
   if (!Number.isFinite(amount)) return actionErr(await actionT("action.amountRequired"));
-  const notion = getNotion();
-  await withSplitWithFallback((includeSplit) =>
-    notion.pages.update({
-      page_id: id,
-      properties: {
-        Name: titleProp(name),
-        Amount: { number: amount },
-        Currency: { select: { name: currency } },
-        Kind: { select: kind ? { name: kind } : null },
-        Category: { select: category ? { name: category } : null },
-        Notes: textProp(notes),
-        Day: { relation: dayId ? [{ id: dayId }] : [] },
-        Start: startProp(start || null),
-        "Paid by": { select: paidBy ? { name: paidBy } : null },
-        ...(includeSplit ? splitWithProp(splitWith) : {}),
-      },
-    }),
-  );
+  try {
+    const notion = getNotion();
+    await withSplitWithFallback((includeSplit) =>
+      withPlaceFallback((includePlace) =>
+        notion.pages.update({
+          page_id: id,
+          properties: {
+            Name: titleProp(name),
+            Amount: { number: amount },
+            Currency: { select: { name: currency } },
+            Kind: { select: kind ? { name: kind } : null },
+            Category: { select: category ? { name: category } : null },
+            Notes: textProp(notes),
+            Day: { relation: dayId ? [{ id: dayId }] : [] },
+            Start: startProp(start || null),
+            "Paid by": { select: paidBy ? { name: paidBy } : null },
+            ...(includeSplit ? splitWithProp(splitWith) : {}),
+            ...(includePlace ? placeProp(placeId) : {}),
+          },
+        }),
+      ),
+    );
+  } catch (error) {
+    return spendActionError(error);
+  }
   bump(TRIP_TAGS.spend);
   return actionOk(await actionT("action.spendSaved"));
 }
@@ -733,6 +1062,77 @@ export async function deletePrepItem(formData: FormData): Promise<ActionResult> 
   if (!id) return actionErr(await actionT("action.missingPrep"));
   await trashPage(id, TRIP_TAGS.prep);
   return actionOk(await actionT("action.prepRemoved"));
+}
+
+
+export async function moveAgendaItemsToDay(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
+  const targetDayId = String(formData.get("targetDayId") ?? "").trim();
+  if (!targetDayId) return actionErr(await actionT("action.missingPlaceOrDay"));
+
+  let items: Array<{ id: string; kind: "place" | "transit"; start?: string | null }> = [];
+  try {
+    const raw = String(formData.get("items") ?? "").trim();
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) throw new Error("bad items");
+    items = parsed
+      .map((row) => {
+        if (!row || typeof row !== "object") return null;
+        const id = String((row as { id?: unknown }).id ?? "").trim();
+        const kind = String((row as { kind?: unknown }).kind ?? "").trim();
+        if (!id || (kind !== "place" && kind !== "transit")) return null;
+        const startRaw = (row as { start?: unknown }).start;
+        const start =
+          typeof startRaw === "string" && startRaw.trim()
+            ? startRaw.trim()
+            : null;
+        return { id, kind: kind as "place" | "transit", start };
+      })
+      .filter((row): row is { id: string; kind: "place" | "transit"; start: string | null } => row != null);
+  } catch {
+    return actionErr(await actionT("action.missingPlaceOrDay"));
+  }
+  if (items.length === 0) {
+    return actionErr(await actionT("action.missingPlaceOrDay"));
+  }
+
+  const day = await getDay(targetDayId);
+  const dayDate = (day?.date ?? "").slice(0, 10);
+  const notion = getNotion();
+  const tags = new Set<string>();
+
+  for (const item of items) {
+    const time = item.start ? formatTime(item.start) : null;
+    const remapped =
+      time && dayDate ? tokyoWallDateTime(dayDate, time) : null;
+    if (item.kind === "place") {
+      await notion.pages.update({
+        page_id: item.id,
+        properties: {
+          Day: { relation: [{ id: targetDayId }] },
+          Pending: { checkbox: false },
+          ...(remapped ? { Start: startProp(remapped) } : {}),
+        },
+      });
+      tags.add(TRIP_TAGS.places);
+    } else {
+      await notion.pages.update({
+        page_id: item.id,
+        properties: {
+          Day: { relation: [{ id: targetDayId }] },
+          ...(dayDate ? { Date: { date: { start: dayDate } } } : {}),
+          ...(remapped ? { Start: startProp(remapped) } : {}),
+        },
+      });
+      tags.add(TRIP_TAGS.transit);
+    }
+  }
+
+  bump(...tags);
+  return actionOk(
+    await actionT("action.movedItemsToDay", { n: items.length }),
+  );
 }
 
 export async function movePendingToDay(formData: FormData): Promise<ActionResult> {

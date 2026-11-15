@@ -30,3 +30,17 @@ export function formatAppVersion(
 ): string {
   return `v${version} · ${commit}`;
 }
+
+export type AppUpdateCheckResult = "update-available" | "up-to-date" | "error";
+
+/** Compare a /api/version payload with the running commit. */
+export function classifyAppUpdateCheck(
+  latest: { commit: string } | null | undefined,
+  runningCommit: string,
+): AppUpdateCheckResult {
+  if (!latest?.commit) return "error";
+  return shortCommit(latest.commit) !== shortCommit(runningCommit)
+    ? "update-available"
+    : "up-to-date";
+}
+

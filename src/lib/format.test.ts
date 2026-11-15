@@ -9,6 +9,7 @@ import {
   gapBetweenStarts,
   minutesBetweenStarts,
   nightsBetween,
+  isPastTripDay,
   tokyoToday,
   tokyoWallDateTime,
 } from "@/lib/format";
@@ -124,5 +125,22 @@ describe("tokyoToday", () => {
   it("returns the Asia/Tokyo calendar date", () => {
     vi.setSystemTime(new Date("2026-10-26T16:30:00Z"));
     expect(tokyoToday()).toBe("2026-10-27");
+  });
+});
+
+describe("isPastTripDay", () => {
+  it("treats dates before Tokyo today as past", () => {
+    expect(isPastTripDay("2026-11-06", "2026-11-08")).toBe(true);
+    expect(isPastTripDay("2026-11-07T12:00:00+09:00", "2026-11-08")).toBe(true);
+  });
+
+  it("is false for today and future days", () => {
+    expect(isPastTripDay("2026-11-08", "2026-11-08")).toBe(false);
+    expect(isPastTripDay("2026-11-09", "2026-11-08")).toBe(false);
+  });
+
+  it("is false when the day has no date", () => {
+    expect(isPastTripDay(null, "2026-11-08")).toBe(false);
+    expect(isPastTripDay("", "2026-11-08")).toBe(false);
   });
 });

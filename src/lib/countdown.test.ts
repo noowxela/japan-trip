@@ -27,6 +27,7 @@ function place(partial: Partial<Place> & { id: string; name: string }): Place {
     lat: null,
     lng: null,
     pending: false,
+    skipped: false,
     ...partial,
   };
 }
@@ -43,6 +44,9 @@ function transit(
     dayIds: [],
     start: null,
     order: null,
+    visited: false,
+    notes: "",
+    skipped: false,
     ...partial,
   };
 }

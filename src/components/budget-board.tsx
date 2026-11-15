@@ -9,12 +9,23 @@ import { categoryColor } from "@/components/spend-category-icon";
 import { SpendItemCard } from "@/components/spend-item-card";
 import { SpendTimeline, formatAmount } from "@/components/spend-timeline";
 import { labelCategory } from "@/lib/i18n/dictionaries";
-import { categoryBreakdown, settleUp, topSpend } from "@/lib/spend";
-import { SPEND_CATEGORIES, type SpendItem, type TripDay } from "@/lib/types";
+import {
+  categoryBreakdown,
+  filterSpendItems,
+  settleUp,
+  spendFilterPeople,
+  sumPersonShareRm,
+  sumRm,
+  topSpend,
+  toRm,
+} from "@/lib/spend";
+import { SPEND_CATEGORIES, type Place, type SpendItem, type TripDay } from "@/lib/types";
 
 type Tab = "timeline" | "category" | "top" | "split";
 type DisplayCurrency = "MYR" | "YEN";
 type CategoryFilter = "all" | (typeof SPEND_CATEGORIES)[number];
+type PersonFilter = "all" | string;
+type PersonFilterMode = "payer" | "split";
 
 const TAB_IDS: Tab[] = ["timeline", "category", "top", "split"];
 const TAB_KEY: Record<Tab, string> = {
@@ -34,10 +45,12 @@ export function BudgetBoard({
   fxLive,
   fxAsOf,
   people = [],
+  places = [],
 }: {
   actuals: SpendItem[];
   days: TripDay[];
   people?: string[];
+  places?: Place[];
   spentRm: number;
   estimateRm: number;
   jpyPerRm: number;
@@ -51,6 +64,8 @@ export function BudgetBoard({
   const [tab, setTab] = useState<Tab>("timeline");
   const [display, setDisplay] = useState<DisplayCurrency>("MYR");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
+  const [personFilter, setPersonFilter] = useState<PersonFilter>("all");
+  const [personMode, setPersonMode] = useState<PersonFilterMode>("payer");
   const yen = display === "YEN";
   const mergedActuals = useMemo(() => {
     const pending = pendingSpend.filter(
@@ -58,10 +73,43 @@ export function BudgetBoard({
     );
     return [...pending, ...actuals];
   }, [actuals, pendingSpend]);
-  const filteredActuals = useMemo(() => {
-    if (categoryFilter === "all") return mergedActuals;
-    return mergedActuals.filter((item) => item.category === categoryFilter);
-  }, [categoryFilter, mergedActuals]);
+  const filterPeople = useMemo(
+    () => spendFilterPeople(people, mergedActuals),
+    [people, mergedActuals],
+  );
+  const filteredActuals = useMemo(
+    () =>
+      filterSpendItems(mergedActuals, {
+        category: categoryFilter,
+        person: personFilter,
+        mode: personMode,
+        people: filterPeople,
+      }),
+    [categoryFilter, filterPeople, mergedActuals, personFilter, personMode],
+  );
+  const sharePerson = personFilter !== "all" && personMode === "split" ? personFilter : null;
+  const filteredFullRm = useMemo(
+    () => sumRm(filteredActuals, undefined, jpyPerRm),
+    [filteredActuals, jpyPerRm],
+  );
+  const filteredSpentRm = useMemo(() => {
+    if (personFilter === "all") return spentRm;
+    if (sharePerson) {
+      return sumPersonShareRm(filteredActuals, sharePerson, filterPeople, jpyPerRm);
+    }
+    return filteredFullRm;
+  }, [
+    filterPeople,
+    filteredActuals,
+    filteredFullRm,
+    jpyPerRm,
+    personFilter,
+    sharePerson,
+    spentRm,
+  ]);
+  const showFilteredSpent = personFilter !== "all";
+  // Share mode: full amount of the visible rows. Payer mode: whole-trip spent.
+  const secondaryFullRm = sharePerson ? filteredFullRm : spentRm;
   const usedPct =
     estimateRm > 0 ? Math.round((spentRm / estimateRm) * 100) : null;
   const remainingRm = estimateRm - spentRm;
@@ -104,14 +152,23 @@ export function BudgetBoard({
         </div>
       </div>
 
-      <section className="max-h-[90px] rounded-xl border border-line bg-surface px-3 py-2 md:max-w-xl">
-        <p className="truncate text-[13px] leading-5 text-ink">
+      <section className="rounded-xl border border-line bg-surface px-3 py-2 md:max-w-xl">
+        <p className="min-w-0 break-words [overflow-wrap:anywhere] text-right text-[13px] leading-5 text-ink">
           <span className="font-medium">
             {t("budget.spentShort", {
-              amount: formatAmount(spentRm, yen, jpyPerRm),
+              amount: formatAmount(filteredSpentRm, yen, jpyPerRm),
             })}
           </span>
-          {usedPct != null ? (
+          {showFilteredSpent && filteredSpentRm !== secondaryFullRm ? (
+            <>
+              <span className="text-ink-muted"> · </span>
+              <span className="text-ink-muted">
+                {t("budget.fullAmount", {
+                  amount: formatAmount(secondaryFullRm, yen, jpyPerRm),
+                })}
+              </span>
+            </>
+          ) : usedPct != null && !showFilteredSpent ? (
             <>
               <span className="text-ink-muted"> · </span>
               <span>
@@ -132,14 +189,16 @@ export function BudgetBoard({
             </>
           ) : null}
         </p>
-        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-canvas">
-          <div
-            className="h-full rounded-full transition-[width]"
-            style={{ width: `${barPct}%`, backgroundColor: barColor }}
-            aria-hidden
-          />
-        </div>
-        <p className="mt-1 truncate text-[11px] text-ink-muted" title={fxTitle}>
+        {showFilteredSpent ? null : (
+          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-canvas">
+            <div
+              className="h-full rounded-full transition-[width]"
+              style={{ width: `${barPct}%`, backgroundColor: barColor }}
+              aria-hidden
+            />
+          </div>
+        )}
+        <p className="mt-1 min-w-0 break-words [overflow-wrap:anywhere] text-right text-[11px] text-ink-muted" title={fxTitle}>
           {t("budget.fxCompact", { rm: yen100InRm.toFixed(2) })}
         </p>
       </section>
@@ -187,12 +246,70 @@ export function BudgetBoard({
               ))}
             </div>
           </div>
+          {filterPeople.length > 0 ? (
+            <div className="mt-1.5 flex min-w-0 items-center gap-2 md:max-w-xl">
+              <div
+                role="group"
+                aria-label={t("budget.personFilter")}
+                className="flex h-7 shrink-0 rounded-full bg-canvas p-0.5"
+              >
+                <button
+                  type="button"
+                  aria-pressed={personMode === "payer"}
+                  onClick={() => setPersonMode("payer")}
+                  className={`rounded-full px-2.5 text-xs font-medium ${
+                    personMode === "payer"
+                      ? "bg-surface text-ink shadow-sm"
+                      : "text-ink-muted"
+                  }`}
+                >
+                  {t("budget.filterPayer")}
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={personMode === "split"}
+                  onClick={() => setPersonMode("split")}
+                  className={`rounded-full px-2.5 text-xs font-medium ${
+                    personMode === "split"
+                      ? "bg-surface text-ink shadow-sm"
+                      : "text-ink-muted"
+                  }`}
+                >
+                  {t("budget.filterSplit")}
+                </button>
+              </div>
+              <div className="chip-scroll-fade min-w-0 flex-1">
+                <div
+                  role="toolbar"
+                  aria-label={t("budget.personFilter")}
+                  className="scrollbar-none -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5"
+                >
+                  <CategoryChip
+                    active={personFilter === "all"}
+                    onClick={() => setPersonFilter("all")}
+                    label={t("budget.filterAll")}
+                  />
+                  {filterPeople.map((name) => (
+                    <CategoryChip
+                      key={name}
+                      active={personFilter === name}
+                      onClick={() => setPersonFilter(name)}
+                      label={name}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : null}
           <div className="mt-2 md:max-w-xl">
             <SpendTimeline
               items={filteredActuals}
               days={days}
               jpyPerRm={jpyPerRm}
               displayYen={yen}
+              places={places}
+              sharePerson={sharePerson}
+              people={filterPeople}
             />
           </div>
         </>
@@ -201,11 +318,14 @@ export function BudgetBoard({
       {tab === "category" ? (
         <CategorySummary
           rows={categories}
+          items={mergedActuals}
           totalRm={spentRm}
           displayYen={yen}
           jpyPerRm={jpyPerRm}
           locale={locale}
           totalLabel={t("budget.total")}
+          places={places}
+          days={days}
         />
       ) : null}
 
@@ -222,6 +342,8 @@ export function BudgetBoard({
                   jpyPerRm={jpyPerRm}
                   displayYen={yen}
                   compact
+                  places={places}
+                  days={days}
                 />
               </li>
             ))}
@@ -239,6 +361,8 @@ export function BudgetBoard({
           displayYen={yen}
           jpyPerRm={jpyPerRm}
           fxTitle={fxTitle}
+          places={places}
+          days={days}
         />
       ) : null}
     </>
@@ -250,11 +374,15 @@ function SettlePanel({
   displayYen,
   jpyPerRm,
   fxTitle,
+  places = [],
+  days = [],
 }: {
   settle: ReturnType<typeof settleUp>;
   displayYen: boolean;
   jpyPerRm: number;
   fxTitle: string;
+  places?: Place[];
+  days?: TripDay[];
 }) {
   const { t } = useT();
   const money = (rm: number) => formatAmount(rm, displayYen, jpyPerRm);
@@ -279,21 +407,21 @@ function SettlePanel({
             {settle.transfers.map((transfer) => (
               <li
                 key={`${transfer.from}->${transfer.to}`}
-                className="flex min-h-11 items-center gap-2 text-[13px]"
+                className="flex min-h-11 min-w-0 items-start gap-2 py-1.5 text-[13px]"
                 aria-label={t("settle.transferAria", {
                   from: transfer.from,
                   to: transfer.to,
                   amount: money(transfer.rm),
                 })}
               >
-                <span aria-hidden className="min-w-0 truncate font-medium">
+                <span aria-hidden className="min-w-0 break-words [overflow-wrap:anywhere] font-medium">
                   {transfer.from}
                 </span>
-                <span aria-hidden className="text-ink-muted">→</span>
-                <span aria-hidden className="min-w-0 flex-1 truncate font-medium">
+                <span aria-hidden className="shrink-0 text-ink-muted">→</span>
+                <span aria-hidden className="min-w-0 flex-1 break-words [overflow-wrap:anywhere] font-medium">
                   {transfer.to}
                 </span>
-                <span aria-hidden className="shrink-0 font-semibold tabular-nums">
+                <span aria-hidden className="shrink-0 whitespace-nowrap font-semibold tabular-nums">
                   {money(transfer.rm)}
                 </span>
               </li>
@@ -320,7 +448,7 @@ function SettlePanel({
               const cents = Math.round(row.netRm * 100);
               return (
                 <tr key={row.name}>
-                  <th scope="row" className="truncate py-1.5 text-left font-medium">
+                  <th scope="row" className="min-w-0 break-words [overflow-wrap:anywhere] py-1.5 text-left font-medium">
                     {row.name}
                   </th>
                   <td className="py-1.5 text-right tabular-nums">{money(row.paidRm)}</td>
@@ -353,6 +481,8 @@ function SettlePanel({
                 jpyPerRm={jpyPerRm}
                 displayYen={displayYen}
                 compact
+                places={places}
+                days={days}
               />
             ))}
           </div>
@@ -400,61 +530,162 @@ function CategoryChip({
   );
 }
 
+function itemsForCategory(
+  items: SpendItem[],
+  category: (typeof SPEND_CATEGORIES)[number],
+) {
+  return items.filter((item) => {
+    const key = SPEND_CATEGORIES.includes(
+      item.category as (typeof SPEND_CATEGORIES)[number],
+    )
+      ? (item.category as (typeof SPEND_CATEGORIES)[number])
+      : "Other";
+    return key === category;
+  });
+}
+
 function CategorySummary({
   rows,
+  items,
   totalRm,
   displayYen,
   jpyPerRm,
   locale,
   totalLabel,
+  places = [],
+  days = [],
 }: {
   rows: ReturnType<typeof categoryBreakdown>;
+  items: SpendItem[];
   totalRm: number;
   displayYen: boolean;
   jpyPerRm: number;
   locale: ReturnType<typeof useT>["locale"];
   totalLabel: string;
+  places?: Place[];
+  days?: TripDay[];
 }) {
+  const { t } = useT();
+  const largest = useMemo(() => {
+    let best: (typeof SPEND_CATEGORIES)[number] | null = null;
+    let bestAmt = 0;
+    for (const row of rows) {
+      if (row.amountRm > bestAmt) {
+        bestAmt = row.amountRm;
+        best = row.category;
+      }
+    }
+    return bestAmt > 0 ? best : null;
+  }, [rows]);
+  const [openCategory, setOpenCategory] = useState<
+    (typeof SPEND_CATEGORIES)[number] | null
+  >(largest);
+
   return (
     <ul className="divide-y divide-line/80 md:max-w-xl">
-      {rows.map((row) => (
-        <li key={row.category} className="py-1.5">
-          <div className="flex items-center justify-between gap-2 text-[13px]">
-            <span className="flex min-w-0 items-center gap-1.5">
-              <span
-                className="h-2 w-2 shrink-0 rounded-full"
-                style={{ backgroundColor: categoryColor(row.category) }}
-              />
-              <span className="truncate font-medium">
-                {labelCategory(locale, row.category)}
-              </span>
-              <span className="text-[11px] text-ink-muted tabular-nums">
-                {row.percent}%
-              </span>
-            </span>
-            <span className="shrink-0 font-medium tabular-nums">
-              {formatAmount(row.amountRm, displayYen, jpyPerRm)}
-            </span>
-          </div>
-          <div className="mt-1 h-1 overflow-hidden rounded-full bg-canvas">
-            <div
-              className="h-full rounded-full"
-              style={{
-                width: `${row.percent}%`,
-                backgroundColor: categoryColor(row.category),
+      {rows.map((row) => {
+        const label = labelCategory(locale, row.category) ?? row.category;
+        const groupItems = itemsForCategory(items, row.category)
+          .slice()
+          .sort(
+            (a, b) =>
+              toRm(b.amount, b.currency, jpyPerRm) -
+              toRm(a.amount, a.currency, jpyPerRm),
+          );
+        const canOpen = groupItems.length > 0;
+        const open = canOpen && openCategory === row.category;
+        return (
+          <li key={row.category} className="py-1.5">
+            <button
+              type="button"
+              disabled={!canOpen}
+              aria-expanded={canOpen ? open : undefined}
+              aria-label={
+                canOpen
+                  ? open
+                    ? t("budget.collapseCategory", { category: label })
+                    : t("budget.expandCategory", { category: label })
+                  : undefined
+              }
+              onClick={() => {
+                if (!canOpen) return;
+                setOpenCategory((prev) =>
+                  prev === row.category ? null : row.category,
+                );
               }}
-            />
-          </div>
-        </li>
-      ))}
+              className={`flex w-full flex-col gap-1 text-left ${
+                canOpen ? "" : "cursor-default opacity-60"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-2 text-[13px]">
+                <span className="flex min-w-0 items-start gap-1.5">
+                  {canOpen ? (
+                    <span
+                      aria-hidden
+                      className="shrink-0 text-[10px] text-ink-muted"
+                    >
+                      {open ? "▾" : "▸"}
+                    </span>
+                  ) : (
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: categoryColor(row.category) }}
+                      aria-hidden
+                    />
+                  )}
+                  {canOpen ? (
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: categoryColor(row.category) }}
+                      aria-hidden
+                    />
+                  ) : null}
+                  <span className="min-w-0 break-words [overflow-wrap:anywhere] font-medium">{label}</span>
+                  <span className="text-[11px] text-ink-muted tabular-nums">
+                    {row.percent}%
+                  </span>
+                </span>
+                <span className="shrink-0 whitespace-nowrap font-medium tabular-nums">
+                  {formatAmount(row.amountRm, displayYen, jpyPerRm)}
+                </span>
+              </div>
+              <div className="h-1 overflow-hidden rounded-full bg-canvas">
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${row.percent}%`,
+                    backgroundColor: categoryColor(row.category),
+                  }}
+                />
+              </div>
+            </button>
+            {open ? (
+              <ul className="mt-1 divide-y divide-line/70">
+                {groupItems.map((item) => (
+                  <li key={item.id} className="min-w-0">
+                    <SpendItemCard
+                      item={item}
+                      jpyPerRm={jpyPerRm}
+                      displayYen={displayYen}
+                      compact
+                      places={places}
+                      days={days}
+                    />
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </li>
+        );
+      })}
       <li className="py-1.5">
-        <div className="flex items-center justify-between gap-2 text-[13px]">
-          <span className="flex items-center gap-1.5">
+        <div className="flex items-start justify-between gap-2 text-[13px]">
+          <span className="flex min-w-0 items-start gap-1.5">
             <span className="h-2 w-2 shrink-0 rounded-full bg-ink" />
-            <span className="font-medium">{totalLabel}</span>
-            <span className="text-[11px] text-ink-muted tabular-nums">100%</span>
+            <span className="min-w-0 break-words [overflow-wrap:anywhere] font-medium">{totalLabel}</span>
+            <span className="shrink-0 text-[11px] text-ink-muted tabular-nums">100%</span>
           </span>
-          <span className="font-medium tabular-nums">
+          <span className="shrink-0 whitespace-nowrap font-medium tabular-nums">
             {formatAmount(totalRm, displayYen, jpyPerRm)}
           </span>
         </div>

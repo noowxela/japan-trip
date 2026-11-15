@@ -1,7 +1,8 @@
 "use client";
 
+import nextDynamic from "next/dynamic";
 import { useState, useTransition } from "react";
-import { deleteStay, updateStay } from "@/app/actions";
+import { deleteStay, searchPlaces, updateStay } from "@/app/actions";
 import { ActionForm } from "@/components/action-form";
 import {
   ActionSheet,
@@ -14,17 +15,37 @@ import {
 import { CopyButton } from "@/components/copy-button";
 import { useCanEdit } from "@/components/edit-session";
 import { useT } from "@/components/i18n-provider";
+import { ClearableInput } from "@/components/clearable-input";
 import { MapsPinLink } from "@/components/maps-pin-link";
 import { useTrashUndo } from "@/components/use-trash-undo";
 import { btnGhostClass, btnPrimaryClass } from "@/components/page-shell";
 import { formatTabDate, nightsBetween } from "@/lib/format";
+import { clearMapsFieldState } from "@/lib/clear-maps-field";
 import { coordsOfStay } from "@/lib/geocode";
+import { extractGoogleMapsUrl } from "@/lib/maps-url";
 import type { Stay } from "@/lib/types";
+
+const PlacePreviewMap = nextDynamic(
+  () => import("@/components/place-preview-map").then((mod) => mod.PlacePreviewMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-40 items-center justify-center rounded-xl border border-line text-xs text-ink-muted">
+        …
+      </div>
+    ),
+  },
+);
 
 export function StayCard({ stay }: { stay: Stay }) {
   const [editing, setEditing] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [busy, startTransition] = useTransition();
+  const [mapsUrl, setMapsUrl] = useState(stay.mapsUrl ?? "");
+  const [lat, setLat] = useState<number | null>(stay.lat ?? null);
+  const [lng, setLng] = useState<number | null>(stay.lng ?? null);
+  const [mapsError, setMapsError] = useState("");
+  const [mapsPending, startMaps] = useTransition();
   const trashWithUndo = useTrashUndo();
   const canEdit = useCanEdit();
   const { t } = useT();
@@ -32,6 +53,39 @@ export function StayCard({ stay }: { stay: Stay }) {
   const nights = nightsBetween(stay.checkIn, stay.checkOut);
   const inCompact = stay.checkIn ? formatTabDate(stay.checkIn) : "—";
   const outCompact = stay.checkOut ? formatTabDate(stay.checkOut) : null;
+
+  function beginEdit() {
+    setMapsUrl(stay.mapsUrl ?? "");
+    setLat(stay.lat ?? null);
+    setLng(stay.lng ?? null);
+    setMapsError("");
+    setEditing(true);
+  }
+
+  function resolveMapsField(raw: string) {
+    const value = extractGoogleMapsUrl(raw);
+    if (!value) return;
+    setMapsError("");
+    startMaps(async () => {
+      const hits = await searchPlaces(value);
+      if (hits[0]) {
+        setLat(hits[0].lat);
+        setLng(hits[0].lng);
+        setMapsUrl(hits[0].mapsUrl || value);
+        setMapsError("");
+      } else {
+        setMapsError(t("form.mapsLinkFailed"));
+      }
+    });
+  }
+
+  function clearMapsLink() {
+    const cleared = clearMapsFieldState();
+    setMapsUrl(cleared.mapsUrl);
+    setLat(cleared.lat);
+    setLng(cleared.lng);
+    setMapsError("");
+  }
 
   if (editing) {
     return (
@@ -41,6 +95,8 @@ export function StayCard({ stay }: { stay: Stay }) {
         onSuccess={() => setEditing(false)}
       >
         <input type="hidden" name="id" value={stay.id} />
+        <input type="hidden" name="lat" value={lat ?? ""} />
+        <input type="hidden" name="lng" value={lng ?? ""} />
         <label className={`block ${compactLabelClass}`}>
           {t("form.name")}
           <input
@@ -75,9 +131,46 @@ export function StayCard({ stay }: { stay: Stay }) {
           <input
             name="address"
             defaultValue={stay.address}
+            onPaste={(event) => {
+              const pasted = event.clipboardData.getData("text");
+              const mapsUrl = extractGoogleMapsUrl(pasted);
+              if (!mapsUrl) return;
+              event.preventDefault();
+              setMapsUrl(mapsUrl);
+              resolveMapsField(mapsUrl);
+            }}
             className={`mt-1 ${compactFieldClass}`}
           />
         </label>
+        <label className={`block ${compactLabelClass}`}>
+          {t("form.mapsUrl")}
+          <ClearableInput
+            name="mapsUrl"
+            type="url"
+            value={mapsUrl}
+            onChange={(event) => setMapsUrl(event.target.value)}
+            onBlur={(event) => resolveMapsField(event.target.value)}
+            onPaste={(event) => {
+              const pasted = event.clipboardData.getData("text");
+              const mapsUrl = extractGoogleMapsUrl(pasted);
+              if (!mapsUrl) return;
+              event.preventDefault();
+              setMapsUrl(mapsUrl);
+              resolveMapsField(mapsUrl);
+            }}
+            onClear={clearMapsLink}
+            clearLabel={t("form.clearMapsLink")}
+            placeholder={t("form.mapsUrlHint")}
+            className={compactFieldClass}
+            wrapperClassName="mt-1"
+          />
+        </label>
+        {mapsError ? <p className="text-xs text-ink-muted">{mapsError}</p> : null}
+        {mapsPending ? (
+          <p className="text-xs text-ink-muted">…</p>
+        ) : lat != null && lng != null ? (
+          <PlacePreviewMap lat={lat} lng={lng} />
+        ) : null}
         <label className={`block ${compactLabelClass}`}>
           {t("form.bookingUrl")}
           <input
@@ -162,18 +255,19 @@ export function StayCard({ stay }: { stay: Stay }) {
           <ActionSheetItem
             onClick={() => {
               setMenuOpen(false);
-              setEditing(true);
+              beginEdit();
             }}
           >
             {t("common.edit")}
           </ActionSheetItem>
         ) : null}
-        {coords || stay.address ? (
+        {coords || stay.address || stay.mapsUrl ? (
           <div className="px-1">
             <MapsPinLink
               name={stay.address || stay.name}
               lat={coords?.lat}
               lng={coords?.lng}
+              mapsUrl={stay.mapsUrl}
               variant="text"
             />
           </div>

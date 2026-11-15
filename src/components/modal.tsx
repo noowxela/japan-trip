@@ -139,7 +139,7 @@ export function Modal({
           <>
             <h2
               id="modal-title"
-              className="px-4 pt-4 pb-3 text-center text-[17px] font-semibold leading-snug text-ink"
+              className="min-w-0 break-words [overflow-wrap:anywhere] px-4 pt-4 pb-3 text-center text-[17px] font-semibold leading-snug text-ink"
             >
               {shownTitle}
             </h2>
@@ -152,15 +152,15 @@ export function Modal({
                 aria-hidden
                 className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-line"
               />
-              <div className="flex items-center justify-between gap-3">
-                <h2 id="modal-title" className="font-medium text-ink">
+              <div className="flex items-start justify-between gap-3">
+                <h2 id="modal-title" className="min-w-0 flex-1 break-words [overflow-wrap:anywhere] font-medium text-ink">
                   {shownTitle}
                 </h2>
                 <button
                   type="button"
                   onClick={onClose}
                   aria-label={t("common.close")}
-                  className="notebook-btn px-2 py-1 text-sm text-ink-muted hover:bg-canvas hover:text-ink"
+                  className="notebook-btn shrink-0 px-2 py-1 text-sm text-ink-muted hover:bg-canvas hover:text-ink"
                 >
                   ✕
                 </button>

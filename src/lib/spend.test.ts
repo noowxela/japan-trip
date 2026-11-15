@@ -1,13 +1,24 @@
 import { describe, expect, it } from "vitest";
 import {
+  BEFORE_TRIP_KEY,
   byDay,
+  filterSpendByPerson,
+  filterSpendItems,
+  firstDatedTripDay,
   moneySummary,
   normalizeSplitWith,
   parseSpendCurrency,
+  personHasShare,
+  personShareRm,
   settleUp,
+  spendFilterPeople,
+  splitParticipants,
+  sumPersonShareRm,
+  timelineGroupLabel,
+  timelineGroups,
   toRm,
 } from "@/lib/spend";
-import type { SpendItem } from "@/lib/types";
+import type { SpendItem, TripDay } from "@/lib/types";
 
 const item = (
   partial: Partial<SpendItem> & Pick<SpendItem, "id" | "amount" | "currency">,
@@ -20,6 +31,18 @@ const item = (
   start: partial.start ?? null,
   paidBy: partial.paidBy ?? null,
   splitWith: partial.splitWith ?? [],
+  placeId: partial.placeId ?? null,
+  ...partial,
+});
+
+
+const day = (
+  partial: Partial<TripDay> & Pick<TripDay, "id">,
+): TripDay => ({
+  name: partial.name ?? partial.id,
+  date: partial.date ?? null,
+  city: partial.city ?? null,
+  status: partial.status ?? null,
   ...partial,
 });
 
@@ -182,3 +205,320 @@ describe("settleUp", () => {
     });
   });
 });
+
+describe("firstDatedTripDay", () => {
+  it("returns the earliest dated trip day and ignores undated days", () => {
+    const days = [
+      day({ id: "d2", date: "2026-11-09" }),
+      day({ id: "undated" }),
+      day({ id: "d1", date: "2026-11-08" }),
+    ];
+    expect(firstDatedTripDay(days)).toBe("2026-11-08");
+    expect(firstDatedTripDay([])).toBeNull();
+    expect(firstDatedTripDay([day({ id: "x" })])).toBeNull();
+  });
+});
+
+describe("timelineGroups", () => {
+  const days = [
+    day({ id: "d1", name: "Day 1", date: "2026-11-08" }),
+    day({ id: "d2", name: "Day 2", date: "2026-11-09" }),
+  ];
+
+  it("puts undated items and pre-trip purchases in one before-trip group first", () => {
+    const items = [
+      item({ id: "esim", name: "Xummer eSIM", amount: 43, currency: "RM" }),
+      item({
+        id: "flights",
+        name: "Round Trip Flights",
+        amount: 2000,
+        currency: "RM",
+        start: "2026-02-08",
+      }),
+      item({
+        id: "hotel",
+        name: "Mitsui Garden",
+        amount: 800,
+        currency: "RM",
+        start: "2026-08-25",
+      }),
+      item({
+        id: "lunch",
+        name: "Lunch",
+        amount: 20,
+        currency: "RM",
+        dayIds: ["d1"],
+      }),
+      item({
+        id: "after",
+        name: "Souvenir after trip",
+        amount: 15,
+        currency: "RM",
+        start: "2026-11-20",
+      }),
+    ];
+    const groups = timelineGroups(items, days);
+    expect(groups.map((group) => group.key)).toEqual([
+      BEFORE_TRIP_KEY,
+      "2026-11-08",
+      "2026-11-20",
+    ]);
+    const before = groups[0]!;
+    expect(before.date).toBeNull();
+    expect(before.items.map((row) => row.id)).toEqual(["flights", "hotel", "esim"]);
+    expect(before.totalRm).toBe(2843);
+    expect(groups[1]!.items.map((row) => row.id)).toEqual(["lunch"]);
+    expect(groups[2]!.items.map((row) => row.id)).toEqual(["after"]);
+  });
+
+  it("keeps trip-day and on-or-after-first-day items in dated groups", () => {
+    const items = [
+      item({
+        id: "day2",
+        name: "Day 2 dinner",
+        amount: 30,
+        currency: "RM",
+        dayIds: ["d2"],
+      }),
+      item({
+        id: "same-day",
+        name: "Arrival snack",
+        amount: 8,
+        currency: "RM",
+        start: "2026-11-08",
+      }),
+    ];
+    const groups = timelineGroups(items, days);
+    expect(groups.map((group) => group.key)).toEqual(["2026-11-08", "2026-11-09"]);
+    expect(groups.some((group) => group.key === BEFORE_TRIP_KEY)).toBe(false);
+  });
+
+  it("only sends undated items to before-trip when no trip day has a date", () => {
+    const items = [
+      item({ id: "esim", name: "eSIM", amount: 43, currency: "RM" }),
+      item({
+        id: "booked",
+        name: "Flights",
+        amount: 100,
+        currency: "RM",
+        start: "2026-02-08",
+      }),
+    ];
+    const groups = timelineGroups(items, [day({ id: "d1" })]);
+    expect(groups.map((group) => group.key)).toEqual([
+      BEFORE_TRIP_KEY,
+      "2026-02-08",
+    ]);
+    expect(groups[0]!.items.map((row) => row.id)).toEqual(["esim"]);
+    expect(groups[1]!.items.map((row) => row.id)).toEqual(["booked"]);
+  });
+});
+
+describe("timelineGroupLabel", () => {
+  it("labels the before-trip group in zh and en, not as no date", () => {
+    expect(timelineGroupLabel({ key: BEFORE_TRIP_KEY, date: null }, "zh")).toBe(
+      "出发前",
+    );
+    expect(timelineGroupLabel({ key: BEFORE_TRIP_KEY, date: null }, "en")).toBe(
+      "Before trip",
+    );
+    expect(timelineGroupLabel({ key: "2026-11-08", date: "2026-11-08" }, "en")).toBe(
+      "Sun 8 Nov",
+    );
+  });
+});
+
+describe("splitParticipants", () => {
+  const people = ["Alex", "Ben", "Cara"];
+
+  it("treats an empty splitWith as everyone", () => {
+    expect(
+      splitParticipants(
+        item({ id: "a", amount: 90, currency: "RM", paidBy: "Alex" }),
+        people,
+      ),
+    ).toEqual(people);
+  });
+
+  it("uses the listed splitters even when the payer is excluded", () => {
+    expect(
+      splitParticipants(
+        item({
+          id: "a",
+          amount: 40,
+          currency: "RM",
+          paidBy: "Alex",
+          splitWith: ["Ben", "Cara"],
+        }),
+        people,
+      ),
+    ).toEqual(["Ben", "Cara"]);
+  });
+
+  it("falls back to the payer when there is no people list and splitWith is empty", () => {
+    expect(
+      splitParticipants(
+        item({ id: "a", amount: 10, currency: "RM", paidBy: "Alex" }),
+        [],
+      ),
+    ).toEqual(["Alex"]);
+  });
+});
+
+describe("person share and person filter", () => {
+  const people = ["Alex", "Ben", "Cara"];
+  const items = [
+    item({
+      id: "all",
+      name: "Dinner",
+      amount: 90,
+      currency: "RM",
+      category: "Food",
+      paidBy: "Alex",
+      splitWith: [],
+    }),
+    item({
+      id: "pair",
+      name: "Tickets",
+      amount: 40,
+      currency: "RM",
+      category: "Ticket",
+      paidBy: "Ben",
+      splitWith: ["Ben", "Cara"],
+    }),
+    item({
+      id: "yen",
+      name: "Taxi",
+      amount: 3930,
+      currency: "Yen",
+      category: "Transit",
+      paidBy: "Cara",
+      splitWith: ["Alex", "Cara"],
+    }),
+    item({
+      id: "alex-only",
+      name: "Souvenir",
+      amount: 20,
+      currency: "RM",
+      category: "Shop",
+      paidBy: "Alex",
+      splitWith: ["Alex"],
+    }),
+  ];
+
+  it("computes an equal RM share, including Yen converted at jpyPerRm", () => {
+    expect(personShareRm(items[0]!, "Alex", people)).toBe(30);
+    expect(personShareRm(items[0]!, "Ben", people)).toBe(30);
+    expect(personHasShare(items[1]!, "Alex", people)).toBe(false);
+    expect(personShareRm(items[1]!, "Alex", people)).toBeNull();
+    expect(personShareRm(items[1]!, "Cara", people)).toBe(20);
+    expect(personShareRm(items[2]!, "Alex", people, 39.3)).toBeCloseTo(50);
+    expect(personShareRm(items[3]!, "Alex", people)).toBe(20);
+  });
+
+  it("filters by payer without changing amounts", () => {
+    expect(filterSpendByPerson(items, "all", "payer", people).map((row) => row.id)).toEqual(
+      ["all", "pair", "yen", "alex-only"],
+    );
+    expect(filterSpendByPerson(items, "Alex", "payer", people).map((row) => row.id)).toEqual(
+      ["all", "alex-only"],
+    );
+    expect(filterSpendByPerson(items, "Ben", "payer", people).map((row) => row.id)).toEqual(
+      ["pair"],
+    );
+  });
+
+  it("filters by splitter and treats empty splitWith as everyone", () => {
+    expect(filterSpendByPerson(items, "Alex", "split", people).map((row) => row.id)).toEqual(
+      ["all", "yen", "alex-only"],
+    );
+    expect(filterSpendByPerson(items, "Ben", "split", people).map((row) => row.id)).toEqual(
+      ["all", "pair"],
+    );
+    expect(filterSpendByPerson(items, "Cara", "split", people).map((row) => row.id)).toEqual(
+      ["all", "pair", "yen"],
+    );
+  });
+
+  it("ANDs the category filter with the person filter", () => {
+    expect(
+      filterSpendItems(items, {
+        category: "Food",
+        person: "Ben",
+        mode: "split",
+        people,
+      }).map((row) => row.id),
+    ).toEqual(["all"]);
+    expect(
+      filterSpendItems(items, {
+        category: "Food",
+        person: "Ben",
+        mode: "payer",
+        people,
+      }).map((row) => row.id),
+    ).toEqual([]);
+    expect(
+      filterSpendItems(items, {
+        category: "Shop",
+        person: "Alex",
+        mode: "payer",
+        people,
+      }).map((row) => row.id),
+    ).toEqual(["alex-only"]);
+  });
+
+  it("sums that person's shares for the spent total", () => {
+    const alexItems = filterSpendByPerson(items, "Alex", "split", people);
+    // 90/3 + 3930/39.3/2 + 20 = 30 + 50 + 20
+    expect(sumPersonShareRm(alexItems, "Alex", people, 39.3)).toBeCloseTo(100);
+  });
+
+  it("uses share amounts for day and before-trip group totals", () => {
+    const days = [
+      day({ id: "d1", name: "Day 1", date: "2026-11-08" }),
+    ];
+    const dated = [
+      item({
+        id: "pre",
+        name: "eSIM",
+        amount: 43,
+        currency: "RM",
+        paidBy: "Alex",
+        splitWith: [],
+      }),
+      item({
+        id: "lunch",
+        name: "Lunch",
+        amount: 90,
+        currency: "RM",
+        dayIds: ["d1"],
+        start: "2026-11-08",
+        paidBy: "Ben",
+        splitWith: [],
+      }),
+    ];
+    const filtered = filterSpendByPerson(dated, "Alex", "split", people);
+    const groups = timelineGroups(filtered, days, 39.3, {
+      itemRm: (row) => personShareRm(row, "Alex", people, 39.3) ?? 0,
+    });
+    expect(groups.map((group) => group.key)).toEqual([
+      BEFORE_TRIP_KEY,
+      "2026-11-08",
+    ]);
+    expect(groups[0]!.totalRm).toBeCloseTo(43 / 3);
+    expect(groups[0]!.fullTotalRm).toBe(43);
+    expect(groups[1]!.totalRm).toBe(30);
+    expect(groups[1]!.fullTotalRm).toBe(90);
+  });
+});
+
+describe("spendFilterPeople", () => {
+  it("starts from editors and adds payer or splitter names that are not on the list", () => {
+    const items = [
+      item({ id: "a", amount: 10, currency: "RM", paidBy: "Dan", splitWith: ["Alex", "Dan"] }),
+    ];
+    expect(spendFilterPeople(["Cara", "Alex"], items)).toEqual(["Alex", "Cara", "Dan"]);
+    expect(spendFilterPeople([], [])).toEqual([]);
+  });
+});
+

@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Marker as LeafletMarker } from "leaflet";
 import { MapContainer, Marker, Popup, Polyline, ScaleControl, Tooltip, useMap } from "react-leaflet";
+import { MapAttribution } from "@/components/map-attribution";
 import "leaflet/dist/leaflet.css";
 import { useVisibleMapPins } from "@/components/hide-map-pin-button";
 import { MapStyleSwitch, useMapStyle } from "@/components/map-style-switch";
@@ -11,15 +13,29 @@ import {
   MapZoomButtons,
 } from "@/components/map-zoom-buttons";
 import {
+  MapLocateMeButton,
+  UserLocationMarker,
+  useUserLocationWatch,
+} from "@/components/user-location-layer";
+import {
+  WalkingNavClearButton,
+  WalkingNavLayer,
+  useWalkingNavRoute,
+  type WalkingNavDest,
+} from "@/components/walking-nav-layer";
+import type { UserLocationFix, UserLocationStatus } from "@/lib/user-location";
+import {
   foodPinIcon,
   labelPinIcon,
   otherPinIcon,
   sightNumberIcon,
   stayPinIcon,
 } from "@/lib/map-pin-icons";
-import { sightNumbersById } from "@/lib/schedule-pins";
+import { FlightMapArcs } from "@/components/flight-map-arc";
+import type { FlightRoute } from "@/lib/flight-path";
+import { isNumberedMapStop, sightNumbersById } from "@/lib/schedule-pins";
 import { CITY_COORDS } from "@/lib/types";
-import { googleMapsHref } from "@/lib/maps";
+import { googleMapsDeepLinkHref, googleMapsHref } from "@/lib/maps";
 import { useT } from "@/components/i18n-provider";
 
 export type DayMapPin = {
@@ -29,9 +45,47 @@ export type DayMapPin = {
   lng: number;
   kind: "sight" | "food" | "other" | "stay";
   label?: string;
+  mapsUrl?: string | null;
 };
 
+/** Focus request; `nonce` changes on every tap so re-tapping flies again. */
+export type DayMapFocus = { id: string; nonce: number };
+
 const NAME_ZOOM = 14;
+const FOCUS_ZOOM = 16;
+/** Wait for the schedule sheet snap transition before flying. */
+const FOCUS_DELAY_MS = 320;
+
+function FocusPin({
+  focus,
+  markers,
+}: {
+  focus: DayMapFocus | null | undefined;
+  markers: React.RefObject<Map<string, LeafletMarker>>;
+}) {
+  const map = useMap();
+  const id = focus?.id ?? null;
+  const nonce = focus?.nonce ?? 0;
+  useEffect(() => {
+    if (!id) return;
+    const marker = markers.current.get(id);
+    if (!marker) return;
+    const el = marker.getElement();
+    el?.classList.add("day-map-pin-focus");
+    const timer = window.setTimeout(() => {
+      map.invalidateSize();
+      map.flyTo(marker.getLatLng(), Math.max(map.getZoom(), FOCUS_ZOOM), {
+        duration: 0.6,
+      });
+      map.once("moveend", () => marker.openPopup());
+    }, FOCUS_DELAY_MS);
+    return () => {
+      window.clearTimeout(timer);
+      el?.classList.remove("day-map-pin-focus");
+    };
+  }, [map, markers, id, nonce]);
+  return null;
+}
 
 function MapZoomGate({ minZoom }: { minZoom: number }) {
   const map = useMap();
@@ -113,6 +167,11 @@ function DayMapCornerStack({
   onToggleLabels,
   fullscreen,
   onToggleFullscreen,
+  fix,
+  status,
+  navDest,
+  navRoute,
+  onClearNav,
 }: {
   styleId: ReturnType<typeof useMapStyle>["id"];
   onStyleChange: (id: ReturnType<typeof useMapStyle>["id"]) => void;
@@ -120,20 +179,35 @@ function DayMapCornerStack({
   onToggleLabels: () => void;
   fullscreen: boolean;
   onToggleFullscreen: () => void;
+  fix: UserLocationFix | null;
+  status: UserLocationStatus;
+  navDest: WalkingNavDest | null;
+  navRoute: ReturnType<typeof useWalkingNavRoute>;
+  onClearNav: () => void;
 }) {
   return (
     <>
-      <div className="pointer-events-none absolute right-2 top-[max(0.5rem,env(safe-area-inset-top,0px))] z-[1100]">
+      <UserLocationMarker fix={fix} />
+      {/* Bottom-right above attribution + home indicator; layers menu opens upward. */}
+      <div className="pointer-events-none absolute right-2 bottom-[max(2.75rem,calc(env(safe-area-inset-bottom,0px)+1.5rem))] z-[1100]">
         <div className="pointer-events-auto flex flex-col items-end gap-1.5">
           <MapStyleSwitch
             id={styleId}
             onChange={onStyleChange}
             compact
             size="sm"
+            menuAbove
             className="relative"
           />
           <MapFullscreenButton active={fullscreen} onToggle={onToggleFullscreen} />
           <MapLabelsButton hidden={hideLabels} onToggle={onToggleLabels} />
+          <MapLocateMeButton fix={fix} status={status} />
+          <WalkingNavClearButton
+            dest={navDest}
+            origin={fix}
+            route={navRoute}
+            onClear={onClearNav}
+          />
         </div>
       </div>
       {/* Joined ± above scale (bottom-left); hidden on coarse pointers (pinch zoom). */}
@@ -199,16 +273,21 @@ function FitPins({
 export default function DayMap({
   city,
   pins,
+  flights = [],
   className = "",
   fullscreen: fullscreenProp,
   onFullscreenChange,
+  focus,
 }: {
   city: string | null;
   pins: DayMapPin[];
+  flights?: FlightRoute[];
   className?: string;
   fullscreen?: boolean;
   onFullscreenChange?: (value: boolean) => void;
+  focus?: DayMapFocus | null;
 }) {
+  const markersRef = useRef(new Map<string, LeafletMarker>());
   const fallback = (city && CITY_COORDS[city]) || CITY_COORDS.Kyoto;
   const { t } = useT();
   const visiblePins = useVisibleMapPins(pins);
@@ -218,14 +297,40 @@ export default function DayMap({
   const sightPath = labeled
     ? []
     : visiblePins
-        .filter((pin) => pin.kind === "sight")
+        .filter((pin) => isNumberedMapStop(pin.kind))
         .map((pin) => [pin.lat, pin.lng] as [number, number]);
   const { id: styleId, pick, tiles } = useMapStyle();
   const [hideLabels, setHideLabels] = useState(false);
   const [internalFullscreen, setInternalFullscreen] = useState(false);
+  const { fix, status } = useUserLocationWatch();
+  /**
+   * Walking dest is explicit only (popup 「步行去」). Agenda focus still
+   * flies/opens the pin via FocusPin — it must not start routing.
+   */
+  const [pinDestId, setPinDestId] = useState<string | null>(null);
   const controlled = onFullscreenChange != null;
   const fullscreen = controlled ? Boolean(fullscreenProp) : internalFullscreen;
   const overlay = !controlled && fullscreen;
+
+  const navDestId =
+    pinDestId && visiblePins.some((pin) => pin.id === pinDestId)
+      ? pinDestId
+      : null;
+
+  const navDest: WalkingNavDest | null = useMemo(() => {
+    if (!navDestId) return null;
+    const pin = visiblePins.find((p) => p.id === navDestId);
+    if (!pin) return null;
+    return { id: pin.id, name: pin.name, lat: pin.lat, lng: pin.lng };
+  }, [navDestId, visiblePins]);
+
+  const navRoute = useWalkingNavRoute(fix, navDest);
+  const clearNav = useCallback(() => {
+    setPinDestId(null);
+  }, []);
+  const selectNav = useCallback((pin: DayMapPin) => {
+    setPinDestId(pin.id);
+  }, []);
 
   function toggleFullscreen() {
     const next = !fullscreen;
@@ -257,6 +362,7 @@ export default function DayMap({
       }
     >
       <MapContainer
+        attributionControl={false}
         center={fallback}
         zoom={12}
         className="h-full w-full"
@@ -267,13 +373,17 @@ export default function DayMap({
         <ScaleControl position="bottomleft" imperial={false} maxWidth={80} />
         <MapZoomGate minZoom={NAME_ZOOM} />
         <FitPins positions={path} fallback={fallback} />
+        <FocusPin focus={focus} markers={markersRef} />
+        <FlightMapArcs flights={flights} pins={pins} />
         <MapTiles styleId={styleId} tiles={tiles} />
+        <MapAttribution />
         {sightPath.length > 1 ? (
           <Polyline
             positions={sightPath}
-            pathOptions={{ color: "var(--accent)", weight: 3, opacity: 0.85 }}
+            pathOptions={{ color: "var(--accent)", weight: 3, opacity: 0.55 }}
           />
         ) : null}
+        <WalkingNavLayer dest={navDest} route={navRoute} />
         {visiblePins.map((pin) => {
           const icon = pin.kind === "stay"
             ? stayPinIcon()
@@ -281,14 +391,30 @@ export default function DayMap({
             ? labelPinIcon(pin.label)
             : pin.kind === "food"
               ? foodPinIcon()
-              : pin.kind === "sight"
+              : isNumberedMapStop(pin.kind)
                 ? sightNumberIcon(sightNumbers.get(pin.id) ?? 0)
                 : otherPinIcon();
+          const mapsWebHref = googleMapsHref({
+            name: pin.name,
+            lat: pin.lat,
+            lng: pin.lng,
+            mapsUrl: pin.mapsUrl,
+          });
+          const mapsAppHref = googleMapsDeepLinkHref({
+            name: pin.name,
+            lat: pin.lat,
+            lng: pin.lng,
+            mapsUrl: pin.mapsUrl,
+          });
           return (
             <Marker
               key={pin.id}
               position={[pin.lat, pin.lng]}
               icon={icon}
+              ref={(marker) => {
+                if (marker) markersRef.current.set(pin.id, marker);
+                else markersRef.current.delete(pin.id);
+              }}
             >
               <Tooltip
                 permanent
@@ -301,23 +427,41 @@ export default function DayMap({
                 {pin.name}
               </Tooltip>
               <Popup>
-                <div className="text-sm">
+                <div className="min-w-0 max-w-[240px] text-sm">
                   {pin.label ? (
-                    <p className="text-xs font-semibold text-ink-muted">{pin.label}</p>
+                    <p className="min-w-0 break-words [overflow-wrap:anywhere] text-xs font-semibold text-ink-muted">{pin.label}</p>
                   ) : null}
-                  <p className="font-medium">{pin.name}</p>
-                  <a
-                    href={googleMapsHref({
-                      name: pin.name,
-                      lat: pin.lat,
-                      lng: pin.lng,
-                    })}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-ink-muted no-underline"
-                  >
-                    {t("map.openTitle")}
-                  </a>
+                  <p className="min-w-0 break-words [overflow-wrap:anywhere] font-medium">{pin.name}</p>
+                  <div className="mt-1 flex items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      className="border-0 bg-transparent p-0 text-left text-[#1a73e8] underline-offset-2 hover:underline"
+                      onClick={() => selectNav(pin)}
+                    >
+                      {t("map.walkHere")}
+                    </button>
+                    <a
+                      href={mapsWebHref}
+                      className="text-ink-muted no-underline"
+                      onClick={(event) => {
+                        // Hand off to Google Maps app (avoid PWA in-app browser sheet).
+                        if (mapsAppHref === mapsWebHref) return;
+                        event.preventDefault();
+                        const started = Date.now();
+                        window.location.href = mapsAppHref;
+                        window.setTimeout(() => {
+                          if (
+                            document.visibilityState === "visible" &&
+                            Date.now() - started < 1600
+                          ) {
+                            window.location.href = mapsWebHref;
+                          }
+                        }, 650);
+                      }}
+                    >
+                      {t("map.openTitle")}
+                    </a>
+                  </div>
                 </div>
               </Popup>
             </Marker>
@@ -330,6 +474,11 @@ export default function DayMap({
           onToggleLabels={() => setHideLabels((value) => !value)}
           fullscreen={fullscreen}
           onToggleFullscreen={toggleFullscreen}
+          fix={fix}
+          status={status}
+          navDest={navDest}
+          navRoute={navRoute}
+          onClearNav={clearNav}
         />
       </MapContainer>
     </div>

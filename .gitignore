@@ -41,6 +41,3 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# local Notion schema tooling (clone of makenotion/notion-as-code-template)
-# not part of the app runtime; keep your own checkout at notion/
-/notion/

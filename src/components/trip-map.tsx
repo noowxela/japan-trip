@@ -18,6 +18,7 @@ import {
   ScaleControl,
   useMap,
 } from "react-leaflet";
+import { MapAttribution } from "@/components/map-attribution";
 import "leaflet/dist/leaflet.css";
 import { CityKanji } from "@/components/city-kanji";
 import { useVisibleMapPins } from "@/components/hide-map-pin-button";
@@ -295,8 +296,8 @@ function ClusteredDayMarkers({
                 autoPanPaddingTopLeft={padTopLeft}
                 autoPanPaddingBottomRight={padBottomRight}
               >
-                <div className="max-w-[240px] text-sm">
-                  <p className="font-medium">{pin.name}</p>
+                <div className="max-w-[240px] min-w-0 text-sm">
+                  <p className="min-w-0 break-words [overflow-wrap:anywhere] font-medium">{pin.name}</p>
                   {pin.visited ? (
                     <p className="text-xs text-ok">
                       ✓ {t("places.filterVisited")}
@@ -578,6 +579,7 @@ export default function TripMap({ hops, hopPoints, pins, days }: Props) {
       }
     >
       <MapContainer
+        attributionControl={false}
         center={mapCenter}
         zoom={6}
         className="h-full w-full"
@@ -599,6 +601,7 @@ export default function TripMap({ hops, hopPoints, pins, days }: Props) {
           padBottomRight={padBottomRight}
         />
         <MapTiles styleId={styleId} tiles={tiles} />
+        <MapAttribution />
         {hopCoords.length > 1 ? (
           <Polyline
             positions={hopCoords}
@@ -627,8 +630,8 @@ export default function TripMap({ hops, hopPoints, pins, days }: Props) {
                 autoPanPaddingTopLeft={padTopLeft}
                 autoPanPaddingBottomRight={padBottomRight}
               >
-                <div className="max-w-[240px] text-sm">
-                  <p className="font-medium">{pin.name}</p>
+                <div className="max-w-[240px] min-w-0 text-sm">
+                  <p className="min-w-0 break-words [overflow-wrap:anywhere] font-medium">{pin.name}</p>
                   {pin.visited ? (
                     <p className="text-xs text-ok">
                       ✓ {t("places.filterVisited")}
@@ -720,7 +723,7 @@ export default function TripMap({ hops, hopPoints, pins, days }: Props) {
                             }`}
                           >
                             <span className="min-w-0">
-                              <span className="block truncate font-medium">
+                              <span className="block min-w-0 break-words [overflow-wrap:anywhere] font-medium">
                                 {day.name}
                               </span>
                               <span className="type-meta text-ink-muted">

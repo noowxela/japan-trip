@@ -1,10 +1,16 @@
 export const OUTBOX_MAX_ATTEMPTS = 5;
 
-export type OutboxKind = "toggleVisited" | "addSpend" | "togglePrep";
+export type OutboxKind = "toggleVisited" | "toggleSkipped" | "addSpend" | "togglePrep";
 
 export type ToggleVisitedPayload = {
   id: string;
   visited: boolean;
+};
+
+export type ToggleSkippedPayload = {
+  id: string;
+  skipped: boolean;
+  kind: "place" | "transit";
 };
 
 export type TogglePrepPayload = {
@@ -25,12 +31,15 @@ export type AddSpendPayload = {
   paidBy: string;
   /** Missing on entries queued before SDD 016; empty = everyone. */
   splitWith?: string[];
+  /** Optional schedule Place id for a food expense link. */
+  placeId?: string;
   dayDate: string;
   time: string;
 };
 
 export type OutboxPayload =
   | ToggleVisitedPayload
+  | ToggleSkippedPayload
   | TogglePrepPayload
   | AddSpendPayload;
 
@@ -66,6 +75,14 @@ export function buildToggleVisitedPayload(
   return { id, visited };
 }
 
+export function buildToggleSkippedPayload(
+  id: string,
+  skipped: boolean,
+  kind: "place" | "transit",
+): ToggleSkippedPayload {
+  return { id, skipped, kind };
+}
+
 export function buildTogglePrepPayload(id: string, done: boolean): TogglePrepPayload {
   return { id, done };
 }
@@ -88,6 +105,7 @@ export function buildAddSpendPayload(
     dayId: input.dayId,
     paidBy: input.paidBy,
     splitWith: input.splitWith ?? [],
+    placeId: input.placeId ?? "",
     dayDate: input.dayDate,
     time: input.time,
   };

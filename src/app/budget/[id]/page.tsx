@@ -12,14 +12,17 @@ import { getLocale } from "@/lib/i18n/server";
 import { NotionNotReady } from "@/components/notion-not-ready";
 import { notionReady } from "@/lib/notion";
 import { spendWhen } from "@/lib/spend";
-import { getDays, getEditorNames, getSpendItem } from "@/lib/trip";
+import { linkedPlaceLabel } from "@/lib/spend-place";
+import { getDays, getEditorNames, getPlaces, getSpendItem } from "@/lib/trip";
 
 export const dynamic = "force-dynamic";
 
 export default async function ExpenseDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ focus?: string }>;
 }) {
   if (!notionReady()) {
     return <NotionNotReady />;
@@ -27,13 +30,16 @@ export default async function ExpenseDetailPage({
 
   const locale = await getLocale();
   const { id } = await params;
+  const focus = await searchParams;
+  const focusCategory = focus.focus === "category";
   if (id === "new") redirect("/budget");
-  const [item, days, editor, fx, people] = await Promise.all([
+  const [item, days, editor, fx, people, places] = await Promise.all([
     getSpendItem(id),
     getDays(),
     getEditorSession(),
     getMyrToJpy(),
     getEditorNames(),
+    getPlaces(),
   ]);
   if (!item) notFound();
 
@@ -50,6 +56,15 @@ export default async function ExpenseDetailPage({
     },
     { label: t(locale, "form.time"), value: time || "—" },
   ];
+  const placeLabel = linkedPlaceLabel(item, places);
+  if (placeLabel) {
+    rows.splice(1, 0, {
+      label: t(locale, "form.foodPlace"),
+      value: placeLabel.missing
+        ? t(locale, "form.foodPlaceMissing")
+        : placeLabel.name,
+    });
+  }
 
   return (
     <PageShell className="pt-4">
@@ -57,9 +72,10 @@ export default async function ExpenseDetailPage({
         <SpendCategoryIcon category={item.category} />
         <div className="min-w-0 flex-1">
           <PageHeader title={item.name} />
-          <p className="mt-0.5 truncate text-[12px] text-ink-muted">
+          <p className="mt-0.5 min-w-0 break-words [overflow-wrap:anywhere] text-[12px] text-ink-muted">
             {[
               labelCategory(locale, item.category),
+              placeLabel && !placeLabel.missing ? placeLabel.name : null,
               item.paidBy,
               dayName,
             ]
@@ -70,7 +86,13 @@ export default async function ExpenseDetailPage({
       </div>
 
       {editor.canEdit ? (
-        <SpendForm item={item} days={days} people={people} />
+        <SpendForm
+          item={item}
+          days={days}
+          people={people}
+          places={places}
+          focusCategory={focusCategory}
+        />
       ) : (
         <div className="overflow-hidden rounded-xl border border-line/80 bg-surface">
           <div className="flex min-h-9 items-center justify-between gap-3 border-b border-line/70 px-3">
@@ -84,10 +106,10 @@ export default async function ExpenseDetailPage({
           {rows.map((row) => (
             <div
               key={row.label}
-              className="flex min-h-9 items-center justify-between gap-3 border-b border-line/70 px-3 last:border-b-0"
+              className="flex min-h-9 items-start justify-between gap-3 border-b border-line/70 px-3 py-1.5 last:border-b-0"
             >
               <p className="shrink-0 text-[12px] text-ink-muted">{row.label}</p>
-              <p className="min-w-0 truncate text-right text-[14px] text-ink">
+              <p className="min-w-0 break-words [overflow-wrap:anywhere] text-right text-[14px] text-ink">
                 {row.value}
               </p>
             </div>
@@ -95,7 +117,7 @@ export default async function ExpenseDetailPage({
           <div className="px-3 py-2.5">
             <p className="text-[12px] text-ink-muted">{t(locale, "form.notes")}</p>
             {item.notes ? (
-              <p className="mt-1 whitespace-pre-wrap text-[14px] text-ink">
+              <p className="mt-1 min-w-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-[14px] text-ink">
                 {item.notes}
               </p>
             ) : (

@@ -1,3 +1,4 @@
+import { EsimSection } from "@/components/esim-section";
 import { PrepChecklist } from "@/components/prep-checklist";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/compact";
@@ -55,6 +56,7 @@ export default async function PrepPage() {
         <p className="-mt-1 text-[12px] text-ink-muted">
           {t(locale, "prep.subtitle")}
         </p>
+        <EsimSection />
         {prepReady ? (
           <PrepChecklist items={items} />
         ) : (

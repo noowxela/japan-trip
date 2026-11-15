@@ -19,6 +19,7 @@ import {
   urlOf,
 } from "@/lib/notion";
 import { spendDuplicateMatches } from "@/lib/outbox-core";
+import { ingestDuplicateMatches } from "@/lib/spend-ingest";
 import { parseSpendCurrency } from "@/lib/spend";
 import type {
   Place,
@@ -32,9 +33,11 @@ import { CITY_COORDS } from "@/lib/types";
 
 export {
   buildAgenda,
+  isStayCheckoutDay,
   nextAgendaItem,
   pickFocusDay,
   staysForDate,
+  staysForOverviewDate,
   tripPhase,
 } from "@/lib/trip-core";
 
@@ -72,6 +75,7 @@ function parsePlace(page: Awaited<ReturnType<typeof queryAll>>[number]): Place {
     lat: numberOf(page, "Lat"),
     lng: numberOf(page, "Lng"),
     pending: checkboxOf(page, "Pending"),
+    skipped: checkboxOf(page, "Skipped"),
   };
 }
 
@@ -84,6 +88,9 @@ function parseStay(page: Awaited<ReturnType<typeof queryAll>>[number]): Stay {
     address: richTextOf(page, "Address"),
     bookingUrl: urlOf(page, "Booking URL"),
     confirmation: richTextOf(page, "Confirmation"),
+    mapsUrl: urlOf(page, "Maps URL"),
+    lat: numberOf(page, "Lat"),
+    lng: numberOf(page, "Lng"),
   };
 }
 
@@ -99,6 +106,9 @@ function parseTransit(page: Awaited<ReturnType<typeof queryAll>>[number]): Trans
     dayIds: relationIdsOf(page, "Day"),
     start: dateOf(page, "Start") ?? dateOf(page, "Date"),
     order: numberOf(page, "Order"),
+    visited: checkboxOf(page, "Visited"),
+    skipped: checkboxOf(page, "Skipped"),
+    notes: richTextOf(page, "Notes"),
   };
 }
 
@@ -115,6 +125,7 @@ function parseSpend(page: Awaited<ReturnType<typeof queryAll>>[number]): SpendIt
     start: dateOf(page, "Start"),
     paidBy: selectOf(page, "Paid by"),
     splitWith: multiSelectOf(page, "Split with"),
+    placeId: relationIdsOf(page, "Place")[0] ?? null,
   };
 }
 
@@ -257,6 +268,39 @@ export async function findSpendDuplicate(input: {
   return null;
 }
 
+/** Uncached spend scan for Apple Pay / Shortcuts ingest retries. */
+export async function findIngestDuplicate(input: {
+  name: string;
+  amount: number;
+  currency: string;
+  dayId: string;
+  nowMs?: number;
+}): Promise<SpendItem | null> {
+  const pages = await queryAll(ds("SPEND"));
+  for (const page of pages) {
+    const item = parseSpend(page);
+    if (
+      ingestDuplicateMatches({
+        name: input.name,
+        amount: input.amount,
+        currency: input.currency,
+        dayId: input.dayId,
+        nowMs: input.nowMs,
+        candidate: {
+          name: item.name,
+          amount: item.amount,
+          currency: item.currency,
+          dayIds: item.dayIds,
+          createdTime: page.created_time,
+        },
+      })
+    ) {
+      return item;
+    }
+  }
+  return null;
+}
+
 export async function getDay(id: string) {
   const days = await getDays();
   return days.find((day) => day.id === id) ?? null;
@@ -339,6 +383,7 @@ export function unvisitedFromPastDays(
     (place) =>
       !place.visited &&
       !place.pending &&
+      !place.skipped &&
       place.dayIds.some((id) => pastDayIds.has(id)),
   );
 }

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 const variants = {
   accent: "border-accent text-accent",
   ok: "border-ok text-ok",
+  muted: "border-ink-muted text-ink-muted",
 } as const;
 
 export function HankoStamp({

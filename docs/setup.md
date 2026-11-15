@@ -4,15 +4,6 @@ Full install, Notion bootstrap, run, and push setup live in the [README](../READ
 
 ## Before deploying a schema change
 
-`notion/` is **not** committed — it is a local checkout of the upstream
-[makenotion/notion-as-code-template](https://github.com/makenotion/notion-as-code-template).
-Clone it before running any schema script:
-
-```bash
-git clone https://github.com/makenotion/notion-as-code-template.git notion
-npm ci --prefix notion
-```
-
 New Notion columns ship through `notion/scripts/migrate-v2.mjs`, which only adds missing columns:
 
 ```bash

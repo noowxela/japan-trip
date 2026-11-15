@@ -13,6 +13,7 @@ export {
   compactSheetActionClass,
   compactTextareaClass,
   compactTitleClass,
+  textWrapClass,
 } from "@/components/compact/classes";
 export {
   ActionSheet,

@@ -7,6 +7,7 @@ import {
   tripPhase,
 } from "@/lib/trip-core";
 import type { TripSnapshot } from "@/lib/trip-cache";
+import { isEffectivelySkipped } from "@/lib/schedule-drawer";
 import type { AgendaItem, Place, Stay, Transit, TripDay } from "@/lib/types";
 
 export type SchedulePin = {
@@ -16,6 +17,7 @@ export type SchedulePin = {
   lng: number;
   kind: "sight" | "food" | "other" | "stay";
   label?: string;
+  mapsUrl?: string | null;
 };
 
 export type DayScheduleSlice = {
@@ -27,10 +29,30 @@ export type DayScheduleSlice = {
   places: Place[];
 };
 
+/** Agenda rows that can focus the inline day map: placed, located, not hidden. */
+export function isMapFocusable(
+  item: AgendaItem,
+  hiddenIds: ReadonlySet<string>,
+  skippedOverlay: Readonly<Record<string, boolean>> = {},
+): boolean {
+  return (
+    item.kind === "place" &&
+    item.lat != null &&
+    item.lng != null &&
+    !hiddenIds.has(item.id) &&
+    !isEffectivelySkipped(item, skippedOverlay)
+  );
+}
+
 export function pinKind(type: string | null): SchedulePin["kind"] {
   if (type === "Food" || type === "Cafe") return "food";
   if (type === "Sight") return "sight";
   return "other";
+}
+
+/** Day-map 1..n stops: Sight plus Shop/Other (food/stay keep their own icons). */
+export function isNumberedMapStop(kind: string): boolean {
+  return kind === "sight" || kind === "other";
 }
 
 export function sightNumbersById(
@@ -39,16 +61,24 @@ export function sightNumbersById(
   const numbers = new Map<string, number>();
   let n = 0;
   for (const pin of pins) {
-    if (pin.label || pin.kind !== "sight") continue;
+    if (pin.label || !isNumberedMapStop(pin.kind)) continue;
     numbers.set(pin.id, ++n);
   }
   return numbers;
 }
 
-export function sightNumbersFromAgenda(agenda: AgendaItem[]): Map<string, number> {
+export function sightNumbersFromAgenda(
+  agenda: AgendaItem[],
+  skippedOverlay: Readonly<Record<string, boolean>> = {},
+): Map<string, number> {
   return sightNumbersById(
     agenda.flatMap((item) => {
-      if (item.kind !== "place" || item.lat == null || item.lng == null) {
+      if (
+        item.kind !== "place" ||
+        item.lat == null ||
+        item.lng == null ||
+        isEffectivelySkipped(item, skippedOverlay)
+      ) {
         return [];
       }
       return [{ id: item.id, kind: pinKind(item.chip) }];
@@ -59,10 +89,16 @@ export function sightNumbersFromAgenda(agenda: AgendaItem[]): Map<string, number
 export function pinsFromAgenda(
   agenda: AgendaItem[],
   pending: Place[],
+  skippedOverlay: Readonly<Record<string, boolean>> = {},
 ): SchedulePin[] {
   return [
     ...agenda.flatMap((item) => {
-      if (item.kind !== "place" || item.lat == null || item.lng == null) {
+      if (
+        item.kind !== "place" ||
+        item.lat == null ||
+        item.lng == null ||
+        isEffectivelySkipped(item, skippedOverlay)
+      ) {
         return [];
       }
       return [
@@ -72,6 +108,7 @@ export function pinsFromAgenda(
           lat: item.lat,
           lng: item.lng,
           kind: pinKind(item.chip),
+          mapsUrl: item.mapsUrl ?? null,
         },
       ];
     }),
@@ -85,6 +122,7 @@ export function pinsFromAgenda(
           lat: coords.lat,
           lng: coords.lng,
           kind: pinKind(place.type),
+          mapsUrl: place.mapsUrl ?? null,
         },
       ];
     }),
@@ -100,7 +138,10 @@ function earliestDayIndex(place: Place, days: TripDay[]) {
   return Number.isFinite(best) ? best : null;
 }
 
-export function stayPinsForDate(stays: Stay[], date: string | null): SchedulePin[] {
+export function stayPinsForDate(
+  stays: Stay[],
+  date: string | null,
+): SchedulePin[] {
   return staysForDate(stays, date).flatMap((stay) => {
     const coords = coordsOfStay(stay);
     if (!coords) return [];
@@ -112,6 +153,7 @@ export function stayPinsForDate(stays: Stay[], date: string | null): SchedulePin
         lng: coords.lng,
         kind: "stay" as const,
         label: "Stay",
+        mapsUrl: stay.mapsUrl ?? null,
       },
     ];
   });
@@ -122,12 +164,21 @@ export function mapPinsForDay(
   pending: Place[],
   stays: Stay[] = [],
   date: string | null = null,
+  skippedOverlay: Readonly<Record<string, boolean>> = {},
 ): SchedulePin[] {
-  return [...pinsFromAgenda(agenda, pending), ...stayPinsForDate(stays, date)];
+  return [
+    ...pinsFromAgenda(agenda, pending, skippedOverlay),
+    ...stayPinsForDate(stays, date),
+  ];
 }
 
-export function pinsForAllDays(days: TripDay[], places: Place[]): SchedulePin[] {
+export function pinsForAllDays(
+  days: TripDay[],
+  places: Place[],
+  skippedOverlay: Readonly<Record<string, boolean>> = {},
+): SchedulePin[] {
   return places.flatMap((place) => {
+    if (isEffectivelySkipped(place, skippedOverlay)) return [];
     const dayIndex = earliestDayIndex(place, days);
     if (dayIndex == null) return [];
     const coords = coordsOfPlace(place);
@@ -140,6 +191,7 @@ export function pinsForAllDays(days: TripDay[], places: Place[]): SchedulePin[] 
         lng: coords.lng,
         kind: pinKind(place.type),
         label: `D${dayIndex + 1}`,
+        mapsUrl: place.mapsUrl ?? null,
       },
     ];
   });

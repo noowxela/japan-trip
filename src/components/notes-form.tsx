@@ -22,7 +22,7 @@ export function NotesForm({ id, notes }: { id: string; notes: string }) {
         type="button"
         onClick={() => setExpanded((value) => !value)}
         aria-expanded={expanded}
-        className={`mt-3 block w-full text-left text-sm text-ink-muted ${
+        className={`mt-3 block w-full min-w-0 break-words [overflow-wrap:anywhere] text-left text-sm text-ink-muted ${
           expanded ? "whitespace-pre-wrap" : "line-clamp-2"
         }`}
       >
@@ -36,8 +36,8 @@ export function NotesForm({ id, notes }: { id: string; notes: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`mt-3 block w-full text-left text-sm text-ink-muted hover:text-ink ${
-          preview ? "line-clamp-2" : "truncate"
+        className={`mt-3 block w-full min-w-0 break-words [overflow-wrap:anywhere] text-left text-sm text-ink-muted hover:text-ink ${
+          preview ? "line-clamp-2" : ""
         }`}
       >
         {preview || t("notes.add")}

@@ -4,6 +4,7 @@ import nextDynamic from "next/dynamic";
 import { useMemo, useState, useTransition } from "react";
 import { addPlace, searchPlaces } from "@/app/actions";
 import { ActionForm } from "@/components/action-form";
+import { ClearableInput } from "@/components/clearable-input";
 import { ChipGroup } from "@/components/chip-group";
 import { DatePicker } from "@/components/date-picker";
 import { useT } from "@/components/i18n-provider";
@@ -13,6 +14,7 @@ import { dateKey, tokyoToday, tokyoWallDateTime } from "@/lib/format";
 import { labelType } from "@/lib/i18n/dictionaries";
 import { PLACE_TYPES, type TripDay } from "@/lib/types";
 import type { PlaceSearchHit } from "@/lib/geocode";
+import { extractGoogleMapsUrl } from "@/lib/maps-url";
 
 const PlacePreviewMap = nextDynamic(
   () => import("@/components/place-preview-map").then((mod) => mod.PlacePreviewMap),
@@ -62,7 +64,12 @@ export function AddPlaceForm({
   const [name, setName] = useState("");
   const [mapsUrl, setMapsUrl] = useState("");
   const [type, setType] = useState<(typeof PLACE_TYPES)[number]>("Sight");
-  const [startDate, setStartDate] = useState(tokyoToday());
+  const [startDate, setStartDate] = useState(() => {
+    const matched = defaultDayId
+      ? days.find((day) => day.id === defaultDayId)
+      : undefined;
+    return dateKey(matched?.date ?? null) ?? tokyoToday();
+  });
   const [startTime, setStartTime] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
   const [error, setError] = useState("");
@@ -81,22 +88,63 @@ export function AddPlaceForm({
     return set;
   }, [days]);
 
-  function onSearch() {
-    setError("");
-    startSearch(async () => {
-      const hits = await searchPlaces(query, city);
-      setResults(hits);
-      if (hits.length === 0) setError(t("form.noMapResults"));
-    });
-  }
-
-  function pick(hit: PlaceSearchHit) {
+  function pick(hit: PlaceSearchHit, opts?: { keepName?: boolean }) {
     setPicked(hit);
-    setName(hit.name);
+    if (!opts?.keepName || !name.trim()) setName(hit.name);
     setMapsUrl(hit.mapsUrl);
     const guessed = guessType(hit);
     if (guessed) setType(guessed);
     setResults([]);
+    setError("");
+  }
+
+  function applyHits(hits: PlaceSearchHit[], raw: string) {
+    if (hits.length === 1 && extractGoogleMapsUrl(raw)) {
+      pick(hits[0]);
+      return;
+    }
+    setResults(hits);
+    if (hits.length === 0) {
+      setError(
+        extractGoogleMapsUrl(raw) ? t("form.mapsLinkFailed") : t("form.noMapResults"),
+      );
+    }
+  }
+
+  function runSearch(raw = query) {
+    const value = raw.trim();
+    setError("");
+    startSearch(async () => {
+      const hits = await searchPlaces(value, city);
+      applyHits(hits, value);
+    });
+  }
+
+  function onSearch() {
+    runSearch();
+  }
+
+  function resolveMapsField(raw: string) {
+    const value = extractGoogleMapsUrl(raw);
+    if (!value) return;
+    setError("");
+    startSearch(async () => {
+      const hits = await searchPlaces(value, city);
+      if (hits[0]) pick(hits[0], { keepName: true });
+      else setError(t("form.mapsLinkFailed"));
+    });
+  }
+
+  function clearSearch() {
+    setQuery("");
+    setResults([]);
+    setError("");
+  }
+
+  function clearMapsLink() {
+    setMapsUrl("");
+    setPicked(null);
+    setError("");
   }
 
   const shellClass = embedded
@@ -105,12 +153,10 @@ export function AddPlaceForm({
       ? "grid w-full gap-3 notebook-card p-4"
       : `${formShellClass} grid gap-3 notebook-card p-4`;
 
+  // Date alone must not become Start: day linkage uses the Day relation, and a
+  // date-only Start sorts ahead of every timed stop (see compareAgendaItems).
   const startValue =
-    startDate && startTime
-      ? tokyoWallDateTime(startDate, startTime)
-      : startDate
-        ? startDate
-        : "";
+    startDate && startTime ? tokyoWallDateTime(startDate, startTime) : "";
 
   return (
     <div className={shellClass}>
@@ -120,17 +166,28 @@ export function AddPlaceForm({
           {t("form.searchPlaces")}
         </span>
         <div className="flex gap-2">
-          <input
+          <ClearableInput
             value={query}
             onChange={(event) => setQuery(event.target.value)}
+            onPaste={(event) => {
+              const pasted = event.clipboardData.getData("text");
+              const mapsUrl = extractGoogleMapsUrl(pasted);
+              if (!mapsUrl) return;
+              event.preventDefault();
+              setQuery(mapsUrl);
+              runSearch(mapsUrl);
+            }}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();
                 onSearch();
               }
             }}
+            onClear={clearSearch}
+            clearLabel={t("form.clearMapsLink")}
             placeholder={t("form.searchMapHint")}
-            className={`min-w-0 flex-1 ${fieldClass}`}
+            className={fieldClass}
+            wrapperClassName="min-w-0 flex-1"
           />
           <button
             type="button"
@@ -160,7 +217,7 @@ export function AddPlaceForm({
         </ul>
       ) : null}
       {picked ? (
-        <div className="space-y-2">
+        <div className="relative z-0 isolate space-y-2">
           <PlacePreviewMap lat={picked.lat} lng={picked.lng} />
           <p className="text-xs text-ink-muted">{picked.displayName}</p>
         </div>
@@ -262,11 +319,23 @@ export function AddPlaceForm({
                 <span className="text-[12px] font-medium text-ink-muted">
                   {t("form.mapsUrl")}
                 </span>
-                <input
+                <ClearableInput
                   name="mapsUrl"
                   type="url"
                   value={mapsUrl}
                   onChange={(event) => setMapsUrl(event.target.value)}
+                  onBlur={(event) => resolveMapsField(event.target.value)}
+                  onPaste={(event) => {
+                    const pasted = event.clipboardData.getData("text");
+                    const mapsUrl = extractGoogleMapsUrl(pasted);
+                    if (!mapsUrl) return;
+                    event.preventDefault();
+                    setMapsUrl(mapsUrl);
+                    resolveMapsField(mapsUrl);
+                  }}
+                  onClear={clearMapsLink}
+                  clearLabel={t("form.clearMapsLink")}
+                  placeholder={t("form.mapsUrlHint")}
                   className={fieldClass}
                 />
               </label>

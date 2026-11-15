@@ -16,12 +16,16 @@ import {
   type AddSpendPayload,
   type OutboxEntry,
   type TogglePrepPayload,
+  type ToggleSkippedPayload,
   type ToggleVisitedPayload,
 } from "@/lib/outbox-core";
 
-function placeNameFromCache(id: string): string | null {
-  const place = readTripCache()?.places.find((item) => item.id === id);
-  return place?.name?.trim() || null;
+function itemNameFromCache(id: string): string | null {
+  const cache = readTripCache();
+  const place = cache?.places.find((item) => item.id === id);
+  if (place?.name?.trim()) return place.name.trim();
+  const transit = cache?.transit.find((item) => item.id === id);
+  return transit?.name?.trim() || null;
 }
 
 function labelForEntry(
@@ -30,7 +34,7 @@ function labelForEntry(
 ) {
   if (entry.kind === "toggleVisited") {
     const payload = entry.payload as ToggleVisitedPayload;
-    const name = placeNameFromCache(payload.id);
+    const name = itemNameFromCache(payload.id);
     if (name) {
       return t(
         payload.visited
@@ -43,6 +47,23 @@ function labelForEntry(
       state: payload.visited
         ? t("places.filterVisited")
         : t("places.notVisited"),
+    });
+  }
+  if (entry.kind === "toggleSkipped") {
+    const payload = entry.payload as ToggleSkippedPayload;
+    const name = itemNameFromCache(payload.id);
+    if (name) {
+      return t(
+        payload.skipped
+          ? "offline.kindSkippedMark"
+          : "offline.kindSkippedUnmark",
+        { name },
+      );
+    }
+    return t("offline.kindSkipped", {
+      state: payload.skipped
+        ? t("agenda.markSkipped")
+        : t("agenda.markUnskipped"),
     });
   }
   if (entry.kind === "togglePrep") {

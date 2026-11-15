@@ -88,7 +88,7 @@ export default function OfflineFallbackPage() {
   const savedTime = formatTime(view?.savedAt ?? null) ?? "--:--";
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col gap-3 px-4 py-4 pb-24 md:max-w-5xl md:px-8">
+    <main className="mx-auto flex min-h-full w-full min-w-0 max-w-xl flex-col gap-3 overflow-x-clip px-4 py-4 pb-24 md:max-w-5xl md:px-8">
       <PageHeader
         eyebrow={t("offline.pageEyebrow")}
         title={t("offline.pageTitle")}

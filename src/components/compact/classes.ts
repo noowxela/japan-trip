@@ -1,16 +1,19 @@
 /** Shared compact type / control classes (Schedule density). */
 
+/** Long titles/names wrap instead of overflowing or ellipsizing. */
+export const textWrapClass = "min-w-0 break-words [overflow-wrap:anywhere]";
+
 export const compactEyebrowClass =
   "text-[11px] font-medium leading-4 text-ink-muted";
 
 export const compactTitleClass =
-  "text-[17px] font-semibold leading-6 tracking-tight text-ink sm:text-[18px]";
+  `${textWrapClass} text-[17px] font-semibold leading-6 tracking-tight text-ink sm:text-[18px]`;
 
 export const compactPrimaryClass =
-  "truncate text-[14px] font-medium leading-5 text-ink";
+  `${textWrapClass} text-[14px] font-medium leading-5 text-ink`;
 
 export const compactMetaClass =
-  "truncate text-[12px] leading-4 text-ink-muted";
+  `${textWrapClass} text-[12px] leading-4 text-ink-muted`;
 
 export const compactLabelClass =
   "text-[12px] font-medium leading-4 text-ink-muted";
@@ -39,4 +42,4 @@ export const compactGroupClass =
   "overflow-hidden rounded-xl border border-line/80 bg-surface";
 
 export const compactPageGapClass =
-  "mx-auto flex w-full min-w-0 max-w-xl flex-col gap-3 px-4 py-4 pb-[calc(var(--tab-bar-height,4.25rem)+1.25rem)] pt-[max(1rem,env(safe-area-inset-top))] md:max-w-5xl md:px-8";
+  "mx-auto flex w-full min-w-0 max-w-xl flex-col gap-3 overflow-x-hidden px-4 py-4 pb-[calc(var(--tab-bar-height,4.25rem)+1.25rem)] pt-[max(1rem,env(safe-area-inset-top))] md:max-w-5xl md:px-8";

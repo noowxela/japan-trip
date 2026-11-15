@@ -58,7 +58,7 @@ flowchart LR
 - **Read:** server components call cached getters in `src/lib/trip.ts` → `src/lib/notion.ts` `queryAll()`.
 - **Write (online):** forms → `src/app/actions.ts` → Notion `pages.create` / `update` → `revalidatePath` / `updateTag`.
 - **Offline read:** Serwist caches visited documents/assets; `TripCacheSync` writes days/places/transit/stays/spend/prep (+ optional `weather` / `weatherAt` from Schedule) to `japan-trip-itinerary-v1` (content `v: 2`). Writes without weather keep the cached forecast (`carryWeather`). Schedule, `/phrases` (stays for hotel cards), and `/~offline` can fall back from the snapshot. Pages that fail to reach Notion while online keep existing fallbacks. Phrase deck data is bundled in `src/lib/phrases.ts` (no Notion). `useSyncExternalStore` readers for trip cache + custom phrases memoize by raw localStorage string (stable snapshot refs; React #185).
-- **Offline write:** client wrappers enqueue `toggleVisited` / `addSpend` / `togglePrep` into IndexedDB (`japan-trip` / `outbox`), apply optimistic UI, replay on `online` / app start / every 30s. Toggles send desired state; spend uses `clientId` + `createdAt` for idempotency.
+- **Offline write:** client wrappers enqueue `toggleVisited` / `addSpend` / `togglePrep` into IndexedDB (`japan-trip` / `outbox`), apply optimistic UI, replay on `online` / app start / every 30s. Toggles send desired state; spend uses `clientId` + `createdAt` for idempotency. Notion `Start` is either an offset timestamp or a wall time plus `time_zone`, never both (`notionStartProperty`). A failed spend write returns an `ActionResult` error; it is not rethrown into the save transition.
 
 Pages are `export const dynamic = "force-dynamic"`. No webhooks, no poll, no multi-device conflict UI.
 
@@ -69,12 +69,12 @@ Pages are `export const dynamic = "force-dynamic"`. No webhooks, no poll, no mul
 | `NOTION_DAYS_DS` | Trip days (date, city, status). Live `City` is **multi-select** (travel days list two); the app reads select, else the first value; day writes match the column type (`src/lib/day-city.ts`) |
 | `NOTION_PLACES_DS` | Stops (type, start, lat/lng, visited, pending) |
 | `NOTION_STAYS_DS` | Hotels (check-in/out, address) |
-| `NOTION_TRANSIT_DS` | Legs (mode, from/to, start) |
+| `NOTION_TRANSIT_DS` | Legs (mode, from/to, start, visited) |
 | `NOTION_SPEND_DS` | Expenses (Yen/RM, category, paid by, `Split with` multi-select; empty = everyone) |
 | `NOTION_EDITORS_DS` | Optional editor name + PIN |
 | `NOTION_PREP_DS` | Optional packing/checklist |
 
-Canonical schema: `notion/src/main.ts`. CLI fallbacks: `notion/scripts/`. `notion/` is a local checkout of [makenotion/notion-as-code-template](https://github.com/makenotion/notion-as-code-template) and is not committed (see [setup](setup.md)); nothing at runtime imports it.
+Canonical schema: `notion/src/main.ts`. CLI fallbacks: `notion/scripts/`.
 
 ## Surfaces
 
@@ -82,7 +82,7 @@ Bottom nav (`src/components/bottom-nav.tsx`): Overview `/`, Schedule `/schedule`
 
 Primary day UI is unified Schedule: `/schedule?day=<id|today>&mode=<now|edit>`. Redirects: `/today` → `day=today&mode=now`, `/days/:id` → `day=:id`. `/days` list remains under More.
 
-Secondary: `/map`, `/lists`, `/places`, `/stays`, `/transit`, `/days`, `/prep`, `/phrases` (bundled Japanese phrase cards + hotel address cards from stays; custom phrases in localStorage). `/spend` redirects to `/budget`. Offline shell: `/~offline`. `/phrases` is also in Serwist `additionalPrecacheEntries`.
+Secondary: `/map`, `/lists`, `/places`, `/stays`, `/transit`, `/days`, `/prep`, `/clothes` (packing counts in localStorage), `/phrases` (bundled Japanese phrase cards + hotel address cards from stays; custom phrases in localStorage), `/gifts` (souvenir list in localStorage, optionally linked to a spend). `/spend` redirects to `/budget`. Offline shell: `/~offline`. `/phrases`, `/clothes`, and `/gifts` are also in Serwist `additionalPrecacheEntries`.
 
 i18n: `src/lib/i18n/dictionaries.ts` + `getLocale()` (`lang` cookie) + `I18nProvider` / `useT()`.
 

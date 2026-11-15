@@ -9,9 +9,12 @@ import {
   CarryOverBanner,
   DayAgendaBoard,
   PendingPanel,
+  SkippedPanel,
 } from "@/components/day-agenda-board";
 import { CityKanji } from "@/components/city-kanji";
+import { FlightPlaneIcon } from "@/components/flight-plane-icon";
 import { DayMapLoader } from "@/components/day-map-loader";
+import type { DayMapFocus } from "@/components/day-map";
 import { DayQuickFab } from "@/components/day-quick-fab";
 import { DirectionsLink } from "@/components/directions-link";
 import { useCanEdit } from "@/components/edit-session";
@@ -21,11 +24,29 @@ import { useHiddenMapPinIds } from "@/components/hide-map-pin-button";
 import { useT } from "@/components/i18n-provider";
 import { MapsPinLink } from "@/components/maps-pin-link";
 import { Modal } from "@/components/modal";
+import { useOutbox } from "@/components/outbox-provider";
 import { ScheduleDayTabs } from "@/components/schedule-day-tabs";
-import { dateKey, formatCachedAt, formatDay, formatTime, formatTripSpan } from "@/lib/format";
+import { flightRoutesFromTransit } from "@/lib/flight-path";
+import {
+  dateKey,
+  formatCachedAt,
+  formatDay,
+  formatTime,
+  formatTripSpan,
+} from "@/lib/format";
 import { toggleHiddenMapPin } from "@/lib/hidden-map-pins";
 import { labelMode, labelType } from "@/lib/i18n/dictionaries";
-import type { DayScheduleSlice, SchedulePin } from "@/lib/schedule-pins";
+import {
+  scheduleDrawerOpener,
+  skippedAgendaItems,
+  type ScheduleDrawerTab,
+} from "@/lib/schedule-drawer";
+import {
+  mapPinsForDay,
+  pinsForAllDays,
+  type DayScheduleSlice,
+  type SchedulePin,
+} from "@/lib/schedule-pins";
 import {
   clampSheetHeight,
   cycleSnap,
@@ -46,6 +67,8 @@ import { weatherKind, weatherShort, type TripWeather } from "@/lib/weather";
 const SNAPS = [0.17, 0.45, 0.72, 0.92] as const;
 const DEFAULT_SNAP = 2;
 const TAP_SLOP_PX = 10;
+/** Snap used when a row focuses its pin: map gets ≈55%. */
+const FOCUS_SNAP = 1;
 
 type ScheduleMode = "view" | "now" | "edit";
 
@@ -62,7 +85,6 @@ export function ScheduleView({
   days,
   places,
   byDay,
-  allPins,
   initialDayId,
   initialMode = "view",
   cachedAt = null,
@@ -106,27 +128,45 @@ export function ScheduleView({
     return Date.now();
   });
   const [pendingOpen, setPendingOpen] = useState(false);
+  const [drawerTab, setDrawerTab] = useState<ScheduleDrawerTab>("pending");
   const scrolledForDayRef = useRef<string | null>(null);
+  const { skippedOverlay } = useOutbox();
 
   const selectedDay =
     selectedId === "all"
       ? null
-      : days.find((day) => day.id === selectedId) ?? days[0] ?? null;
+      : (days.find((day) => day.id === selectedId) ?? days[0] ?? null);
   const slice = selectedDay ? byDay[selectedDay.id] : null;
   const agenda = useMemo(() => slice?.agenda ?? [], [slice]);
   const pending = slice?.pending ?? [];
   const lodging = slice?.stays ?? [];
   const selectedDate = dateKey(selectedDay?.date ?? null);
   const dayWeather = selectedDate ? (weather?.[selectedDate] ?? null) : null;
-  const mapPins = selectedDay ? (slice?.mapPins ?? []) : allPins;
+  const selectedDayId = selectedDay?.id ?? null;
+  const mapPins = useMemo(
+    () =>
+      selectedDay
+        ? mapPinsForDay(
+            agenda,
+            pending,
+            lodging,
+            selectedDay.date,
+            skippedOverlay,
+          )
+        : pinsForAllDays(days, places, skippedOverlay),
+    [agenda, days, lodging, pending, places, selectedDay, skippedOverlay],
+  );
+  const flightRoutes = useMemo(
+    () => (selectedDay ? flightRoutesFromTransit(slice?.transit ?? []) : []),
+    [selectedDay, slice],
+  );
   const mapCity =
     selectedDay?.city ?? days.find((day) => day.city)?.city ?? null;
 
   const isSelectedToday = Boolean(
     selectedDay && dateKey(selectedDay.date) === today,
   );
-  const nowModeActive =
-    mode === "now" && isSelectedToday && phase === "during";
+  const nowModeActive = mode === "now" && isSelectedToday && phase === "during";
 
   const focus = useMemo(() => {
     if (!nowModeActive) return null;
@@ -160,6 +200,10 @@ export function ScheduleView({
   const pendingCount = selectedDay
     ? pending.length + dayOtherPending.length + carryOver.length
     : 0;
+  const skippedCount = selectedDay
+    ? skippedAgendaItems(agenda, skippedOverlay).length
+    : 0;
+  const drawer = scheduleDrawerOpener(pendingCount, skippedCount);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => setNowMs(Date.now()));
@@ -253,6 +297,22 @@ export function ScheduleView({
   const [snapIndex, setSnapIndex] = useState(DEFAULT_SNAP);
   const [dragHeight, setDragHeight] = useState<number | null>(null);
   const [mapFullscreen, setMapFullscreen] = useState(false);
+  const [mapFocus, setMapFocus] = useState<
+    (DayMapFocus & { dayId: string | null }) | null
+  >(null);
+  const focusOnMap = useCallback(
+    (id: string) => {
+      setMapFocus((prev) => ({
+        id,
+        dayId: selectedDayId,
+        nonce: (prev?.nonce ?? 0) + 1,
+      }));
+      // Drop the sheet so the map is visible (never raise it).
+      setDragHeight(null);
+      setSnapIndex((index) => Math.min(index, FOCUS_SNAP));
+    },
+    [selectedDayId],
+  );
 
   const sheetHeight =
     dragHeight != null ? `${dragHeight}px` : `${SNAPS[snapIndex] * 100}%`;
@@ -343,11 +403,15 @@ export function ScheduleView({
     if (event.key === "ArrowUp" || event.key === "Home") {
       event.preventDefault();
       setSnapIndex((index) =>
-        event.key === "Home" ? SNAPS.length - 1 : Math.min(SNAPS.length - 1, index + 1),
+        event.key === "Home"
+          ? SNAPS.length - 1
+          : Math.min(SNAPS.length - 1, index + 1),
       );
     } else if (event.key === "ArrowDown" || event.key === "End") {
       event.preventDefault();
-      setSnapIndex((index) => (event.key === "End" ? 0 : Math.max(0, index - 1)));
+      setSnapIndex((index) =>
+        event.key === "End" ? 0 : Math.max(0, index - 1),
+      );
     }
   }
 
@@ -380,7 +444,9 @@ export function ScheduleView({
     );
     const margin = (sticky?.offsetHeight ?? 56) + 8;
     el.style.scrollMarginTop = `${margin}px`;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduce = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     el.scrollIntoView({
       block: "start",
       behavior: reduce ? "auto" : "smooth",
@@ -393,7 +459,7 @@ export function ScheduleView({
   const editTransit = slice?.transit ?? [];
 
   return (
-    <div ref={rootRef} className="flex h-dvh flex-col overflow-hidden">
+    <div ref={rootRef} className="flex h-full min-h-0 flex-col overflow-hidden">
       <Link
         href="/"
         aria-label={t("nav.backOverview")}
@@ -415,9 +481,17 @@ export function ScheduleView({
         <DayMapLoader
           city={mapCity}
           pins={mapPins}
+          flights={flightRoutes}
           className="h-full border-0"
           fullscreen={mapFullscreen}
           onFullscreenChange={setMapFullscreen}
+          focus={
+            mapFocus &&
+            mapFocus.dayId === selectedDayId &&
+            mapPins.some((pin) => pin.id === mapFocus.id)
+              ? mapFocus
+              : null
+          }
         />
         <Link
           href="/"
@@ -504,41 +578,56 @@ export function ScheduleView({
                 data-sheet-drag
                 className="sticky top-0 z-30 touch-none border-b border-line bg-surface px-3 py-2"
               >
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <h2 className="truncate text-[15px] font-semibold tracking-tight text-ink">
+                    <h2 className="min-w-0 break-words [overflow-wrap:anywhere] text-[15px] font-semibold tracking-tight text-ink">
                       {selectedDay.name}
                     </h2>
-                    <p className="mt-0.5 flex min-w-0 items-center gap-1 overflow-hidden text-[11px] leading-4 text-ink-muted">
+                    <p className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 text-[11px] leading-4 text-ink-muted">
                       {formatDay(selectedDay.date, locale) ? (
                         <span className="shrink-0 whitespace-nowrap tabular-nums">
                           {formatDay(selectedDay.date, locale)}
                         </span>
                       ) : null}
                       {selectedDay.city ? (
-                        <span className="inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap">
-                          <span aria-hidden>·</span>
-                          <span>{selectedDay.city}</span>
+                        <span className="inline-flex min-w-0 max-w-full items-center gap-0.5">
+                          <span aria-hidden className="shrink-0">
+                            ·
+                          </span>
+                          <span className="min-w-0 break-words [overflow-wrap:anywhere]">
+                            {selectedDay.city}
+                          </span>
                           <CityKanji
                             city={selectedDay.city}
-                            className="text-[11px]"
+                            className="shrink-0 text-[11px]"
                           />
                         </span>
                       ) : null}
                       {dayWeather ? (
                         <span
-                          className="inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap tabular-nums"
-                          title={
+                          className="inline-flex min-w-0 max-w-full items-center gap-0.5 tabular-nums"
+                          title={[
+                            weatherShort(dayWeather),
                             weatherAt
-                              ? t("weather.asOf", { time: formatCachedAt(weatherAt) })
-                              : undefined
-                          }
+                              ? t("weather.asOf", {
+                                  time: formatCachedAt(weatherAt),
+                                })
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
                         >
-                          <span aria-hidden>·</span>
-                          <span aria-hidden>{weatherShort(dayWeather)}</span>
+                          <span aria-hidden className="shrink-0">
+                            ·
+                          </span>
+                          <span aria-hidden className="min-w-0 break-words [overflow-wrap:anywhere]">
+                            {weatherShort(dayWeather)}
+                          </span>
                           <span className="sr-only">
                             {t("weather.aria", {
-                              kind: t(`weather.${weatherKind(dayWeather.code)}`),
+                              kind: t(
+                                `weather.${weatherKind(dayWeather.code)}`,
+                              ),
                               min: Math.round(dayWeather.tMin),
                               max: Math.round(dayWeather.tMax),
                               rain: dayWeather.rainPct ?? 0,
@@ -547,41 +636,41 @@ export function ScheduleView({
                         </span>
                       ) : null}
                       {lodging[0] ? (
-                        <span className="inline-flex min-w-0 flex-1 items-center overflow-hidden">
+                        <span className="inline-flex min-w-0 max-w-full flex-1 basis-[8rem] items-center">
                           <span aria-hidden className="shrink-0">
                             · 🏨{" "}
                           </span>
-                          <span className="min-w-0 truncate">
+                          <span
+                            className="min-w-0 break-words [overflow-wrap:anywhere]"
+                            title={lodging[0].name}
+                          >
                             {lodging[0].name}
                           </span>
                         </span>
                       ) : null}
-                      {pendingCount > 0 ? (
+                      {drawer.show ? (
                         <button
                           type="button"
-                          onClick={() => setPendingOpen(true)}
+                          onClick={() => {
+                            setDrawerTab(drawer.defaultTab);
+                            setPendingOpen(true);
+                          }}
                           className="inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap text-[11px] text-ink-muted"
                         >
                           <span aria-hidden>·</span>
-                          {t("schedule.pendingCount", { n: pendingCount })} ›
+                          {t(drawer.key, drawer.vars)} ›
                         </button>
                       ) : null}
                     </p>
                     {lodging.length > 1
-                      ? lodging.slice(1).map((stay) => (
-                          <StayLocationBadge key={stay.id} stay={stay} />
-                        ))
+                      ? lodging
+                          .slice(1)
+                          .map((stay) => (
+                            <StayLocationBadge key={stay.id} stay={stay} />
+                          ))
                       : null}
                   </div>
                   <div className="flex shrink-0 items-center gap-0.5">
-                    <Link
-                      href="/phrases"
-                      aria-label={t("phrases.navAria")}
-                      className="inline-flex h-10 items-center gap-0.5 px-1.5 text-[12px] font-medium text-ink-muted no-underline"
-                    >
-                      <span aria-hidden>あ</span>
-                      {t("phrases.navShort")}
-                    </Link>
                     <EditorLockButton />
                     <button
                       type="button"
@@ -606,6 +695,8 @@ export function ScheduleView({
                       transit={editTransit}
                       dayId={selectedDay.id}
                       dayDate={selectedDay.date}
+                      days={days}
+                      dayCity={selectedDay.city}
                     />
                     <AddAgendaForm
                       days={days}
@@ -646,9 +737,12 @@ export function ScheduleView({
                       pending={pending}
                       dayId={selectedDay.id}
                       dayDate={selectedDay.date}
+                      days={days}
+                      dayCity={selectedDay.city}
                       showPending={false}
                       highlightId={nowModeActive ? focusId : null}
                       mutedIds={nowModeActive ? mutedIds : undefined}
+                      onFocusItem={focusOnMap}
                     />
                   </>
                 )}
@@ -673,24 +767,71 @@ export function ScheduleView({
         <Modal
           open={pendingOpen}
           onClose={() => setPendingOpen(false)}
-          title={t("schedule.pendingTitle")}
+          title={t(
+            drawerTab === "skipped"
+              ? "schedule.skippedTitle"
+              : "schedule.pendingTitle",
+          )}
         >
           <div className="grid gap-4 px-1 pb-4">
-            <CarryOverBanner
-              places={carryOver}
-              dayId={selectedDay.id}
-              title={t("agenda.carryOverPast")}
-            />
-            <CarryOverBanner
-              places={dayOtherPending}
-              dayId={selectedDay.id}
-              title={t("agenda.carryOverOther")}
-            />
-            <PendingPanel
-              pending={pending}
-              dayId={selectedDay.id}
-              dayDate={selectedDay.date}
-            />
+            <div
+              role="tablist"
+              aria-label={t("schedule.drawerTabs")}
+              className="flex gap-4 border-b border-line"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={drawerTab === "pending"}
+                onClick={() => setDrawerTab("pending")}
+                className={`-mb-px border-b-2 pb-2 text-sm ${
+                  drawerTab === "pending"
+                    ? "border-ink font-medium text-ink"
+                    : "border-transparent text-ink-muted"
+                }`}
+              >
+                {t("schedule.pendingTitle")}
+                {pendingCount > 0 ? ` · ${pendingCount}` : ""}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={drawerTab === "skipped"}
+                onClick={() => setDrawerTab("skipped")}
+                className={`-mb-px border-b-2 pb-2 text-sm ${
+                  drawerTab === "skipped"
+                    ? "border-ink font-medium text-ink"
+                    : "border-transparent text-ink-muted"
+                }`}
+              >
+                {t("schedule.skippedTitle")}
+                {skippedCount > 0 ? ` · ${skippedCount}` : ""}
+              </button>
+            </div>
+            {drawerTab === "pending" ? (
+              <>
+                <CarryOverBanner
+                  places={carryOver}
+                  dayId={selectedDay.id}
+                  title={t("agenda.carryOverPast")}
+                />
+                <CarryOverBanner
+                  places={dayOtherPending}
+                  dayId={selectedDay.id}
+                  title={t("agenda.carryOverOther")}
+                />
+                <PendingPanel
+                  pending={pending}
+                  dayId={selectedDay.id}
+                  dayDate={selectedDay.date}
+                  presentation="modal"
+                />
+              </>
+            ) : (
+              <SkippedPanel
+                items={skippedAgendaItems(agenda, skippedOverlay)}
+              />
+            )}
           </div>
         </Modal>
       ) : null}
@@ -711,9 +852,9 @@ function NowCard({
     return (
       <section
         data-now-card
-        className="mb-2 flex h-11 items-center rounded-lg border border-line border-l-[3px] border-l-line bg-surface px-3"
+        className="mb-2 flex min-h-11 items-center rounded-lg border border-line border-l-[3px] border-l-line bg-surface px-3 py-1.5"
       >
-        <p className="truncate text-[13px] font-medium leading-4 text-ink">
+        <p className="min-w-0 break-words [overflow-wrap:anywhere] text-[13px] font-medium leading-4 text-ink">
           {t("schedule.dayDone")}
         </p>
       </section>
@@ -729,10 +870,10 @@ function NowCard({
     status === "now" ? t("schedule.now") : t("schedule.upNext"),
     formatTime(item.start) ?? t("common.anytime"),
     item.name,
-    chipLabel,
   ]
     .filter(Boolean)
     .join(" · ");
+  const isFlight = item.kind === "transit" && item.chip === "Flight";
 
   return (
     <section
@@ -750,10 +891,19 @@ function NowCard({
             }
           : undefined
       }
-      className="mb-2 flex h-12 cursor-pointer items-center gap-1 rounded-lg border border-accent/25 border-l-[3px] border-l-accent bg-accent/5 py-1 pl-3 pr-1"
+      className="mb-2 flex min-h-12 cursor-pointer items-start gap-1 rounded-lg border border-accent/25 border-l-[3px] border-l-accent bg-accent/5 py-1 pl-3 pr-1"
     >
-      <p className="min-w-0 flex-1 truncate text-[13px] font-medium leading-4 text-ink">
+      <p className="min-w-0 flex-1 break-words [overflow-wrap:anywhere] text-[13px] font-medium leading-4 text-ink">
         <span className="tabular-nums">{line}</span>
+        {chipLabel ? (
+          <>
+            {" · "}
+            {chipLabel}
+            {isFlight ? (
+              <FlightPlaneIcon className="ml-0.5 text-accent" />
+            ) : null}
+          </>
+        ) : null}
       </p>
       {item.kind === "place" ? (
         <div
@@ -790,7 +940,7 @@ function StayLocationBadge({ stay }: { stay: Stay }) {
   return (
     <div
       title={stay.address || stay.name}
-      className={`mt-1.5 flex max-w-full items-center gap-1.5 text-xs ${
+      className={`mt-1.5 flex max-w-full items-start gap-1.5 text-xs ${
         hidden ? "text-ink-muted" : "text-ink-muted"
       }`}
     >
@@ -806,7 +956,7 @@ function StayLocationBadge({ stay }: { stay: Stay }) {
       >
         <path d="M3 10h18M5 10V8l7-4 7 4v2M5 10v10h14V10M9 20v-6h6v6" />
       </svg>
-      <span className="min-w-0 truncate leading-5">{stay.name}</span>
+      <span className="min-w-0 break-words [overflow-wrap:anywhere] leading-5">{stay.name}</span>
       <button
         type="button"
         aria-label={label}

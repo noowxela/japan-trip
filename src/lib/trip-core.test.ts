@@ -1,9 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { nextAgendaItem, tripPhase } from "@/lib/trip-core";
-import type { AgendaItem, TripDay } from "@/lib/types";
+import {
+  agendaStartSortKey,
+  buildAgenda,
+  compareAgendaItems,
+  isAgendaOpen,
+  isStayCheckoutDay,
+  nextAgendaItem,
+  staysForDate,
+  staysForOverviewDate,
+  tripPhase,
+} from "@/lib/trip-core";
+import type { AgendaItem, Place, Stay, Transit, TripDay } from "@/lib/types";
 
-const item = (id: string, kind: "place" | "transit", start: string | null, visited = false): AgendaItem => ({
-  id, kind, name: id, chip: null, detail: "", start, order: null, ...(kind === "place" ? { visited } : {}),
+const item = (
+  id: string,
+  kind: "place" | "transit",
+  start: string | null,
+  visited = false,
+  skipped = false,
+): AgendaItem => ({
+  id, kind, name: id, chip: null, detail: "", start, order: null, visited, skipped,
 });
 const at = (hhmm: string) => new Date(`2026-10-27T${hhmm}:00+09:00`);
 const agenda = [
@@ -30,6 +46,10 @@ describe("nextAgendaItem", () => {
     const a = [agenda[0], item("shrine", "place", agenda[1].start, true), agenda[2]];
     expect(nextAgendaItem(a, { now: at("09:10"), isToday: true })?.item.id).toBe("lunch");
   });
+  it("skips visited transit", () => {
+    const a = [item("metro", "transit", agenda[0].start, true), agenda[1]];
+    expect(nextAgendaItem(a, { now: at("08:00"), isToday: true })?.item.id).toBe("shrine");
+  });
   it("falls through to untimed items late in the day", () => {
     const a = [agenda[0], agenda[3]];
     expect(nextAgendaItem(a, { now: at("22:00"), isToday: true })).toEqual({ item: agenda[3], status: "next" });
@@ -39,6 +59,17 @@ describe("nextAgendaItem", () => {
   });
   it("returns null when everything is visited", () => {
     expect(nextAgendaItem([item("x", "place", null, true)], { now: at("10:00"), isToday: true })).toBeNull();
+  });
+  it("skips skipped places", () => {
+    const a = [item("shrine", "place", agenda[1].start, false, true), agenda[2]];
+    expect(nextAgendaItem(a, { now: at("08:00"), isToday: true })?.item.id).toBe("lunch");
+  });
+  it("skips skipped transit", () => {
+    const a = [item("metro", "transit", agenda[0].start, false, true), agenda[1]];
+    expect(nextAgendaItem(a, { now: at("08:00"), isToday: true })?.item.id).toBe("shrine");
+  });
+  it("returns null when everything is skipped", () => {
+    expect(nextAgendaItem([item("x", "place", null, false, true)], { now: at("10:00"), isToday: true })).toBeNull();
   });
 });
 
@@ -52,5 +83,332 @@ describe("tripPhase", () => {
     expect(tripPhase(days, "2026-10-27")).toBe("during");
     expect(tripPhase(days, "2026-11-02")).toBe("after");
     expect(tripPhase([], "2026-10-27")).toBe("none");
+  });
+});
+
+describe("nextAgendaItem: overnight flight (KLIA, 2026-11-06)", () => {
+  // Live Day 1 data: flight stored as 02:15 JST, next item 09:24 JST.
+  const flight: AgendaItem = {
+    ...item("depart", "transit", "2026-11-06T02:15:00.000+09:00"),
+    chip: "Flight",
+    detail: "KLIA → osaka - Kansai",
+  };
+  const day = [
+    flight,
+    item("test", "place", "2026-11-06T09:24:00.000+09:00"),
+    item("kix", "place", "2026-11-07T09:30:00.000+08:00"),
+  ];
+  it("keeps the flight current at 01:26 MYT (phone in UTC+8)", () => {
+    const now = new Date("2026-11-06T01:26:00+08:00");
+    expect(nextAgendaItem(day, { now, isToday: true })).toEqual({ item: flight, status: "now" });
+  });
+  it("is 'next' before departure", () => {
+    const now = new Date("2026-11-06T00:30:00+08:00");
+    expect(nextAgendaItem(day, { now, isToday: true })).toEqual({ item: flight, status: "next" });
+  });
+  it("moves on once the next item starts", () => {
+    const now = new Date("2026-11-06T09:30:00+09:00");
+    expect(nextAgendaItem(day, { now, isToday: true })?.item.id).toBe("test");
+  });
+  it("moves on after the in-flight window even with no later start", () => {
+    const now = new Date("2026-11-06T11:00:00+09:00");
+    expect(nextAgendaItem([flight, item("untimed", "place", null)], { now, isToday: true })?.item.id).toBe("untimed");
+  });
+  it("skips a visited flight even during the in-flight window", () => {
+    const now = new Date("2026-11-06T01:26:00+08:00");
+    const visitedFlight = { ...flight, visited: true };
+    expect(nextAgendaItem([visitedFlight, day[1], day[2]], { now, isToday: true })?.item.id).toBe("test");
+  });
+  it("skips a skipped flight even during the in-flight window", () => {
+    const now = new Date("2026-11-06T01:26:00+08:00");
+    const skippedFlight = { ...flight, skipped: true };
+    expect(nextAgendaItem([skippedFlight, day[1], day[2]], { now, isToday: true })?.item.id).toBe("test");
+  });
+});
+
+describe("buildAgenda visited", () => {
+  it("copies visited onto place and transit rows", () => {
+    const places: Place[] = [{
+      id: "p1",
+      name: "Shrine",
+      type: "Sight",
+      mapsUrl: null,
+      notes: "",
+      visited: true,
+      dayIds: [],
+      start: "2026-11-06T09:00:00+09:00",
+      lat: null,
+      lng: null,
+      pending: false,
+      skipped: false,
+    }];
+    const transit: Transit[] = [{
+      id: "t1",
+      name: "DEpart",
+      mode: "Flight",
+      from: "KLIA",
+      to: "KIX",
+      date: "2026-11-06",
+      bookingUrl: null,
+      dayIds: [],
+      start: "2026-11-06T02:15:00+09:00",
+      order: 1,
+      visited: true,
+      skipped: false,
+      notes: "",
+    }];
+    const rows = buildAgenda(places, transit);
+    expect(rows.find((row) => row.id === "t1")).toMatchObject({
+      kind: "transit",
+      visited: true,
+      from: "KLIA",
+      to: "KIX",
+    });
+    expect(rows.find((row) => row.id === "p1")).toMatchObject({
+      kind: "place",
+      visited: true,
+      skipped: false,
+    });
+  });
+
+  it("copies skipped onto place and transit rows without treating them as visited", () => {
+    const places: Place[] = [{
+      id: "p2",
+      name: "Shop",
+      type: "Shop",
+      mapsUrl: null,
+      notes: "",
+      visited: false,
+      dayIds: [],
+      start: "2026-11-06T11:00:00+09:00",
+      lat: null,
+      lng: null,
+      pending: false,
+      skipped: true,
+    }];
+    const transit: Transit[] = [{
+      id: "t2",
+      name: "Bus",
+      mode: "Bus",
+      from: "A",
+      to: "B",
+      date: "2026-11-06",
+      bookingUrl: null,
+      dayIds: [],
+      start: "2026-11-06T10:00:00+09:00",
+      order: 2,
+      visited: false,
+      skipped: true,
+      notes: "",
+    }];
+    const rows = buildAgenda(places, transit);
+    expect(rows.find((row) => row.id === "t2")).toMatchObject({
+      kind: "transit",
+      visited: false,
+      skipped: true,
+    });
+    expect(rows.find((row) => row.id === "p2")).toMatchObject({
+      kind: "place",
+      visited: false,
+      skipped: true,
+    });
+    expect(isAgendaOpen(rows[0])).toBe(false);
+    expect(rows.some((row) => row.visited)).toBe(false);
+  });
+});
+
+describe("buildAgenda transit notes", () => {
+  const transit = (
+    over: Partial<Transit> & Pick<Transit, "id" | "name">,
+  ): Transit => ({
+    mode: "Metro",
+    from: "",
+    to: "",
+    date: "2026-11-06",
+    bookingUrl: null,
+    dayIds: [],
+    start: "2026-11-06T10:00:00+09:00",
+    order: 1,
+    visited: false,
+    skipped: false,
+    notes: "",
+    ...over,
+  });
+
+  it("copies trimmed notes onto the row and keeps from → to in detail", () => {
+    const [row] = buildAgenda(
+      [],
+      [transit({ id: "t1", name: "Airport", from: "KLIA", to: "KIX", notes: "  seat 12A  " })],
+    );
+    expect(row).toMatchObject({
+      kind: "transit",
+      detail: "KLIA → KIX",
+      from: "KLIA",
+      to: "KIX",
+      notes: "seat 12A",
+    });
+  });
+
+  it("still exposes notes when from and to are empty", () => {
+    const [row] = buildAgenda(
+      [],
+      [transit({ id: "t2", name: "Metro", notes: "platform 3" })],
+    );
+    expect(row).toMatchObject({
+      kind: "transit",
+      detail: "",
+      from: "",
+      to: "",
+      notes: "platform 3",
+    });
+  });
+
+  it("treats missing notes as empty so older cached rows still build", () => {
+    const stale = transit({ id: "t3", name: "Bus", from: "A", to: "B" });
+    delete (stale as { notes?: string }).notes;
+    const [row] = buildAgenda([], [stale]);
+    expect(row).toMatchObject({
+      kind: "transit",
+      detail: "A → B",
+      notes: "",
+    });
+  });
+});
+
+describe("agendaStartSortKey", () => {
+  it("treats date-only and missing starts as untimed", () => {
+    expect(agendaStartSortKey(null)).toBe("9999");
+    expect(agendaStartSortKey(undefined)).toBe("9999");
+    expect(agendaStartSortKey("2026-11-06")).toBe("9999");
+    expect(agendaStartSortKey("2026-11-06T09:00:00+09:00")).toBe("09:00");
+  });
+
+  it("normalizes Z and +09:00 to the same Tokyo wall clock", () => {
+    expect(agendaStartSortKey("2026-11-06T01:00:00.000Z")).toBe("10:00");
+    expect(agendaStartSortKey("2026-11-06T10:00:00+09:00")).toBe("10:00");
+  });
+});
+
+describe("buildAgenda sort", () => {
+  const place = (
+    id: string,
+    start: string | null,
+    name = id,
+  ): Place => ({
+    id,
+    name,
+    type: "Sight",
+    mapsUrl: null,
+    notes: "",
+    visited: false,
+    dayIds: [],
+    start,
+    lat: null,
+    lng: null,
+    pending: false,
+    skipped: false,
+  });
+
+  const transit = (
+    id: string,
+    start: string | null,
+    order: number | null = null,
+  ): Transit => ({
+    id,
+    name: id,
+    mode: "Metro",
+    from: "",
+    to: "",
+    date: "2026-11-06",
+    bookingUrl: null,
+    dayIds: [],
+    start,
+    order,
+    visited: false,
+    skipped: false,
+    notes: "",
+  });
+
+  it("keeps date-only late adds after timed stops (not before them)", () => {
+    const rows = buildAgenda(
+      [
+        place("late-add", "2026-11-06", "Late add"),
+        place("lunch", "2026-11-06T13:00:00+09:00", "Lunch"),
+        place("no-time", null, "No time"),
+      ],
+      [transit("flight", "2026-11-06T02:15:00+09:00", 1)],
+    );
+    expect(rows.map((row) => row.id)).toEqual([
+      "flight",
+      "lunch",
+      "late-add",
+      "no-time",
+    ]);
+  });
+
+  it("orders untimed ties by transit Order then name", () => {
+    expect(
+      compareAgendaItems(
+        { start: "2026-11-06", order: 2, name: "B" },
+        { start: null, order: 1, name: "A" },
+      ),
+    ).toBeGreaterThan(0);
+  });
+
+  it("orders by Tokyo wall clock even when Start calendar dates differ", () => {
+    const rows = buildAgenda(
+      [
+        place("late", "2026-11-08T10:00:00+09:00", "Late add with today date"),
+        place("afternoon", "2026-11-06T15:00:00+09:00", "Afternoon"),
+        place("morning", "2026-11-06T09:00:00+09:00", "Morning"),
+        place("utc-noon", "2026-11-06T03:00:00.000Z", "UTC noon JST"),
+      ],
+      [],
+    );
+    expect(rows.map((row) => row.id)).toEqual([
+      "morning",
+      "late",
+      "utc-noon",
+      "afternoon",
+    ]);
+  });
+});
+
+describe("staysForDate / staysForOverviewDate", () => {
+  const mitsui: Stay = {
+    id: "mitsui-kyoto",
+    name: "Mitsui Garden Hotel Kyoto Shijo",
+    checkIn: "2026-11-09",
+    checkOut: "2026-11-12",
+    address: "Kyoto",
+    bookingUrl: null,
+    confirmation: "",
+    mapsUrl: null,
+    lat: null,
+    lng: null,
+  };
+
+  it("keeps overnight occupancy exclusive of check-out day", () => {
+    expect(staysForDate([mitsui], "2026-11-09").map((s) => s.id)).toEqual([
+      "mitsui-kyoto",
+    ]);
+    expect(staysForDate([mitsui], "2026-11-11").map((s) => s.id)).toEqual([
+      "mitsui-kyoto",
+    ]);
+    expect(staysForDate([mitsui], "2026-11-12")).toEqual([]);
+    expect(staysForDate([mitsui], "2026-11-13")).toEqual([]);
+  });
+
+  it("includes the hotel on Overview on the check-out date, not the day after", () => {
+    expect(staysForOverviewDate([mitsui], "2026-11-11").map((s) => s.id)).toEqual(
+      ["mitsui-kyoto"],
+    );
+    expect(staysForOverviewDate([mitsui], "2026-11-12").map((s) => s.id)).toEqual(
+      ["mitsui-kyoto"],
+    );
+    expect(staysForOverviewDate([mitsui], "2026-11-13")).toEqual([]);
+    expect(isStayCheckoutDay(mitsui, "2026-11-12")).toBe(true);
+    expect(isStayCheckoutDay(mitsui, "2026-11-11")).toBe(false);
+    expect(isStayCheckoutDay(mitsui, "2026-11-13")).toBe(false);
   });
 });

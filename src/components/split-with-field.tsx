@@ -2,11 +2,12 @@
 
 import { useT } from "@/components/i18n-provider";
 import { normalizeSplitWith } from "@/lib/spend";
-
-const chipClass =
-  "notebook-btn inline-flex h-8 min-w-8 items-center justify-center px-2.5 text-xs font-medium";
-const onClass = "bg-accent text-white";
-const offClass = "border border-line bg-surface text-ink";
+import {
+  spendPartyChipClass,
+  spendPartyChipOffClass,
+  spendPartyChipOnClass,
+  spendPartyFieldClass,
+} from "@/lib/spend-party-row";
 
 /** Multi-select of who shares an expense. `value` empty = everyone. */
 export function SplitWithField({
@@ -34,7 +35,7 @@ export function SplitWithField({
   }
 
   return (
-    <div className="grid gap-1.5" role="group" aria-label={t("form.splitWith")}>
+    <div className={spendPartyFieldClass} role="group" aria-label={t("form.splitWith")}>
       <span className="text-xs font-medium text-ink-muted">{t("form.splitWith")}</span>
       {value.map((name) => (
         <input key={name} type="hidden" name="splitWith" value={name} />
@@ -48,7 +49,7 @@ export function SplitWithField({
               type="button"
               aria-pressed={on}
               onClick={() => toggle(name)}
-              className={`${chipClass} ${on ? onClass : offClass}`}
+              className={`${spendPartyChipClass} ${on ? spendPartyChipOnClass : spendPartyChipOffClass}`}
             >
               {on ? "✓ " : ""}
               {name}
@@ -60,7 +61,7 @@ export function SplitWithField({
             type="button"
             aria-pressed={everyone}
             onClick={() => onChange([])}
-            className={`${chipClass} ${everyone ? "bg-ink text-surface" : offClass}`}
+            className={`${spendPartyChipClass} ${everyone ? "bg-ink text-surface" : spendPartyChipOffClass}`}
           >
             {t("form.splitAll")}
           </button>

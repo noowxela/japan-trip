@@ -9,14 +9,7 @@ Hub page: [Japan Trip](https://app.notion.com/p/Japan-Trip-3bdb5fd4cdf78145a599c
 1. Create an internal integration at [notion.so/my-integrations](https://www.notion.so/my-integrations).
 2. Copy `.env.example` to `.env.local` and set `NOTION_TOKEN`.
 3. Share a parent page with the integration.
-4. Clone the Notion schema tooling. It is a separate checkout, not part of this repo:
-
-```bash
-git clone https://github.com/makenotion/notion-as-code-template.git notion
-npm ci --prefix notion
-```
-
-5. Create databases, then add v2 columns (Start/map/Spend) and the Editors PIN list:
+4. Create databases, then add v2 columns (Start/map/Spend) and the Editors PIN list:
 
 ```bash
 npm run setup:notion
@@ -24,6 +17,32 @@ npm run migrate:v2
 ```
 
 Add a row in the **Editors** Notion database (Name + PIN) for each person who should edit. Everyone else can view without unlocking.
+
+Places and Transit need a checkbox property named exactly `Skipped` (same spelling, next to `Visited`). A one-shot migrate only adds the schema — it does not change row values:
+
+```bash
+npm run migrate:skipped
+```
+
+Live env secrets often cannot be decrypted here. If that command cannot reach Notion, add the checkbox manually in both databases. Until it exists, marking a stop skipped will error and will not save.
+
+Stays need `Maps URL` (url) plus `Lat` / `Lng` (number) to paste a Google Maps link onto a hotel. One-shot migrate (schema only, no row changes):
+
+```bash
+npm run migrate:stay-maps
+```
+
+If secrets cannot decrypt here, add those three properties manually on the Stays database. Until they exist, saving a stay with a Maps link shows a toast pointing at this migrate (it no longer surfaces as React #441).
+
+Spend can optionally link a food expense to a same-day Food/Cafe place on the schedule. That needs a relation property named exactly `Place` on the Spend data source, pointing at Places. The one-shot migrate only adds the schema — it does not change existing rows:
+
+```bash
+npm run migrate:spend-place
+```
+
+If that command cannot reach Notion, add the `Place` relation manually. Until it exists, adding a food expense still saves; the place link is skipped.
+
+Wallet / Shortcuts ingest: an explicit ¥0 amount (train gate-in / detect) is logged as a successful entry detect and does not create a Notion expense. A missing or empty amount still returns 400 so real fares are not silently skipped.
 
 ## Run
 
@@ -85,6 +104,8 @@ npx web-push generate-vapid-keys
 | `VAPID_PRIVATE_KEY` | Private key (server only) |
 | `VAPID_SUBJECT` | e.g. `mailto:you@example.com` |
 | `CRON_SECRET` | e.g. `openssl rand -hex 32` (Vercel Cron sends `Authorization: Bearer …`) |
+| `SPEND_INGEST_SECRET` | e.g. `openssl rand -hex 32` (Shortcuts / Apple Pay `POST /api/spend`; do not reuse `CRON_SECRET`) |
+| `NEXT_PUBLIC_APPLE_PAY_SHORTCUT_URL` | Optional iCloud Shortcuts share URL for one-tap Install on Settings → Apple Pay |
 | `KV_REST_API_URL` | Upstash Redis REST URL (preferred store) |
 | `KV_REST_API_TOKEN` | Upstash Redis REST token |
 | `UPSTASH_REDIS_REST_URL` | Alt name for the same URL (either pair works) |

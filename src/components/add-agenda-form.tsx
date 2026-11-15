@@ -4,10 +4,12 @@ import { useMemo, useState, useTransition } from "react";
 import { addPlace, addTransit, searchPlaces } from "@/app/actions";
 import { ActionForm } from "@/components/action-form";
 import { ChipGroup } from "@/components/chip-group";
+import { ClearableInput } from "@/components/clearable-input";
 import { useT } from "@/components/i18n-provider";
 import { btnPrimaryClass, fieldClass } from "@/components/page-shell";
 import { dateKey } from "@/lib/format";
 import type { PlaceSearchHit } from "@/lib/geocode";
+import { extractGoogleMapsUrl } from "@/lib/maps-url";
 import { labelMode, labelType } from "@/lib/i18n/dictionaries";
 import {
   PLACE_TYPES,
@@ -42,21 +44,44 @@ export function AddAgendaForm({
   );
   const date = dateKey(dayDate) ?? "";
 
-  function onSearch() {
-    setError("");
-    startSearch(async () => {
-      const hits = await searchPlaces(query, city);
-      setResults(hits);
-      if (hits.length === 0) {
-        setError(t("form.noMapResults"));
-      }
-    });
-  }
-
   function pick(hit: PlaceSearchHit) {
     setPicked(hit);
     setName(hit.name);
     setResults([]);
+    setError("");
+  }
+
+  function applyHits(hits: PlaceSearchHit[], raw: string) {
+    if (hits.length === 1 && extractGoogleMapsUrl(raw)) {
+      pick(hits[0]);
+      return;
+    }
+    setResults(hits);
+    if (hits.length === 0) {
+      setError(
+        extractGoogleMapsUrl(raw) ? t("form.mapsLinkFailed") : t("form.noMapResults"),
+      );
+    }
+  }
+
+  function runSearch(raw = query) {
+    const value = raw.trim();
+    setError("");
+    startSearch(async () => {
+      const hits = await searchPlaces(value, city);
+      applyHits(hits, value);
+    });
+  }
+
+  function onSearch() {
+    runSearch();
+  }
+
+  function clearSearch() {
+    setQuery("");
+    setResults([]);
+    setPicked(null);
+    setError("");
   }
 
   return (
@@ -90,17 +115,28 @@ export function AddAgendaForm({
               {t("form.searchPlaces")}
             </span>
             <div className="flex gap-2">
-              <input
+              <ClearableInput
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
+                onPaste={(event) => {
+                  const pasted = event.clipboardData.getData("text");
+                  const mapsUrl = extractGoogleMapsUrl(pasted);
+                  if (!mapsUrl) return;
+                  event.preventDefault();
+                  setQuery(mapsUrl);
+                  runSearch(mapsUrl);
+                }}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault();
                     onSearch();
                   }
                 }}
-                placeholder={t("form.searchMap")}
-                className={`min-w-0 flex-1 ${fieldClass}`}
+                onClear={clearSearch}
+                clearLabel={t("form.clearMapsLink")}
+                placeholder={t("form.searchMapHint")}
+                className={fieldClass}
+                wrapperClassName="min-w-0 flex-1"
               />
               <button
                 type="button"
@@ -205,6 +241,15 @@ export function AddAgendaForm({
           </label>
         ) : null}
       </div>
+
+      {kind === "transit" ? (
+        <label className="grid gap-1">
+          <span className="text-xs font-medium text-ink-muted">
+            {t("form.notes")}
+          </span>
+          <textarea name="notes" rows={2} className={fieldClass} />
+        </label>
+      ) : null}
 
       <button type="submit" className={btnPrimaryClass}>
         {kind === "place" ? t("form.addPlace") : t("form.addTransit")}

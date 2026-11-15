@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { deleteSpend, updateSpend } from "@/app/actions";
 import { ActionForm } from "@/components/action-form";
@@ -8,6 +8,7 @@ import { ChipGroup } from "@/components/chip-group";
 import { SpendAmountField } from "@/components/spend-amount-field";
 import { useSlideIn } from "@/components/slide-in-page";
 import { SplitWithField } from "@/components/split-with-field";
+import { FoodPlaceField } from "@/components/food-place-field";
 import { DatePicker } from "@/components/date-picker";
 import { useEditSession } from "@/components/edit-session";
 import { useT } from "@/components/i18n-provider";
@@ -21,7 +22,24 @@ import {
 } from "@/components/page-shell";
 import { dateKey, formatTime, tokyoToday } from "@/lib/format";
 import { labelCategory } from "@/lib/i18n/dictionaries";
-import { SPEND_CATEGORIES, type SpendItem, type TripDay } from "@/lib/types";
+import { SpendGiftFields, type SpendGiftValue } from "@/components/spend-gift-fields";
+import type { ActionResult } from "@/lib/action-result";
+import {
+  applySpendGiftFlag,
+  findGiftBySpendId,
+  readGifts,
+  rememberRecipientNow,
+  writeGifts,
+} from "@/lib/gifts";
+import { parseSpendCurrency } from "@/lib/spend";
+import {
+  spendPartyChipClass,
+  spendPartyChipOffClass,
+  spendPartyChipOnClass,
+  spendPartyFieldClass,
+  spendPartyRowClass,
+} from "@/lib/spend-party-row";
+import { SPEND_CATEGORIES, type Place, type SpendItem, type TripDay } from "@/lib/types";
 
 function dateForDayId(days: TripDay[], dayId: string) {
   return dateKey(days.find((day) => day.id === dayId)?.date ?? null);
@@ -48,16 +66,22 @@ export function SpendForm({
   item,
   days,
   people = [],
+  places = [],
   defaultDayId = "",
   onSuccess,
+  focusCategory = false,
 }: {
   item?: SpendItem;
   days: TripDay[];
   people?: string[];
+  places?: Place[];
   defaultDayId?: string;
   onSuccess?: () => void;
+  /** Highlight category chips (Apple Pay notification deep link). */
+  focusCategory?: boolean;
 }) {
   const router = useRouter();
+  const categoryRef = useRef<HTMLDivElement>(null);
   const slide = useSlideIn();
   const { editorName } = useEditSession();
   const { t, locale } = useT();
@@ -74,8 +98,22 @@ export function SpendForm({
     item?.paidBy ?? editorName ?? people[0] ?? "",
   );
   const [splitWith, setSplitWith] = useState<string[]>(item?.splitWith ?? []);
+  const [placeId, setPlaceId] = useState(item?.placeId ?? "");
+  const [gift, setGift] = useState<SpendGiftValue>(() => {
+    const existing = item ? findGiftBySpendId(readGifts(), item.id) : undefined;
+    return {
+      flagged: Boolean(existing),
+      forSelf: existing?.forSelf ?? true,
+      recipient: existing?.recipient ?? "",
+    };
+  });
   const dayId = dayIdForDate(days, dayDate);
   const matchedDay = days.find((day) => day.id === dayId);
+  useEffect(() => {
+    if (!focusCategory) return;
+    categoryRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [focusCategory]);
+
   const tripDates = useMemo(() => {
     const dates = new Set<string>();
     for (const day of days) {
@@ -84,6 +122,29 @@ export function SpendForm({
     }
     return dates;
   }, [days]);
+
+  function onSaved(result: ActionResult, formData: FormData) {
+    const spendId = item?.id ?? (result.ok ? result.id : undefined);
+    const name = String(formData.get("name") ?? "").trim();
+    const amount = Number(formData.get("amount"));
+    const currency = parseSpendCurrency(String(formData.get("currency") ?? ""));
+    writeGifts(
+      applySpendGiftFlag({
+        gifts: readGifts(),
+        spendId,
+        name,
+        amount: Number.isFinite(amount) ? amount : 0,
+        currency,
+        flagged: gift.flagged,
+        forSelf: gift.forSelf,
+        recipient: gift.recipient,
+      }),
+    );
+    if (gift.flagged && !gift.forSelf && gift.recipient.trim()) {
+      rememberRecipientNow(gift.recipient);
+    }
+    goBack();
+  }
 
   function goBack() {
     onSuccess?.();
@@ -99,7 +160,7 @@ export function SpendForm({
     <>
       <ActionForm
         action={item ? updateSpend : submitSpend}
-        onSuccess={goBack}
+        onSuccess={onSaved}
         className={`${formShellClass} grid gap-2.5`}
       >
         {item ? <input type="hidden" name="id" value={item.id} /> : null}
@@ -132,9 +193,17 @@ export function SpendForm({
           tripDates={tripDates}
         />
         {matchedDay ? (
-          <p className="-mt-2 truncate text-xs text-ink-muted">{matchedDay.name}</p>
+          <p className="-mt-2 min-w-0 break-words [overflow-wrap:anywhere] text-xs text-ink-muted">{matchedDay.name}</p>
         ) : null}
 
+        <div
+          ref={categoryRef}
+          className={
+            focusCategory
+              ? "rounded-xl ring-2 ring-accent ring-offset-2 ring-offset-canvas"
+              : undefined
+          }
+        >
         <ChipGroup
           name="category"
           label={t("form.category")}
@@ -145,12 +214,27 @@ export function SpendForm({
               ? (category as (typeof SPEND_CATEGORIES)[number])
               : "Food"
           }
-          onChange={setCategory}
+          onChange={(next) => {
+            setCategory(next);
+            if (next !== "Food") setPlaceId("");
+          }}
           options={SPEND_CATEGORIES.map((value) => ({
             value,
             label: labelCategory(locale, value) ?? value,
           }))}
         />
+        </div>
+
+        {category === "Food" ? (
+          <FoodPlaceField
+            places={places}
+            dayId={dayId}
+            value={placeId}
+            onChange={setPlaceId}
+          />
+        ) : (
+          <input type="hidden" name="placeId" value="" />
+        )}
 
         <label className="grid gap-1">
           <span className="text-[12px] font-medium text-ink-muted">
@@ -165,8 +249,10 @@ export function SpendForm({
           />
         </label>
 
-        <PaidByField people={people} value={paidBy} onChange={setPaidBy} />
-        <SplitWithField people={people} value={splitWith} onChange={setSplitWith} />
+        <div className={spendPartyRowClass}>
+          <PaidByField people={people} value={paidBy} onChange={setPaidBy} />
+          <SplitWithField people={people} value={splitWith} onChange={setSplitWith} />
+        </div>
 
         <label className="grid gap-1">
           <span className="text-[12px] font-medium text-ink-muted">{t("form.notes")}</span>
@@ -176,6 +262,8 @@ export function SpendForm({
             className={fieldClass}
           />
         </label>
+
+        <SpendGiftFields value={gift} onChange={setGift} />
 
         <div className="flex flex-wrap gap-2">
           <button type="submit" className={btnPrimaryClass}>
@@ -229,12 +317,12 @@ function PaidByField({
   }
 
   return (
-    <div className="grid gap-1">
-      <span className="text-[12px] font-medium text-ink-muted">{t("form.paidBy")}</span>
+    <div className={spendPartyFieldClass}>
+      <span className="text-xs font-medium text-ink-muted">{t("form.paidBy")}</span>
       {tags.length > 0 ? (
         <>
           <input type="hidden" name="paidBy" value={value} />
-          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t("form.paidBy")}>
+          <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={t("form.paidBy")}>
             {tags.map((name) => {
               const selected = name.toLowerCase() === value.toLowerCase();
               return (
@@ -244,10 +332,8 @@ function PaidByField({
                   role="radio"
                   aria-checked={selected}
                   onClick={() => onChange(selected ? "" : name)}
-                  className={`notebook-btn inline-flex min-h-11 items-center px-3.5 text-sm font-medium ${
-                    selected
-                      ? "bg-accent text-white"
-                      : "border border-line bg-surface text-ink"
+                  className={`${spendPartyChipClass} ${
+                    selected ? spendPartyChipOnClass : spendPartyChipOffClass
                   }`}
                 >
                   {name}

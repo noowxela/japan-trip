@@ -7,16 +7,27 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
   type TouchEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useT } from "@/components/i18n-provider";
+import {
+  isStandaloneDisplay,
+  lockAppScroll,
+  shouldHandleEdgeBackSwipe,
+} from "@/lib/app-shell";
 
 const SLIDE_MS = 380;
 const EDGE_PX = 28;
 const DISMISS_PX = 88;
 const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
+
+const subscribeClient = () => () => {};
+const clientSnapshot = () => true;
+const serverSnapshot = () => false;
 
 const SlideInContext = createContext<{ close: () => void } | null>(null);
 
@@ -37,10 +48,16 @@ export function SlideInPage({
 }) {
   const router = useRouter();
   const { t } = useT();
-  const label = backLabel ?? t("nav.expenses");
+  const label = backLabel ?? t("common.back");
   const [shown, setShown] = useState(false);
   const [dragX, setDragX] = useState(0);
   const [grabbing, setGrabbing] = useState(false);
+  const [settled, setSettled] = useState(false);
+  const portalReady = useSyncExternalStore(
+    subscribeClient,
+    clientSnapshot,
+    serverSnapshot,
+  );
   const startXRef = useRef<number | null>(null);
   const startYRef = useRef(0);
   const closingRef = useRef(false);
@@ -49,10 +66,18 @@ export function SlideInPage({
     const frame = window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => setShown(true));
     });
-    document.body.style.overflow = "hidden";
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    const settleTimer = window.setTimeout(
+      () => setSettled(true),
+      reduceMotion ? 0 : SLIDE_MS,
+    );
+    const unlock = lockAppScroll();
     return () => {
       window.cancelAnimationFrame(frame);
-      document.body.style.overflow = "";
+      window.clearTimeout(settleTimer);
+      unlock();
     };
   }, []);
 
@@ -62,6 +87,7 @@ export function SlideInPage({
     startXRef.current = null;
     setGrabbing(false);
     setDragX(0);
+    setSettled(false);
     setShown(false);
     const delay =
       window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -79,6 +105,7 @@ export function SlideInPage({
   }, [backHref, onClose, router]);
 
   function onTouchStart(event: TouchEvent<HTMLDivElement>) {
+    if (!shouldHandleEdgeBackSwipe(isStandaloneDisplay())) return;
     if (closingRef.current || event.touches.length !== 1) return;
     const touch = event.touches[0];
     if (touch.clientX > EDGE_PX) return;
@@ -116,17 +143,23 @@ export function SlideInPage({
     window.requestAnimationFrame(() => setDragX(0));
   }
 
-  return (
+  const moving = grabbing || dragX !== 0;
+  const node = (
     <SlideInContext.Provider value={{ close }}>
       <div
         role="dialog"
         aria-modal="true"
         aria-label={label}
-        className="fixed inset-0 z-40 overflow-y-auto overscroll-x-none overscroll-contain bg-canvas will-change-transform motion-reduce:transition-none"
+        className="fixed inset-0 z-40 overflow-x-clip overflow-y-auto overscroll-none bg-canvas motion-reduce:transition-none"
         style={{
-          transform: shown
-            ? `translate3d(${dragX}px,0,0)`
-            : "translate3d(100%,0,0)",
+          transform: !shown
+            ? "translate3d(100%,0,0)"
+            : moving
+              ? `translate3d(${dragX}px,0,0)`
+              : settled
+                ? "none"
+                : "translate3d(0,0,0)",
+          willChange: settled && !moving ? "auto" : "transform",
           transition: grabbing
             ? "none"
             : `transform ${SLIDE_MS}ms ${EASE}`,
@@ -151,6 +184,9 @@ export function SlideInPage({
       </div>
     </SlideInContext.Provider>
   );
+
+  if (typeof document === "undefined" || !portalReady) return null;
+  return createPortal(node, document.body);
 }
 
 function BackChevron() {

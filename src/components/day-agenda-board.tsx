@@ -1,36 +1,48 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import {
   confirmPendingPlace,
+  deletePlace,
+  deleteTransit,
   movePendingToDay,
   parkPlaceAsPending,
 } from "@/app/actions";
 import { useActionToast } from "@/components/action-form";
+import { AgendaItemEditSheet } from "@/components/agenda-item-edit-sheet";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { SwipeRow } from "@/components/compact/swipe-row";
 import { useCanEdit } from "@/components/edit-session";
+import { useEditOrUnlock } from "@/components/unlock-provider";
 import {
   useHiddenMapPinIds,
 } from "@/components/hide-map-pin-button";
 import { DirectionsLink } from "@/components/directions-link";
 import { HankoStamp } from "@/components/hanko-stamp";
 import { useT } from "@/components/i18n-provider";
+import { FlightRouteOverlay } from "@/components/flight-route-overlay";
 import { MapsPinLink } from "@/components/maps-pin-link";
 import { Modal } from "@/components/modal";
 import { useOutbox } from "@/components/outbox-provider";
 import { useToast } from "@/components/toast-provider";
+import { useTrashUndo } from "@/components/use-trash-undo";
 import { haptic } from "@/lib/haptic";
 import {
   formatGapMinutes,
   formatTime,
+  isPastTripDay,
   minutesBetweenStarts,
   startBefore,
 } from "@/lib/format";
 import { walkLabelBetween } from "@/lib/geo";
 import { toggleHiddenMapPin } from "@/lib/hidden-map-pins";
+import { categoryEmoji } from "@/lib/category-icon";
 import { labelMode, labelType } from "@/lib/i18n/dictionaries";
-import { sightNumbersFromAgenda } from "@/lib/schedule-pins";
-import type { AgendaItem, Place } from "@/lib/types";
+import { flightListLinks } from "@/lib/flight-path";
+import { isEffectivelySkipped } from "@/lib/schedule-drawer";
+import { isMapFocusable, sightNumbersFromAgenda } from "@/lib/schedule-pins";
+import { compareAgendaItems } from "@/lib/trip-core";
+import type { AgendaItem, Place, TripDay } from "@/lib/types";
 
 type DragPayload = { id: string; from: "pending" | "agenda" };
 
@@ -99,12 +111,14 @@ function TimelineMark({
   number,
   food,
   visited,
+  skipped,
   transit,
   current = false,
 }: {
   number?: number;
   food: boolean;
   visited: boolean;
+  skipped?: boolean;
   transit?: boolean;
   current?: boolean;
 }) {
@@ -124,6 +138,19 @@ function TimelineMark({
             <path strokeLinecap="round" strokeLinejoin="round" d="m5 12 5 5L19 7" />
           </svg>
         </span>
+      ) : skipped ? (
+        <span className="flex h-4 w-4 items-center justify-center rounded-full bg-ink-muted text-white">
+          <svg
+            viewBox="0 0 24 24"
+            className="h-2.5 w-2.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={3}
+            aria-hidden
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6 6 18" />
+          </svg>
+        </span>
       ) : transit ? (
         <span className="h-2 w-2 rounded-full border-2 border-transit bg-transit-soft" />
       ) : number != null ? (
@@ -138,6 +165,142 @@ function TimelineMark({
         <span className={`h-2 w-2 rounded-full ring-2 ring-surface ${numbered}`} />
       )}
     </span>
+  );
+}
+
+
+function ItemDetailExpand({
+  item,
+  expanded,
+  onToggle,
+  pinHiddenLabel,
+}: {
+  item: AgendaItem;
+  expanded: boolean;
+  onToggle: () => void;
+  pinHiddenLabel?: string | null;
+}) {
+  const { t } = useT();
+  const detail = item.detail?.trim() ?? "";
+  const notes = item.notes?.trim() ?? "";
+  const hasFromTo = Boolean(item.from?.trim() || item.to?.trim());
+  const preview = hasFromTo ? detail : notes || detail;
+  if (!preview && !pinHiddenLabel) return null;
+
+  return (
+    <div className="mt-0.5 min-w-0">
+      {pinHiddenLabel ? (
+        <p className="text-[12px] font-medium leading-4 text-ink-muted">
+          {pinHiddenLabel}
+        </p>
+      ) : null}
+      {preview ? (
+        <button
+          type="button"
+          data-no-swipe=""
+          aria-expanded={expanded}
+          aria-label={
+            hasFromTo
+              ? t("form.fromTo")
+              : t("form.notes")
+          }
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggle();
+          }}
+          className="mt-0.5 block w-full min-w-0 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+        >
+          {expanded ? (
+            <div className="space-y-2 rounded-lg border border-line bg-surface px-2.5 py-2">
+              {hasFromTo ? (
+                <>
+                  {item.from?.trim() ? (
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-medium leading-4 text-ink-muted">
+                        {t("form.from")}
+                      </p>
+                      <p className="whitespace-pre-wrap break-words text-[15px] leading-5 text-ink">
+                        {item.from}
+                      </p>
+                    </div>
+                  ) : null}
+                  {item.to?.trim() ? (
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-medium leading-4 text-ink-muted">
+                        {t("form.to")}
+                      </p>
+                      <p className="whitespace-pre-wrap break-words text-[15px] leading-5 text-ink">
+                        {item.to}
+                      </p>
+                    </div>
+                  ) : null}
+                  {notes ? (
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-medium leading-4 text-ink-muted">
+                        {t("form.notes")}
+                      </p>
+                      <p className="whitespace-pre-wrap break-words text-[15px] leading-5 text-ink">
+                        {notes}
+                      </p>
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <div className="min-w-0">
+                  <p className="text-[12px] font-medium leading-4 text-ink-muted">
+                    {t("form.notes")}
+                  </p>
+                  <p className="whitespace-pre-wrap break-words text-[15px] leading-5 text-ink">
+                    {notes || detail}
+                  </p>
+                </div>
+              )}
+              <p className="text-[12px] font-medium text-ink-muted">▴</p>
+            </div>
+          ) : (
+            <span className="flex min-w-0 items-start gap-1 text-[13px] leading-5 text-ink-muted">
+              <span className="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">{preview}</span>
+              <span className="shrink-0 text-[11px] text-ink-muted" aria-hidden>
+                ▾
+              </span>
+            </span>
+          )}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function ItemMenuButton({
+  name,
+  onOpen,
+}: {
+  name: string;
+  onOpen: () => void;
+}) {
+  const { t } = useT();
+  return (
+    <button
+      type="button"
+      data-no-swipe=""
+      aria-label={t("agenda.actionsFor", {
+        name,
+      })}
+      draggable={false}
+      onPointerDown={(event) => event.stopPropagation()}
+      onClick={(event) => {
+        event.stopPropagation();
+        onOpen();
+      }}
+      className="absolute right-0 top-0.5 flex h-10 w-10 items-center justify-center rounded-full text-ink-muted hover:bg-canvas hover:text-ink"
+    >
+      <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
+        <circle cx="6" cy="12" r="1.5" fill="currentColor" />
+        <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+        <circle cx="18" cy="12" r="1.5" fill="currentColor" />
+      </svg>
+    </button>
   );
 }
 
@@ -224,16 +387,34 @@ function PendingCard({
   );
 }
 
+/** Shell classes for PendingPanel. Modal must stay visible on all breakpoints —
+ * Schedule's pending sheet is the only place today's own pending list appears on
+ * phone (other days' pending surface via CarryOverBanner instead). */
+export function pendingPanelShellClass(
+  presentation: "sidebar" | "sheet" | "modal",
+): string {
+  if (presentation === "modal") {
+    return "rounded-2xl border border-line bg-surface p-3";
+  }
+  if (presentation === "sheet") {
+    return "rounded-2xl border border-line bg-surface p-4 lg:hidden";
+  }
+  return "hidden rounded-2xl border border-line bg-surface p-3 lg:sticky lg:top-20 lg:block";
+}
+
 export function PendingPanel({
   pending,
   dayId,
   dayDate,
   mobileSheet = false,
+  presentation,
 }: {
   pending: Place[];
   dayId: string;
   dayDate: string | null;
   mobileSheet?: boolean;
+  /** Prefer over mobileSheet. `modal` = always visible (Schedule pending Modal). */
+  presentation?: "sidebar" | "sheet" | "modal";
 }) {
   const [busy, startTransition] = useTransition();
   const [over, setOver] = useState(false);
@@ -260,9 +441,9 @@ export function PendingPanel({
     startTransition(async () => notify(await confirmPendingPlace(formData)));
   }
 
-  const shellClass = mobileSheet
-    ? "rounded-2xl border border-line bg-surface p-4 lg:hidden"
-    : "hidden rounded-2xl border border-line bg-surface p-3 lg:sticky lg:top-20 lg:block";
+  const resolved =
+    presentation ?? (mobileSheet ? "sheet" : "sidebar");
+  const shellClass = pendingPanelShellClass(resolved);
 
   return (
     <aside
@@ -302,6 +483,84 @@ export function PendingPanel({
         </ul>
       )}
     </aside>
+  );
+}
+
+export function SkippedPanel({
+  items,
+}: {
+  items: AgendaItem[];
+}) {
+  const [busy, startTransition] = useTransition();
+  const canEdit = useCanEdit();
+  const { t, locale } = useT();
+  const { toast } = useToast();
+  const { markSkipped } = useOutbox();
+
+  function unskip(item: AgendaItem) {
+    haptic("success");
+    startTransition(async () => {
+      const result = await markSkipped(item.id, false, item.kind, {
+        silent: true,
+      });
+      if (!result.ok) return;
+      toast(
+        result.message == null
+          ? t("offline.savedQueued")
+          : t("action.markedUnskipped"),
+        {
+          actionLabel: t("common.undo"),
+          onAction: () => {
+            void markSkipped(item.id, true, item.kind, { silent: true });
+          },
+        },
+      );
+    });
+  }
+
+  return (
+    <div className={busy ? "opacity-70" : ""}>
+      {items.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-line px-3 py-6 text-center text-xs text-ink-muted">
+          {t("agenda.noneSkipped")}
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {items.map((item) => {
+            const category =
+              item.kind === "transit"
+                ? labelMode(locale, item.chip) ?? t("mode.Transit")
+                : labelType(locale, item.chip) ?? t("type.Other");
+            const timeLabel = formatTime(item.start);
+            return (
+              <li
+                key={`${item.kind}-${item.id}`}
+                className="rounded-xl border border-line bg-surface p-2.5"
+              >
+                <p className="text-[10px] font-medium text-ink-muted">
+                  {category}
+                  {timeLabel ? ` · ${timeLabel}` : ""}
+                </p>
+                <p className="text-sm font-medium leading-snug break-words">
+                  {item.name}
+                </p>
+                {canEdit ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => unskip(item)}
+                      className="rounded-full bg-canvas px-3 py-1 text-[11px] font-medium text-ink"
+                    >
+                      {t("agenda.markUnskipped")}
+                    </button>
+                  </div>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -388,35 +647,65 @@ export function DayAgendaBoard({
   pending,
   dayId,
   dayDate,
+  days,
+  dayCity = null,
   showPending = true,
   highlightId = null,
   mutedIds,
+  onFocusItem,
 }: {
   agenda: AgendaItem[];
   pending: Place[];
   dayId: string;
   dayDate: string | null;
+  days: TripDay[];
+  dayCity?: string | null;
   showPending?: boolean;
   highlightId?: string | null;
   mutedIds?: Set<string>;
+  /** Tap a located place row to focus it on the day map. */
+  onFocusItem?: (id: string) => void;
 }) {
   const [busy, startTransition] = useTransition();
   const [over, setOver] = useState<string | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [popId, setPopId] = useState<string | null>(null);
-  const [showVisited, setShowVisited] = useState(false);
+  const [showVisited, setShowVisited] = useState(() => isPastTripDay(dayDate));
   const notify = useActionToast();
   const { toast } = useToast();
+  const trashWithUndo = useTrashUndo();
   const canEdit = useCanEdit();
+  const editOrUnlock = useEditOrUnlock();
   const hiddenIds = useHiddenMapPinIds();
   const { t, locale } = useT();
-  const { markVisited, visitedOverlay } = useOutbox();
+  const { markVisited, markSkipped, visitedOverlay, skippedOverlay } = useOutbox();
+  const isSkipped = (item: AgendaItem) =>
+    isEffectivelySkipped(item, skippedOverlay);
   const isVisited = (item: AgendaItem) => {
-    if (item.kind !== "place") return false;
+    if (isSkipped(item)) return false;
     return visitedOverlay[item.id] ?? Boolean(item.visited);
   };
   const visitedCount = agenda.filter((item) => isVisited(item)).length;
-  const sightNumbers = sightNumbersFromAgenda(agenda);
+  // Re-sort client-side so visited/completed rows keep wall-clock order even if
+  // a cached slice or late-edit left Start dates inconsistent with the day.
+  const orderedAgenda = useMemo(
+    () => [...agenda].sort(compareAgendaItems),
+    [agenda],
+  );
+  const activeAgenda = useMemo(
+    () =>
+      orderedAgenda.filter((item) => !isEffectivelySkipped(item, skippedOverlay)),
+    [orderedAgenda, skippedOverlay],
+  );
+  const sightNumbers = sightNumbersFromAgenda(activeAgenda, skippedOverlay);
+  const listRef = useRef<HTMLOListElement>(null);
+  const flightLinks = useMemo(
+    () => flightListLinks(activeAgenda),
+    [activeAgenda],
+  );
 
   function dropOnAgenda(before: AgendaItem | null) {
     return (event: React.DragEvent) => {
@@ -470,12 +759,69 @@ export function DayAgendaBoard({
     });
   }
 
-  const menuItem = agenda.find(
-    (item) => item.kind === "place" && item.id === menuId,
-  );
+  function setSkipped(item: AgendaItem, skipped: boolean) {
+    setMenuId(null);
+    haptic("success");
+    startTransition(async () => {
+      const result = await markSkipped(item.id, skipped, item.kind, {
+        silent: true,
+      });
+      if (!result.ok) return;
+      toast(
+        result.message == null
+          ? t("offline.savedQueued")
+          : skipped
+            ? t("action.markedSkipped")
+            : t("action.markedUnskipped"),
+        {
+          actionLabel: t("common.undo"),
+          onAction: () => {
+            void markSkipped(item.id, !skipped, item.kind, { silent: true });
+          },
+        },
+      );
+    });
+  }
+
+  const menuItem = agenda.find((item) => item.id === menuId);
+  const editItem = agenda.find((item) => item.id === editId) ?? null;
   const menuHasCoords =
     menuItem != null && menuItem.lat != null && menuItem.lng != null;
   const menuHidden = menuItem != null && hiddenIds.has(menuItem.id);
+  const deleteItem = agenda.find((item) => item.id === deleteId);
+
+  function openItemMenu(id: string) {
+    setDeleteId(null);
+    setEditId(null);
+    setMenuId(id);
+  }
+
+  function openItemEdit(id: string) {
+    setMenuId(null);
+    setDeleteId(null);
+    editOrUnlock(() => setEditId(id));
+  }
+
+  function requestDelete(id: string) {
+    setMenuId(null);
+    setEditId(null);
+    setDeleteId(id);
+  }
+
+  function confirmDelete() {
+    if (!deleteItem) return;
+    const id = deleteItem.id;
+    const formData = new FormData();
+    formData.set("id", id);
+    setDeleteId(null);
+    startTransition(async () => {
+      if (deleteItem.kind === "transit") {
+        await trashWithUndo(await deleteTransit(formData), id, "transit");
+      } else {
+        await trashWithUndo(await deletePlace(formData), id, "place");
+      }
+    });
+  }
 
   return (
     <div
@@ -483,16 +829,18 @@ export function DayAgendaBoard({
     >
       <div>
         {visitedCount > 0 ? (
-          <button
-            type="button"
-            aria-expanded={showVisited}
-            onClick={() => setShowVisited((value) => !value)}
-            className="mb-1.5 inline-flex min-h-9 items-center rounded-lg px-1 text-xs text-ink-muted"
-          >
-            {t("agenda.doneExpand", { n: visitedCount })}
-          </button>
+          <div className="mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <button
+              type="button"
+              aria-expanded={showVisited}
+              onClick={() => setShowVisited((value) => !value)}
+              className="inline-flex min-h-9 items-center rounded-lg px-1 text-xs text-ink-muted"
+            >
+              {t("agenda.doneExpand", { n: visitedCount })}
+            </button>
+          </div>
         ) : null}
-        {agenda.length === 0 ? (
+        {activeAgenda.length === 0 ? (
           <div
             onDragOver={(event) => {
               event.preventDefault();
@@ -511,9 +859,11 @@ export function DayAgendaBoard({
               : t("agenda.emptySchedule")}
           </div>
         ) : (
-          <ol className="relative">
-            {agenda.map((item, index) => {
+          <div className="relative">
+          <ol ref={listRef}>
+            {activeAgenda.map((item, index) => {
               const food = item.kind === "place" && isFoodChip(item.chip);
+              const skipped = isSkipped(item);
               const visited = isVisited(item);
               if (visited && !showVisited && item.id !== highlightId) {
                 return null;
@@ -523,7 +873,7 @@ export function DayAgendaBoard({
                 item.kind === "place" ? sightNumbers.get(item.id) : undefined;
               const timeLabel = formatTime(item.start) ?? "—";
               const dropId = `before-${item.id}`;
-              const previous = index > 0 ? agenda[index - 1] : null;
+              const previous = index > 0 ? activeAgenda[index - 1] : null;
               const gapMins =
                 previous && item.start
                   ? minutesBetweenStarts(previous.start, item.start)
@@ -542,21 +892,26 @@ export function DayAgendaBoard({
                 item.lat != null &&
                 item.lng != null &&
                 hiddenIds.has(item.id);
+              const focusable =
+                onFocusItem != null && isMapFocusable(item, hiddenIds);
               const typeLabel =
                 item.kind === "place" ? labelType(locale, item.chip) : null;
               const modeLabel =
                 item.kind === "transit"
                   ? labelMode(locale, item.chip) ?? t("mode.Transit")
                   : null;
-              const primaryMeta = [typeLabel].filter(Boolean);
-              const secondaryBits = [
-                item.kind === "place" && item.detail ? item.detail : null,
-                pinHidden ? t("agenda.hiddenOnMap") : null,
-              ].filter(Boolean);
-              const visibleItems = agenda.filter(
-                (row) =>
-                  !isVisited(row) || showVisited || row.id === highlightId,
-              );
+              const categoryLabel = transit ? modeLabel : typeLabel;
+              const pinHiddenLabel = pinHidden
+                ? t("agenda.hiddenOnMap")
+                : null;
+              const detailExpanded = expandedId === item.id;
+              const visibleItems = activeAgenda.filter((row) => {
+                const rowVisited = isVisited(row);
+                if (rowVisited && !showVisited && row.id !== highlightId) {
+                  return false;
+                }
+                return true;
+              });
               const visibleIndex = visibleItems.findIndex(
                 (row) => row.id === item.id,
               );
@@ -580,7 +935,7 @@ export function DayAgendaBoard({
                     <div className="grid h-[18px] grid-cols-[2.5rem_1.25rem_minmax(0,1fr)] items-center gap-x-1.5">
                       <span aria-hidden />
                       <TimelineRail />
-                      <p className="truncate text-[11px] leading-[14px] text-ink-muted">
+                      <p className="min-w-0 break-words [overflow-wrap:anywhere] text-[11px] leading-[14px] text-ink-muted">
                         · {between} ·
                       </p>
                     </div>
@@ -602,7 +957,7 @@ export function DayAgendaBoard({
                       isFocus ? "bg-accent/5" : ""
                     }`}
                   >
-                    <p className="w-10 shrink-0 self-center text-right text-[11px] font-semibold tabular-nums leading-4 text-ink">
+                    <p className="w-10 shrink-0 self-start whitespace-nowrap pt-1.5 text-right text-[11px] font-semibold tabular-nums leading-4 text-ink">
                       {timeLabel}
                     </p>
                     <TimelineRail
@@ -611,6 +966,7 @@ export function DayAgendaBoard({
                       align={transit ? "transit" : "place"}
                     >
                       <span
+                        data-flight-anchor={item.id}
                         className={
                           isFocus
                             ? "rounded-full ring-2 ring-accent ring-offset-1 ring-offset-canvas"
@@ -621,73 +977,40 @@ export function DayAgendaBoard({
                           number={sightNo}
                           food={food}
                           visited={visited}
+                          skipped={skipped}
                           transit={transit}
                           current={isFocus}
                         />
                       </span>
                     </TimelineRail>
-                    {transit ? (
-                      <div
-                        className={`flex min-h-11 min-w-0 items-center gap-1.5 py-1.5 pr-1 ${
-                          isFocus ? "border-l-2 border-accent pl-2 -ml-0.5" : ""
-                        }`}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[13px] leading-4 text-ink">
-                            <span className="mr-1.5 inline-block rounded bg-transit-soft px-1 py-px text-[10px] font-medium text-transit align-middle">
-                              {modeLabel}
-                            </span>
-                            <span className="font-medium">{item.name}</span>
-                            {item.detail ? (
-                              <span className="text-ink-muted">
-                                {" "}
-                                · {item.detail}
-                              </span>
-                            ) : null}
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <SwipeRow
-                        className={isFocus ? "rounded-r-lg" : ""}
-                        leftReveal={
-                          <span className="flex flex-col items-center gap-0.5">
-                            <span className="font-[ui-serif,Georgia,'Noto Serif JP',serif] text-sm font-bold">
-                              {t("theme.stampVisited")}
-                            </span>
-                            <span className="text-[10px] font-medium opacity-90">
-                              {t("agenda.swipeVisited")}
-                            </span>
-                          </span>
-                        }
-                        rightReveal={
-                          <span aria-hidden>{t("common.more")}</span>
-                        }
-                        onSwipeRight={
-                          canEdit
-                            ? () => setVisited(item.id, !visited)
-                            : undefined
-                        }
-                        onSwipeLeft={() => setMenuId(item.id)}
-                      >
+                    <SwipeRow
+                      className={isFocus ? "rounded-r-lg" : ""}
+                      leftReveal={
+                        <span aria-hidden>{t("common.edit")}</span>
+                      }
+                      leftRevealClassName="bg-ink text-white"
+                      rightReveal={
+                        <span aria-hidden>{t("common.delete")}</span>
+                      }
+                      rightRevealClassName="bg-accent text-white"
+                      onSwipeRight={() =>
+                        canEdit
+                          ? openItemEdit(item.id)
+                          : openItemMenu(item.id)
+                      }
+                      onSwipeLeft={
+                        canEdit ? () => requestDelete(item.id) : undefined
+                      }
+                      onLongPress={() => openItemMenu(item.id)}
+                    >
+                      {transit ? (
                         <div
-                          draggable={canEdit && !visited}
-                          onDragStart={(event) => {
-                            if (visited) return;
-                            event.dataTransfer.setData(
-                              "text/plain",
-                              JSON.stringify({ id: item.id, from: "agenda" }),
-                            );
-                            event.dataTransfer.effectAllowed = "move";
-                          }}
-                          className={`relative flex min-h-11 min-w-0 items-center gap-1 bg-canvas py-1.5 pr-9 ${
-                            isFocus
-                              ? "border-l-2 border-accent bg-accent/5 pl-2 -ml-0.5"
-                              : ""
+                          className={`relative flex min-h-11 min-w-0 items-start gap-1.5 bg-canvas py-1.5 pr-9 ${
+                            isFocus ? "border-l-2 border-accent pl-2 -ml-0.5" : ""
                           }`}
                         >
                           <div className="min-w-0 flex-1">
-                            <p className="flex min-w-0 items-center gap-1.5 truncate text-[13px] leading-4">
+                            <p className="flex min-w-0 flex-wrap items-start gap-1.5 text-[13px] leading-4">
                               {visited ? (
                                 <HankoStamp
                                   variant="ok"
@@ -697,70 +1020,150 @@ export function DayAgendaBoard({
                                 >
                                   {t("theme.stampVisited")}
                                 </HankoStamp>
+                              ) : skipped ? (
+                                <HankoStamp
+                                  variant="muted"
+                                  size="sm"
+                                  className="shrink-0"
+                                >
+                                  {t("theme.stampSkipped")}
+                                </HankoStamp>
+                              ) : null}
+                              {categoryLabel ? (
+                                <span
+                                  role="img"
+                                  aria-label={categoryLabel}
+                                  title={categoryLabel}
+                                  className="shrink-0 text-[14px] leading-none"
+                                >
+                                  {categoryEmoji("transit", item.chip)}
+                                </span>
                               ) : null}
                               <span
-                                className={`truncate font-medium ${
-                                  visited
+                                className={`min-w-0 flex-1 break-words [overflow-wrap:anywhere] font-medium ${
+                                  visited || skipped
                                     ? "text-ink-muted line-through decoration-line"
                                     : "text-ink"
                                 }`}
                               >
                                 {item.name}
                               </span>
-                              {primaryMeta.length > 0 ? (
-                                <span className="truncate text-ink-muted">
-                                  · {primaryMeta.join(" · ")}
+                            </p>
+                            <ItemDetailExpand
+                              item={item}
+                              expanded={detailExpanded}
+                              pinHiddenLabel={pinHiddenLabel}
+                              onToggle={() =>
+                                setExpandedId((cur) =>
+                                  cur === item.id ? null : item.id,
+                                )
+                              }
+                            />
+                          </div>
+                          <ItemMenuButton
+                            name={item.name}
+                            onOpen={() => openItemMenu(item.id)}
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          draggable={canEdit && !visited && !skipped}
+                          onDragStart={(event) => {
+                            if (visited || skipped) return;
+                            event.dataTransfer.setData(
+                              "text/plain",
+                              JSON.stringify({ id: item.id, from: "agenda" }),
+                            );
+                            event.dataTransfer.effectAllowed = "move";
+                          }}
+                          tabIndex={focusable ? 0 : undefined}
+                          aria-label={
+                            focusable
+                              ? t("agenda.showOnMapFocus", { name: item.name })
+                              : undefined
+                          }
+                          onClick={
+                            focusable
+                              ? () => onFocusItem?.(item.id)
+                              : undefined
+                          }
+                          onKeyDown={
+                            focusable
+                              ? (event) => {
+                                  if (event.target !== event.currentTarget) return;
+                                  if (event.key === "Enter" || event.key === " ") {
+                                    event.preventDefault();
+                                    onFocusItem?.(item.id);
+                                  }
+                                }
+                              : undefined
+                          }
+                          className={`relative flex min-h-11 min-w-0 items-start gap-1 bg-canvas py-1.5 pr-9 ${
+                            focusable ? "cursor-pointer " : ""
+                          }${
+                            isFocus
+                              ? "border-l-2 border-accent bg-accent/5 pl-2 -ml-0.5"
+                              : ""
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="flex min-w-0 flex-wrap items-start gap-1.5 text-[13px] leading-4">
+                              {visited ? (
+                                <HankoStamp
+                                  variant="ok"
+                                  size="sm"
+                                  pop={popId === item.id}
+                                  className="shrink-0"
+                                >
+                                  {t("theme.stampVisited")}
+                                </HankoStamp>
+                              ) : skipped ? (
+                                <HankoStamp
+                                  variant="muted"
+                                  size="sm"
+                                  className="shrink-0"
+                                >
+                                  {t("theme.stampSkipped")}
+                                </HankoStamp>
+                              ) : null}
+                              {categoryLabel ? (
+                                <span
+                                  role="img"
+                                  aria-label={categoryLabel}
+                                  title={categoryLabel}
+                                  className="shrink-0 text-[14px] leading-none"
+                                >
+                                  {categoryEmoji("place", item.chip)}
                                 </span>
                               ) : null}
+                              <span
+                                className={`min-w-0 flex-1 break-words [overflow-wrap:anywhere] font-medium ${
+                                  visited || skipped
+                                    ? "text-ink-muted line-through decoration-line"
+                                    : "text-ink"
+                                }`}
+                              >
+                                {item.name}
+                              </span>
                             </p>
-                            {secondaryBits.length > 0 ? (
-                              <p className="mt-0.5 truncate text-[11px] leading-3 text-ink-muted">
-                                {secondaryBits.join(" · ")}
-                              </p>
-                            ) : null}
+                            <ItemDetailExpand
+                              item={item}
+                              expanded={detailExpanded}
+                              pinHiddenLabel={pinHiddenLabel}
+                              onToggle={() =>
+                                setExpandedId((cur) =>
+                                  cur === item.id ? null : item.id,
+                                )
+                              }
+                            />
                           </div>
-                          <button
-                            type="button"
-                            data-no-swipe=""
-                            aria-label={t("agenda.actionsFor", {
-                              name: item.name,
-                            })}
-                            draggable={false}
-                            onPointerDown={(event) => event.stopPropagation()}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setMenuId(item.id);
-                            }}
-                            className="absolute right-0 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted hover:bg-canvas hover:text-ink"
-                          >
-                            <svg
-                              viewBox="0 0 24 24"
-                              className="h-4 w-4"
-                              aria-hidden
-                            >
-                              <circle
-                                cx="6"
-                                cy="12"
-                                r="1.5"
-                                fill="currentColor"
-                              />
-                              <circle
-                                cx="12"
-                                cy="12"
-                                r="1.5"
-                                fill="currentColor"
-                              />
-                              <circle
-                                cx="18"
-                                cy="12"
-                                r="1.5"
-                                fill="currentColor"
-                              />
-                            </svg>
-                          </button>
+                          <ItemMenuButton
+                            name={item.name}
+                            onOpen={() => openItemMenu(item.id)}
+                          />
                         </div>
-                      </SwipeRow>
-                    )}
+                      )}
+                    </SwipeRow>
                   </div>
                 </li>
               );
@@ -787,6 +1190,8 @@ export function DayAgendaBoard({
               />
             </li>
           </ol>
+          <FlightRouteOverlay listRef={listRef} links={flightLinks} />
+          </div>
         )}
       </div>
       {showPending ? (
@@ -811,6 +1216,14 @@ export function DayAgendaBoard({
       >
         {menuItem ? (
           <div className="grid gap-2 pb-[calc(env(safe-area-inset-bottom,0px)+0.25rem)]">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => openItemEdit(menuItem.id)}
+              className="notebook-btn min-h-11 w-full border border-line bg-surface px-4 py-3 text-left text-sm font-medium text-ink disabled:opacity-60"
+            >
+              {t("agenda.editItem")}
+            </button>
             {canEdit ? (
               <button
                 type="button"
@@ -826,7 +1239,20 @@ export function DayAgendaBoard({
                   : t("agenda.markVisited")}
               </button>
             ) : null}
-            {canEdit && !isVisited(menuItem) ? (
+            {canEdit ? (
+              <button
+                type="button"
+                disabled={busy}
+                data-haptic="manual"
+                onClick={() => setSkipped(menuItem, !isSkipped(menuItem))}
+                className="notebook-btn min-h-11 w-full border border-line bg-surface px-4 py-3 text-left text-sm font-medium text-ink-muted disabled:opacity-60"
+              >
+                {isSkipped(menuItem)
+                  ? t("agenda.markUnskipped")
+                  : t("agenda.markSkipped")}
+              </button>
+            ) : null}
+            {canEdit && menuItem.kind === "place" && !isVisited(menuItem) ? (
               <button
                 type="button"
                 disabled={busy}
@@ -876,6 +1302,26 @@ export function DayAgendaBoard({
           </div>
         ) : null}
       </Modal>
+      <AgendaItemEditSheet
+        open={editItem != null}
+        onClose={() => setEditId(null)}
+        item={editItem}
+        dayId={dayId}
+        dayDate={dayDate}
+        days={days}
+        city={dayCity}
+      />
+      <ConfirmDialog
+        open={deleteItem != null}
+        title={t("agenda.deleteStop")}
+        message={t("agenda.deleteStopMessage", {
+          name: deleteItem?.name ?? "",
+        })}
+        confirmLabel={t("common.delete")}
+        busy={busy}
+        onCancel={() => setDeleteId(null)}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

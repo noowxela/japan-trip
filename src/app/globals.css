@@ -21,6 +21,16 @@
   --color-sage: var(--line);
   --color-moss: var(--accent);
   --color-hanko: var(--accent);
+  --color-leaf-maple: var(--leaf-maple);
+  --color-leaf-maple-soft: var(--leaf-maple-soft);
+  --color-leaf-rust: var(--leaf-rust);
+  --color-leaf-rust-soft: var(--leaf-rust-soft);
+  --color-leaf-amber: var(--leaf-amber);
+  --color-leaf-amber-soft: var(--leaf-amber-soft);
+  --color-leaf-gold: var(--leaf-gold);
+  --color-leaf-gold-soft: var(--leaf-gold-soft);
+  --color-leaf-burnt: var(--leaf-burnt);
+  --color-leaf-burnt-soft: var(--leaf-burnt-soft);
   --font-sans: var(--font-nunito);
 }
 
@@ -40,6 +50,17 @@
   --surface: #ffffff;
   --canvas: #f6f1e8;
   --line: rgba(60, 40, 20, 0.1);
+  /* Muted autumn leaves for past Overview day cards. */
+  --leaf-maple: #9b3d2c;
+  --leaf-maple-soft: #f4e0d8;
+  --leaf-rust: #8f4528;
+  --leaf-rust-soft: #f3e1d6;
+  --leaf-amber: #8a5a12;
+  --leaf-amber-soft: #f3ead4;
+  --leaf-gold: #7a6418;
+  --leaf-gold-soft: #f0ead0;
+  --leaf-burnt: #a24e1c;
+  --leaf-burnt-soft: #f4e2d2;
   --card-shadow:
     0 1px 2px rgba(60, 40, 20, 0.06), 0 4px 16px rgba(60, 40, 20, 0.05);
   --theme-color: #f6f1e8;
@@ -59,6 +80,16 @@
   --surface: #1e1b18;
   --canvas: #141210;
   --line: rgba(255, 255, 255, 0.08);
+  --leaf-maple: #e39284;
+  --leaf-maple-soft: rgba(227, 146, 132, 0.18);
+  --leaf-rust: #d49272;
+  --leaf-rust-soft: rgba(212, 146, 114, 0.18);
+  --leaf-amber: #d4a04a;
+  --leaf-amber-soft: rgba(212, 160, 74, 0.16);
+  --leaf-gold: #cbb45c;
+  --leaf-gold-soft: rgba(203, 180, 92, 0.16);
+  --leaf-burnt: #e09a62;
+  --leaf-burnt-soft: rgba(224, 154, 98, 0.18);
   --card-shadow:
     0 1px 2px rgba(0, 0, 0, 0.35), 0 4px 16px rgba(0, 0, 0, 0.28);
   --theme-color: #141210;
@@ -92,12 +123,66 @@ html[data-tab-bar="hidden"] .tab-bar-follow {
   }
 }
 
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  overflow-x: clip;
+}
+
 body {
   background-color: var(--canvas);
   color: var(--ink);
   font-size: 15px;
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input,
+textarea,
+[contenteditable="true"] {
+  -webkit-touch-callout: default;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.app-shell {
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  overflow-x: clip;
+  overscroll-behavior: none;
+}
+
+.app-safe-top {
+  height: env(safe-area-inset-top, 0px);
+}
+
+.app-scroll {
+  min-width: 0;
+  overflow-x: clip;
+  overflow-y: auto;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+button,
+a,
+.tab-bar,
+.notebook-btn,
+.notebook-press {
+  touch-action: manipulation;
+}
+
+.leaflet-container,
+.leaflet-container * {
+  touch-action: auto;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .type-page {
@@ -169,6 +254,12 @@ input[type="date"]::-webkit-datetime-edit {
   transform: scale(0.95);
 }
 
+.spend-item-row {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 button:disabled > [data-haptic-overlay],
 fieldset:disabled [data-haptic-overlay],
 [aria-disabled="true"] > [data-haptic-overlay] {
@@ -183,6 +274,57 @@ fieldset:disabled [data-haptic-overlay],
 .day-map-pin {
   background: none;
   border: none;
+}
+
+.user-location-marker {
+  background: none;
+  border: none;
+}
+
+.user-location-dot {
+  position: relative;
+  display: block;
+  width: 22px;
+  height: 22px;
+}
+
+.user-location-core {
+  position: absolute;
+  inset: 5px;
+  border-radius: 9999px;
+  background: #1a73e8;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+.user-location-pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: rgba(26, 115, 232, 0.28);
+  animation: user-location-pulse 2.4s ease-out infinite;
+}
+
+@keyframes user-location-pulse {
+  0% {
+    transform: scale(0.55);
+    opacity: 0.7;
+  }
+  70% {
+    transform: scale(1);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .user-location-pulse {
+    animation: none;
+    opacity: 0.35;
+  }
 }
 
 .leaflet-container:not(.day-map-named) .leaflet-tooltip.day-map-pin-name,
@@ -469,4 +611,89 @@ fieldset:disabled [data-haptic-overlay],
   .phrase-show-flip {
     transition: none;
   }
+}
+
+/* Schedule row tap → focused pin on the inline day map. */
+.leaflet-marker-icon.day-map-pin-focus {
+  z-index: 10000 !important;
+  filter: drop-shadow(0 0 0.35rem var(--accent));
+}
+
+/* Airplane beside the Flight / 航班 label: gentle bob + nudge. */
+.flight-plane-icon {
+  transform: rotate(90deg);
+  animation: flight-plane-bob 2.4s ease-in-out infinite;
+}
+@keyframes flight-plane-bob {
+  0%, 100% { transform: rotate(90deg) translate(0, 0); }
+  50% { transform: rotate(90deg) translate(-1.5px, -1.5px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flight-plane-icon { animation: none; }
+}
+
+/* Schedule gutter: dashed arc + plane from a flight row to its arrival. */
+.flight-route-layer,
+.flight-route-layer * {
+  pointer-events: none;
+}
+.flight-route-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  color: var(--accent);
+}
+.flight-route-lines path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.25;
+  stroke-dasharray: 2.5 4;
+  stroke-linecap: round;
+  opacity: 0.5;
+}
+.flight-route-plane {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 14px;
+  height: 14px;
+  color: var(--accent);
+  offset-anchor: center;
+  offset-rotate: auto;
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.9));
+  animation: flight-route-fly 8.4s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+}
+@keyframes flight-route-fly {
+  0% { offset-distance: 0%; }
+  82% { offset-distance: 100%; }
+  100% { offset-distance: 100%; }
+}
+.flight-route-plane-static {
+  animation: none;
+  offset-path: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .flight-route-plane {
+    animation: none;
+    offset-distance: 38%;
+  }
+}
+
+.leaflet-marker-icon.flight-map-plane {
+  background: none;
+  border: none;
+  pointer-events: none;
+}
+.flight-map-plane-rot {
+  display: block;
+  width: 16px;
+  height: 16px;
+  color: var(--accent);
+  transform-origin: center;
+  filter:
+    drop-shadow(0 0 1px rgba(255, 255, 255, 0.92))
+    drop-shadow(0 1px 1px rgba(28, 25, 23, 0.35));
 }

@@ -28,6 +28,9 @@ function transit(
     dayIds: [],
     start: null,
     order: null,
+    visited: false,
+    notes: "",
+    skipped: false,
     ...partial,
   };
 }
@@ -39,6 +42,9 @@ function stay(partial: Partial<Stay> & { id: string; name: string }): Stay {
     address: "",
     bookingUrl: null,
     confirmation: "",
+    mapsUrl: null,
+    lat: null,
+    lng: null,
     ...partial,
   };
 }

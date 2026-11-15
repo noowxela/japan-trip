@@ -11,6 +11,8 @@ export const SWIPE_VELOCITY_PX_MS = 0.45;
 export const SWIPE_VELOCITY_MIN_OFFSET_PX = 32;
 /** Visual reveal cap before rubber-band. */
 export const SWIPE_REVEAL_PX = 88;
+/** Hold still this long to fire onLongPress. */
+export const LONG_PRESS_MS = 480;
 
 export function decideSwipeAxis(
   dx: number,
@@ -74,6 +76,15 @@ export function commitSwipeDirection(options: {
 
 export function shouldSuppressClick(didCommitOrDrag: boolean): boolean {
   return didCommitOrDrag;
+}
+
+/** Movement past the axis lock cancels an in-progress long-press. */
+export function shouldCancelLongPress(
+  dx: number,
+  dy: number,
+  lockPx: number = SWIPE_AXIS_LOCK_PX,
+): boolean {
+  return Math.abs(dx) >= lockPx || Math.abs(dy) >= lockPx;
 }
 
 export function isSwipeIgnoredTarget(target: EventTarget | null): boolean {

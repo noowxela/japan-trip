@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useT } from "@/components/i18n-provider";
+import { getAppScrollElement, getAppScrollTop } from "@/lib/app-shell";
 
 const TOP_PX = 24;
 const DELTA_PX = 10;
@@ -19,12 +20,13 @@ function useScrollHideTabBar() {
   }
 
   useEffect(() => {
-    let lastY = window.scrollY;
+    const scroller = getAppScrollElement();
+    let lastY = getAppScrollTop();
     let frame = 0;
 
     const apply = () => {
       frame = 0;
-      const y = Math.max(0, window.scrollY);
+      const y = Math.max(0, getAppScrollTop());
       const delta = y - lastY;
       lastY = y;
 
@@ -41,9 +43,10 @@ function useScrollHideTabBar() {
       frame = window.requestAnimationFrame(apply);
     };
 
-    window.addEventListener("scroll", onScroll, { passive: true });
+    const target: EventTarget = scroller ?? window;
+    target.addEventListener("scroll", onScroll, { passive: true });
     return () => {
-      window.removeEventListener("scroll", onScroll);
+      target.removeEventListener("scroll", onScroll);
       if (frame) window.cancelAnimationFrame(frame);
     };
   }, [pathname]);
@@ -100,7 +103,9 @@ export function BottomNav() {
       match: (path: string) =>
         path === "/settings" ||
         path === "/prep" ||
+        path === "/clothes" ||
         path === "/phrases" ||
+        path === "/gifts" ||
         path === "/lists" ||
         path === "/places" ||
         path === "/stays" ||
@@ -124,6 +129,20 @@ export function BottomNav() {
             <Link
               key={tab.href}
               href={tab.href}
+              onClick={(event) => {
+                if (pathname !== "/" || tab.href === "/") return;
+                if (
+                  event.metaKey ||
+                  event.ctrlKey ||
+                  event.shiftKey ||
+                  event.altKey ||
+                  event.button !== 0
+                ) {
+                  return;
+                }
+                event.preventDefault();
+                window.location.assign(tab.href);
+              }}
               className={`notebook-press flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-medium leading-tight transition-transform motion-reduce:transition-none ${
                 active
                   ? "scale-[1.02] text-accent"

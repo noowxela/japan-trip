@@ -1,6 +1,7 @@
 import {
   addSpend,
   togglePrepItem,
+  toggleSkipped,
   toggleVisited,
 } from "@/app/actions";
 import type { ActionResult } from "@/lib/action-result";
@@ -9,15 +10,18 @@ import {
   buildAddSpendPayload,
   buildOfflineSpendCreatedAt,
   buildTogglePrepPayload,
+  buildToggleSkippedPayload,
   buildToggleVisitedPayload,
   isNetworkFailure,
   shouldDedupeSpendReplay,
   type AddSpendPayload,
   type OutboxEntry,
   type TogglePrepPayload,
+  type ToggleSkippedPayload,
   type ToggleVisitedPayload,
 } from "@/lib/outbox-core";
 import { enqueueOutbox } from "@/lib/outbox";
+import { notionErrorCode } from "@/lib/notion-error";
 import { parseSpendCurrency } from "@/lib/spend";
 import type { SpendCurrency, SpendItem } from "@/lib/types";
 
@@ -26,8 +30,12 @@ export type OfflineEnqueueResult =
   | {
       status: "queued";
       entryId: string;
-      kind: "toggleVisited" | "addSpend" | "togglePrep";
-      payload: ToggleVisitedPayload | TogglePrepPayload | AddSpendPayload;
+      kind: "toggleVisited" | "toggleSkipped" | "addSpend" | "togglePrep";
+      payload:
+        | ToggleVisitedPayload
+        | ToggleSkippedPayload
+        | TogglePrepPayload
+        | AddSpendPayload;
     }
   | { status: "error"; result: ActionResult };
 
@@ -63,6 +71,7 @@ export function spendPayloadFromForm(formData: FormData): AddSpendPayload {
       .getAll("splitWith")
       .map((value) => String(value).trim())
       .filter(Boolean),
+    placeId: String(formData.get("placeId") ?? "").trim(),
     dayDate: String(formData.get("dayDate") ?? "").trim().slice(0, 10),
     time: String(formData.get("time") ?? "").trim(),
   });
@@ -82,6 +91,7 @@ export function formDataFromSpendPayload(
   formData.set("dayId", payload.dayId);
   formData.set("paidBy", payload.paidBy);
   for (const name of payload.splitWith ?? []) formData.append("splitWith", name);
+  if (payload.placeId) formData.set("placeId", payload.placeId);
   if (payload.dayDate) formData.set("dayDate", payload.dayDate);
   if (payload.time) formData.set("time", payload.time);
   formData.set("clientId", payload.clientId);
@@ -107,6 +117,7 @@ export function optimisticSpendFromPayload(payload: AddSpendPayload): SpendItem 
     start: payload.createdAt,
     paidBy: payload.paidBy || null,
     splitWith: payload.splitWith ?? [],
+    placeId: payload.placeId?.trim() || null,
   };
 }
 
@@ -132,6 +143,33 @@ export async function runToggleVisited(
     if (!isNetworkFailure(error)) throw error;
     const entry = await enqueueOutbox("toggleVisited", payload);
     return { status: "queued", entryId: entry.id, kind: "toggleVisited", payload };
+  }
+}
+
+export async function runToggleSkipped(
+  id: string,
+  skipped: boolean,
+  kind: "place" | "transit",
+): Promise<OfflineEnqueueResult> {
+  const payload = buildToggleSkippedPayload(id, skipped, kind);
+  const formData = new FormData();
+  formData.set("id", id);
+  formData.set("skipped", skipped ? "true" : "false");
+  formData.set("kind", kind);
+
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    const entry = await enqueueOutbox("toggleSkipped", payload);
+    return { status: "queued", entryId: entry.id, kind: "toggleSkipped", payload };
+  }
+
+  try {
+    const result = await toggleSkipped(formData);
+    if (!result.ok) return { status: "error", result };
+    return { status: "synced", result };
+  } catch (error) {
+    if (!isNetworkFailure(error)) throw error;
+    const entry = await enqueueOutbox("toggleSkipped", payload);
+    return { status: "queued", entryId: entry.id, kind: "toggleSkipped", payload };
   }
 }
 
@@ -188,9 +226,29 @@ export async function runAddSpend(
     if (!result.ok) return { status: "error", result };
     return { status: "synced", result };
   } catch (error) {
-    if (!isNetworkFailure(error)) throw error;
-    const queued = stampQueuedSpend(payload);
-    const entry = await enqueueOutbox("addSpend", queued);
-    return { status: "queued", entryId: entry.id, kind: "addSpend", payload: queued };
+    if (isNetworkFailure(error)) {
+      const queued = stampQueuedSpend(payload);
+      const entry = await enqueueOutbox("addSpend", queued);
+      return {
+        status: "queued",
+        entryId: entry.id,
+        kind: "addSpend",
+        payload: queued,
+      };
+    }
+    // A Notion 500 (message `ERROR <id>`) is not a dropped connection. Rethrowing
+    // it from the save transition crashes the sheet and leaves iOS reload stuck.
+    const raw = error instanceof Error ? error.message : "";
+    const code = notionErrorCode(raw);
+    return {
+      status: "error",
+      result: {
+        ok: false,
+        error: code
+          ? `Couldn't save this expense (${code}). Nothing was saved. Try again.`
+          : raw.trim().slice(0, 180) ||
+            "Couldn't save this expense. Nothing was saved. Try again.",
+      },
+    };
   }
 }

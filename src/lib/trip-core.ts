@@ -1,4 +1,4 @@
-import { dateKey } from "@/lib/format";
+import { dateKey, formatTime } from "@/lib/format";
 import { coordsOfPlace } from "@/lib/geocode";
 import type { AgendaItem, Place, Stay, Transit, TripDay } from "@/lib/types";
 
@@ -15,19 +15,25 @@ export function tripPhase(
   return "during";
 }
 
+/** How long a started flight (no arrival stored) stays the current item. */
+const FLIGHT_NOW_MS = 8 * 60 * 60 * 1000;
+
 function agendaItemTimeMs(item: AgendaItem): number | null {
   if (!item.start || !item.start.includes("T")) return null;
   const ms = Date.parse(item.start);
   return Number.isNaN(ms) ? null : ms;
 }
 
+/** Still on the to-do list: not visited and not skipped. */
+export function isAgendaOpen(item: Pick<AgendaItem, "visited" | "skipped">) {
+  return !item.visited && !item.skipped;
+}
+
 export function nextAgendaItem(
   agenda: AgendaItem[],
   opts: { now: Date; isToday: boolean },
 ): { item: AgendaItem; status: "now" | "next" } | null {
-  const remaining = agenda.filter(
-    (item) => item.kind !== "place" || !item.visited,
-  );
+  const remaining = agenda.filter(isAgendaOpen);
   if (remaining.length === 0) return null;
 
   if (!opts.isToday) {
@@ -38,7 +44,7 @@ export function nextAgendaItem(
 
   for (let i = 0; i < agenda.length; i++) {
     const item = agenda[i];
-    if (item.kind === "place" && item.visited) continue;
+    if (!isAgendaOpen(item)) continue;
 
     const time = agendaItemTimeMs(item);
     if (time != null && time < nowMs) {
@@ -46,7 +52,13 @@ export function nextAgendaItem(
         const laterTime = agendaItemTimeMs(later);
         return laterTime != null && laterTime <= nowMs;
       });
-      if (item.kind === "transit" || laterStarted) continue;
+      // A flight stays "now" while plausibly in the air (no arrival time is
+      // stored); other transit is skipped once its start has passed.
+      const inFlight =
+        item.kind === "transit" &&
+        item.chip === "Flight" &&
+        nowMs - time < FLIGHT_NOW_MS;
+      if (laterStarted || (item.kind === "transit" && !inFlight)) continue;
     }
 
     const status: "now" | "next" =
@@ -64,26 +76,77 @@ export function pickFocusDay(days: TripDay[], today: string) {
   );
 }
 
-export function staysForDate(stays: Stay[], date: string | null) {
-  const day = dateKey(date);
-  if (!day) return [];
-  return stays.filter((stay) => {
-    const checkIn = dateKey(stay.checkIn);
-    const checkOut = dateKey(stay.checkOut);
-    if (checkIn && checkOut) return day >= checkIn && day < checkOut;
-    if (checkIn) return day >= checkIn;
-    return false;
-  });
+function stayCoversDate(
+  stay: Stay,
+  day: string,
+  occupancy: "overnight" | "overview",
+) {
+  const checkIn = dateKey(stay.checkIn);
+  const checkOut = dateKey(stay.checkOut);
+  if (checkIn && checkOut) {
+    if (occupancy === "overview") return day >= checkIn && day <= checkOut;
+    return day >= checkIn && day < checkOut;
+  }
+  if (checkIn) return day >= checkIn;
+  return false;
 }
 
-function sortAgenda(a: AgendaItem, b: AgendaItem) {
-  const startA = a.start ?? "9999";
-  const startB = b.start ?? "9999";
+/** Overnight occupancy: in-house through the night before check-out. */
+export function staysForDate(stays: readonly Stay[], date: string | null) {
+  const day = dateKey(date);
+  if (!day) return [];
+  return stays.filter((stay) => stayCoversDate(stay, day, "overnight"));
+}
+
+/**
+ * Overview lodging: still show the hotel on the morning of check-out.
+ * The day after check-out remains empty. Map/schedule should keep using
+ * `staysForDate` so pins do not linger after the stay ends.
+ */
+export function staysForOverviewDate(
+  stays: readonly Stay[],
+  date: string | null,
+) {
+  const day = dateKey(date);
+  if (!day) return [];
+  return stays.filter((stay) => stayCoversDate(stay, day, "overview"));
+}
+
+export function isStayCheckoutDay(
+  stay: Pick<Stay, "checkOut">,
+  date: string | null,
+): boolean {
+  const day = dateKey(date);
+  const checkOut = dateKey(stay.checkOut);
+  return Boolean(day && checkOut && day === checkOut);
+}
+
+/**
+ * Timed starts sort by Asia/Tokyo wall-clock time (HH:mm), matching formatTime.
+ * Date-only or missing Start is "untimed" (UI shows "—") and sorts AFTER timed
+ * items. Do not localeCompare raw ISO strings: a late-add whose Start date is
+ * "today" (or a Z vs +09:00 mix) would scramble clock order on a single day list.
+ */
+export function agendaStartSortKey(start: string | null | undefined): string {
+  if (!start || !start.includes("T")) return "9999";
+  return formatTime(start) ?? "9999";
+}
+
+export function compareAgendaItems(
+  a: Pick<AgendaItem, "start" | "order" | "name">,
+  b: Pick<AgendaItem, "start" | "order" | "name">,
+) {
+  const startA = agendaStartSortKey(a.start);
+  const startB = agendaStartSortKey(b.start);
   if (startA !== startB) return startA.localeCompare(startB);
   const orderA = a.order ?? 9999;
   const orderB = b.order ?? 9999;
   if (orderA !== orderB) return orderA - orderB;
   return a.name.localeCompare(b.name);
+}
+
+function sortAgenda(a: AgendaItem, b: AgendaItem) {
+  return compareAgendaItems(a, b);
 }
 
 export function buildAgenda(places: Place[], transit: Transit[]): AgendaItem[] {
@@ -101,6 +164,7 @@ export function buildAgenda(places: Place[], transit: Transit[]): AgendaItem[] {
           start: place.start,
           order: null,
           visited: place.visited,
+          skipped: place.skipped,
           mapsUrl: place.mapsUrl,
           lat: coords?.lat ?? null,
           lng: coords?.lng ?? null,
@@ -112,8 +176,13 @@ export function buildAgenda(places: Place[], transit: Transit[]): AgendaItem[] {
       name: item.name,
       chip: item.mode,
       detail: [item.from, item.to].filter(Boolean).join(" → "),
+      from: item.from,
+      to: item.to,
       start: item.start,
       order: item.order,
+      visited: item.visited,
+      skipped: item.skipped,
+      notes: item.notes?.trim() ?? "",
     })),
   ];
   return items.sort(sortAgenda);

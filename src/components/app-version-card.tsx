@@ -2,6 +2,7 @@
 
 import { useAppUpdate } from "@/components/app-update-provider";
 import { useT } from "@/components/i18n-provider";
+import { useToast } from "@/components/toast-provider";
 import {
   btnGhostClass,
   btnPrimaryClass,
@@ -11,6 +12,7 @@ import {
 
 export function AppVersionCard() {
   const { t } = useT();
+  const { toast } = useToast();
   const {
     runningVersion,
     runningCommit,
@@ -20,6 +22,16 @@ export function AppVersionCard() {
     checkNow,
     reloadToLatest,
   } = useAppUpdate();
+
+  async function onCheckNow() {
+    const result = await checkNow({ reveal: true });
+    if (result === "update-available") return;
+    if (result === "up-to-date") {
+      toast(t("version.upToDateWithVersion", { version: runningVersion }));
+      return;
+    }
+    toast(t("version.checkFailed"), "error");
+  }
 
   return (
     <div className={settingsGroupClass}>
@@ -53,7 +65,7 @@ export function AppVersionCard() {
         ) : (
           <button
             type="button"
-            onClick={() => void checkNow()}
+            onClick={() => void onCheckNow()}
             disabled={checking}
             className={`${btnGhostClass} shrink-0`}
           >

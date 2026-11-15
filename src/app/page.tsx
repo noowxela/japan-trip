@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { OverviewExpenseFab } from "@/components/add-spend-form";
+import { OverviewHardNav } from "@/components/overview-hard-nav";
+import { OverviewPullRefresh } from "@/components/overview-pull-refresh";
 import { EditorLockButton } from "@/components/editor-lock-button";
 import { EmptyState } from "@/components/empty-state";
 import { FlightInfoList } from "@/components/flight-info-list";
@@ -11,6 +13,7 @@ import {
   TripCompleteRow,
 } from "@/components/overview-cards";
 import { PageHeader, SummaryStrip } from "@/components/compact";
+import { OverviewDayCards } from "@/components/overview-day-cards";
 import { QuickExpenseTripSync } from "@/components/quick-expense-provider";
 import { TripCacheSync } from "@/components/trip-cache-sync";
 import { PageShell } from "@/components/page-shell";
@@ -35,7 +38,7 @@ import {
   getTransit,
   nextAgendaItem,
   pickFocusDay,
-  staysForDate,
+  staysForOverviewDate,
   tripFlow,
   tripPhase,
 } from "@/lib/trip";
@@ -83,10 +86,11 @@ export default async function OverviewPage() {
   const agenda = buildAgenda(dayPlaces, dayTransit);
   const isFocusToday = Boolean(focus && dateKey(focus.date) === today);
   const next = nextAgendaItem(agenda, { now, isToday: isFocusToday });
-  const lodging = focus ? staysForDate(stays, focus.date) : [];
+  const lodging = focus ? staysForOverviewDate(stays, focus.date) : [];
   const dayMoney = focus
     ? moneySummary(byDay(spend, focus.id), fx.jpyPerRm)
     : { actual: 0, estimate: 0, remaining: 0 };
+  const tripMoney = moneySummary(spend, fx.jpyPerRm);
   const isTonight = Boolean(focus && dateKey(focus.date) === today);
 
   let nextDayItem: AgendaItem | null = null;
@@ -114,6 +118,7 @@ export default async function OverviewPage() {
 
   return (
     <>
+      <OverviewHardNav />
       <TripCacheSync
         snapshot={makeTripSnapshot({
           days,
@@ -124,7 +129,8 @@ export default async function OverviewPage() {
           prep,
         })}
       />
-      <QuickExpenseTripSync days={days} people={people} />
+      <QuickExpenseTripSync days={days} people={people} places={places} />
+      <OverviewPullRefresh>
       <PageShell>
         <PageHeader
           eyebrow={t(locale, "overview.eyebrow")}
@@ -158,13 +164,16 @@ export default async function OverviewPage() {
           />
         </SummaryStrip>
 
+        <OverviewDayCards days={dated} today={today} locale={locale} />
+
         {phase === "after" ? (
           <div className="grid gap-2">
             <TripCompleteRow dayCount={dated.length} href="/budget" />
             <TodaySpendRow
-              actual={dayMoney.actual}
-              estimate={dayMoney.estimate}
+              actual={tripMoney.actual}
+              estimate={tripMoney.estimate}
               href="/budget"
+              scope="trip"
             />
           </div>
         ) : focus ? (
@@ -180,7 +189,7 @@ export default async function OverviewPage() {
               nextDayName={nextDayName}
               nextDayHref={nextDayHref}
             />
-            <TonightStayRows stays={lodging} isTonight={isTonight} />
+            <TonightStayRows stays={lodging} isTonight={isTonight} today={today} />
             <TodaySpendRow
               actual={dayMoney.actual}
               estimate={dayMoney.estimate}
@@ -195,26 +204,13 @@ export default async function OverviewPage() {
 
         <FlightInfoList flights={flights} dayNames={dayNames} />
 
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[12px]">
-          <Link href="/schedule" className="font-medium text-ink-muted no-underline">
-            {t(locale, "common.openSchedule")}
-          </Link>
-          <Link href="/lists" className="font-medium text-ink-muted no-underline">
-            {t(locale, "lists.title")}
-          </Link>
-          <Link href="/prep" className="font-medium text-ink-muted no-underline">
-            {t(locale, "prep.title")}
-          </Link>
-          <Link href="/phrases" className="font-medium text-ink-muted no-underline">
-            {t(locale, "phrases.title")}
-          </Link>
-        </div>
       </PageShell>
       <OverviewExpenseFab
         days={days}
         people={people}
         defaultDayId={focus?.id ?? ""}
       />
+      </OverviewPullRefresh>
     </>
   );
 }
