@@ -88,6 +88,8 @@ const en = {
   "schedule.map": "Map",
   "schedule.route": "Route",
 
+  "agenda.hideFreeVisited": "Hide free time / 済",
+  "agenda.showFreeVisited": "Show free time / 済",
   "agenda.doneExpand": "Done ({n}) · tap to expand visited stops below",
   "agenda.skippedExpand": "Skipped ({n}) · tap to expand skipped stops below",
   "agenda.emptyPending": "No stops yet. Add from pending below or use quick add.",
@@ -1066,6 +1068,8 @@ const zh: Record<DictKey, string> = {
   "schedule.map": "地图",
   "schedule.route": "路线",
 
+  "agenda.hideFreeVisited": "隐藏空闲/済",
+  "agenda.showFreeVisited": "显示空闲/済",
   "agenda.doneExpand": "已完成 ({n}) · 点此展开已访问地点",
   "agenda.skippedExpand": "已跳过 ({n}) · 点此展开跳过的行程",
   "agenda.emptyPending": "还没有行程点。可从待定添加，或用快速添加。",

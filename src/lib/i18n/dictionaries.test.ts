@@ -29,6 +29,15 @@ describe("agenda.editItem", () => {
   });
 });
 
+
+describe("agenda.hideFreeVisited", () => {
+  it("has zh and en hide/show labels", () => {
+    expect(t("en", "agenda.hideFreeVisited")).toBe("Hide free time / 済");
+    expect(t("zh", "agenda.hideFreeVisited")).toBe("隐藏空闲/済");
+    expect(t("en", "agenda.showFreeVisited")).toBe("Show free time / 済");
+    expect(t("zh", "agenda.showFreeVisited")).toBe("显示空闲/済");
+  });
+});
 describe("agenda.skipPending", () => {
   it("has zh and en copy", () => {
     expect(t("en", "agenda.skipPending")).toBe("Skip");

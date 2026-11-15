@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import {
   confirmPendingPlace,
   deletePlace,
@@ -59,6 +59,41 @@ type DragPayload = { id: string; from: "pending" | "agenda" };
 const TIMELINE_GRID =
   "grid grid-cols-[2.5rem_1.25rem_minmax(0,1fr)] items-start gap-x-1.5";
 const MIN_GAP_MINUTES = 15;
+
+const HIDE_FREE_VISITED_KEY = "japan-trip:hide-free-visited";
+const HIDE_FREE_VISITED_EVENT = "japan-trip:hide-free-visited-changed";
+
+function readHideFreeVisited() {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(HIDE_FREE_VISITED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function subscribeHideFreeVisited(onStoreChange: () => void) {
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === HIDE_FREE_VISITED_KEY || event.key === null) {
+      onStoreChange();
+    }
+  };
+  window.addEventListener("storage", onStorage);
+  window.addEventListener(HIDE_FREE_VISITED_EVENT, onStoreChange);
+  return () => {
+    window.removeEventListener("storage", onStorage);
+    window.removeEventListener(HIDE_FREE_VISITED_EVENT, onStoreChange);
+  };
+}
+
+function persistHideFreeVisited(hide: boolean) {
+  try {
+    window.localStorage.setItem(HIDE_FREE_VISITED_KEY, hide ? "1" : "0");
+  } catch {
+    /* private mode / quota */
+  }
+  window.dispatchEvent(new Event(HIDE_FREE_VISITED_EVENT));
+}
 
 function readPayload(event: React.DragEvent) {
   try {
@@ -770,6 +805,11 @@ export function DayAgendaBoard({
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [popId, setPopId] = useState<string | null>(null);
   const [showVisited, setShowVisited] = useState(() => isPastTripDay(dayDate));
+  const hideFreeVisited = useSyncExternalStore(
+    subscribeHideFreeVisited,
+    readHideFreeVisited,
+    () => false,
+  );
   const notify = useActionToast();
   const { toast } = useToast();
   const trashWithUndo = useTrashUndo();
@@ -953,8 +993,16 @@ export function DayAgendaBoard({
       className={`grid gap-2 ${showPending ? "lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start" : "max-w-2xl"} ${busy ? "opacity-70" : ""}`}
     >
       <div>
-        {visitedCount > 0 ? (
-          <div className="mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <div className="mb-1.5 flex flex-col items-start">
+          <button
+            type="button"
+            aria-pressed={hideFreeVisited}
+            onClick={() => persistHideFreeVisited(!hideFreeVisited)}
+            className="inline-flex min-h-9 items-center rounded-lg px-1 text-xs text-ink-muted"
+          >
+            {t(hideFreeVisited ? "agenda.showFreeVisited" : "agenda.hideFreeVisited")}
+          </button>
+          {visitedCount > 0 ? (
             <button
               type="button"
               aria-expanded={showVisited}
@@ -963,8 +1011,8 @@ export function DayAgendaBoard({
             >
               {t("agenda.doneExpand", { n: visitedCount })}
             </button>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
         {activeAgenda.length === 0 ? (
           <div
             onDragOver={(event) => {
@@ -1004,7 +1052,9 @@ export function DayAgendaBoard({
                   ? minutesBetweenStarts(previous.start, item.start)
                   : null;
               const gap =
-                gapMins != null && gapMins >= MIN_GAP_MINUTES
+                !hideFreeVisited &&
+                gapMins != null &&
+                gapMins >= MIN_GAP_MINUTES
                   ? formatGapMinutes(gapMins, locale)
                   : null;
               const walkRaw = previous
@@ -1101,7 +1151,7 @@ export function DayAgendaBoard({
                         <TimelineMark
                           number={sightNo}
                           food={food}
-                          visited={visited}
+                          visited={visited && !hideFreeVisited}
                           skipped={skipped}
                           transit={transit}
                           current={isFocus}
@@ -1136,7 +1186,7 @@ export function DayAgendaBoard({
                         >
                           <div className="min-w-0 flex-1">
                             <p className="flex min-w-0 flex-wrap items-start gap-1.5 text-[13px] leading-4">
-                              {visited ? (
+                              {visited && !hideFreeVisited ? (
                                 <HankoStamp
                                   variant="ok"
                                   size="sm"
@@ -1234,7 +1284,7 @@ export function DayAgendaBoard({
                         >
                           <div className="min-w-0 flex-1">
                             <p className="flex min-w-0 flex-wrap items-start gap-1.5 text-[13px] leading-4">
-                              {visited ? (
+                              {visited && !hideFreeVisited ? (
                                 <HankoStamp
                                   variant="ok"
                                   size="sm"
