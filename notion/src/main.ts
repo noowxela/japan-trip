@@ -175,6 +175,7 @@ notion.database({
 						{ name: "Bus", color: "orange" },
 						{ name: "Flight", color: "purple" },
 						{ name: "Walk", color: "gray" },
+						{ name: "Ride-hailing", color: "brown" },
 					],
 				},
 				{ resourceId: "transit-from-prop", name: "From", type: "text" },

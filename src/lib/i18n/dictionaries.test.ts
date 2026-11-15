@@ -62,6 +62,8 @@ describe("clothes, gifts, checkout, and airfare copy", () => {
     expect(t("zh", "cat.Airfare")).toBe("飞机票");
     expect(t("en", "cat.Ride-hailing")).toBe("Ride-hailing");
     expect(t("zh", "cat.Ride-hailing")).toBe("网约车");
+    expect(t("en", "mode.Ride-hailing")).toBe("Ride-hailing");
+    expect(t("zh", "mode.Ride-hailing")).toBe("网约车");
     expect(t("en", "budget.filterPayer")).toBe("Payer");
     expect(t("zh", "budget.filterPayer")).toBe("付款人");
     expect(t("en", "budget.filterSplit")).toBe("Split with");

@@ -42,6 +42,7 @@ const MODE_LABEL: Record<Locale, Record<string, string>> = {
     Metro: "地铁",
     Bus: "巴士",
     Walk: "步行",
+    "Ride-hailing": "网约车",
   },
   en: {
     Shinkansen: "Shinkansen",
@@ -49,6 +50,7 @@ const MODE_LABEL: Record<Locale, Record<string, string>> = {
     Metro: "Metro",
     Bus: "Bus",
     Walk: "Walk",
+    "Ride-hailing": "Ride-hailing",
   },
 };
 

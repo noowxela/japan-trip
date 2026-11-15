@@ -16,6 +16,7 @@ describe("categoryEmoji", () => {
     expect(categoryEmoji("transit", "Metro")).toBe("🚇");
     expect(categoryEmoji("transit", "Bus")).toBe("🚌");
     expect(categoryEmoji("transit", "Walk")).toBe("🚶");
+    expect(categoryEmoji("transit", "Ride-hailing")).toBe("🚗");
   });
 
   it("omits a place icon when there is no type", () => {

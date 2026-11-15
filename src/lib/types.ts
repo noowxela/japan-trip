@@ -107,6 +107,7 @@ export const TRANSIT_MODES = [
   "Bus",
   "Flight",
   "Walk",
+  "Ride-hailing",
 ] as const;
 export const SPEND_KINDS = ["Estimate", "Actual"] as const;
 export const SPEND_CATEGORIES = [

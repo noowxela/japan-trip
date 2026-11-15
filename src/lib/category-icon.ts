@@ -12,6 +12,7 @@ const TRANSIT_MODE_EMOJI: Record<string, string> = {
   Bus: "🚌",
   Flight: "✈️",
   Walk: "🚶",
+  "Ride-hailing": "🚗",
 };
 
 /** Spend categories — overlap Food/Shop/Other with Schedule place emoji. */
