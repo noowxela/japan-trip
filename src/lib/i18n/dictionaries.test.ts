@@ -36,6 +36,15 @@ describe("agenda.skipPending", () => {
   });
 });
 
+describe("schedule.visitedOnlyHint", () => {
+  it("has zh and en copy with a count", () => {
+    expect(t("en", "schedule.visitedOnlyHint", { n: 4 })).toBe("Visited only · 4");
+    expect(t("zh", "schedule.visitedOnlyHint", { n: 4 })).toBe("只显示去过的 · 4");
+    expect(t("en", "schedule.noneVisited")).toBe("No visited stops yet");
+    expect(t("zh", "schedule.noneVisited")).toBe("还没有去过的行程");
+  });
+});
+
 describe("ingestLog pagination copy", () => {
   it("has zh and en range and pager labels", () => {
     expect(t("en", "ingestLog.pageRange", { from: 1, to: 10, total: 25 })).toBe(

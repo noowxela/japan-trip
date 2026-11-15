@@ -37,6 +37,10 @@ import {
 import { toggleHiddenMapPin } from "@/lib/hidden-map-pins";
 import { labelMode, labelType } from "@/lib/i18n/dictionaries";
 import {
+  countVisitedAllDays,
+  visitedAgendaByDay,
+} from "@/lib/all-days-agenda";
+import {
   excludeSkippedByOverlay,
   scheduleDrawerOpener,
   skippedListItems,
@@ -135,7 +139,7 @@ export function ScheduleView({
   const [pendingOpen, setPendingOpen] = useState(false);
   const [drawerTab, setDrawerTab] = useState<ScheduleDrawerTab>("pending");
   const scrolledForDayRef = useRef<string | null>(null);
-  const { skippedOverlay } = useOutbox();
+  const { skippedOverlay, visitedOverlay } = useOutbox();
 
   const selectedDay =
     selectedId === "all"
@@ -769,7 +773,14 @@ export function ScheduleView({
               </div>
             </div>
           ) : (
-            <AllDaysPanel days={days} places={places} onSelectDay={selectDay} />
+            <AllDaysPanel
+              days={days}
+              places={places}
+              transit={transit}
+              visitedOverlay={visitedOverlay}
+              skippedOverlay={skippedOverlay}
+              onSelectDay={selectDay}
+            />
           )}
         </div>
       </section>
@@ -1060,10 +1071,16 @@ function useSuppressClickAfterScroll() {
 function AllDaysPanel({
   days,
   places,
+  transit,
+  visitedOverlay = {},
+  skippedOverlay = {},
   onSelectDay,
 }: {
   days: TripDay[];
   places: Place[];
+  transit: Transit[];
+  visitedOverlay?: Readonly<Record<string, boolean>>;
+  skippedOverlay?: Readonly<Record<string, boolean>>;
   onSelectDay: (id: string) => void;
 }) {
   const { t, locale } = useT();
@@ -1074,6 +1091,11 @@ function AllDaysPanel({
     dated[dated.length - 1]?.date ?? null,
     locale,
   );
+  const groups = visitedAgendaByDay(days, places, transit, {
+    visited: visitedOverlay,
+    skipped: skippedOverlay,
+  });
+  const visitedCount = countVisitedAllDays(groups);
 
   return (
     <div
@@ -1085,36 +1107,40 @@ function AllDaysPanel({
           {t("schedule.allDays")}
         </h2>
         <p className="mt-0.5 text-xs text-ink-muted">{span}</p>
+        <p className="mt-0.5 text-xs text-ink-muted">
+          {t("schedule.visitedOnlyHint", { n: visitedCount })}
+        </p>
       </div>
-      <ul className="space-y-4 px-4 pb-3">
-        {days.map((day, index) => {
-          const items = places.filter(
-            (place) => place.dayIds.includes(day.id) && !place.pending,
-          );
-          return (
-            <li key={day.id}>
-              <AllDayJumpButton
-                day={day}
-                index={index}
-                onSelectDay={onSelectDay}
-              />
-              {items.length === 0 ? (
-                <p className="mt-1 text-sm text-ink-muted">
-                  {t("schedule.noPlaces")}
-                </p>
-              ) : (
+      {groups.length === 0 ? (
+        <p className="px-4 py-6 text-sm text-ink-muted">
+          {t("schedule.noneVisited")}
+        </p>
+      ) : (
+        <ul className="space-y-4 px-4 pb-3">
+          {groups.map((group) => {
+            const index = days.findIndex((item) => item.id === group.day.id);
+            return (
+              <li key={group.day.id}>
+                <AllDayJumpButton
+                  day={group.day}
+                  index={index}
+                  onSelectDay={onSelectDay}
+                />
                 <ul className="mt-1.5 space-y-0.5">
-                  {items.map((place) => (
-                    <li key={place.id} className="text-sm text-ink-muted">
-                      {place.name}
+                  {group.items.map((item) => (
+                    <li
+                      key={`${item.kind}-${item.id}`}
+                      className="text-sm text-ink-muted"
+                    >
+                      {item.name}
                     </li>
                   ))}
                 </ul>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }

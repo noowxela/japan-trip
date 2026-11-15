@@ -53,6 +53,8 @@ const en = {
   "common.overview": "Overview",
 
   "schedule.allDays": "All days",
+  "schedule.visitedOnlyHint": "Visited only · {n}",
+  "schedule.noneVisited": "No visited stops yet",
   "schedule.noPlaces": "No places yet",
   "schedule.fullDay": "Full day",
   "schedule.expand": "Expand schedule",
@@ -1021,6 +1023,8 @@ const zh: Record<DictKey, string> = {
   "common.overview": "总览",
 
   "schedule.allDays": "全部日期",
+  "schedule.visitedOnlyHint": "只显示去过的 · {n}",
+  "schedule.noneVisited": "还没有去过的行程",
   "schedule.noPlaces": "暂无地点",
   "schedule.fullDay": "全日",
   "schedule.expand": "展开行程",
