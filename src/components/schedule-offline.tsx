@@ -113,6 +113,8 @@ export function ScheduleOfflineFallback({
         phase={state.props.phase}
         weather={state.props.weather}
         weatherAt={state.props.weatherAt}
+        spend={state.props.spend}
+        transit={state.props.transit}
       />
     </>
   );

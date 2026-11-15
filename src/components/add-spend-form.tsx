@@ -3,25 +3,27 @@
 import { useEffect } from "react";
 import { useQuickExpense } from "@/components/quick-expense-provider";
 import { useT } from "@/components/i18n-provider";
-import type { Place, TripDay } from "@/lib/types";
+import type { Place, Transit, TripDay } from "@/lib/types";
 
 export function AddExpenseFab({
   days,
   people = [],
   places = [],
+  transit = [],
   defaultDayId = "",
 }: {
   days: TripDay[];
   people?: string[];
   places?: Place[];
+  transit?: Transit[];
   defaultDayId?: string;
 }) {
   const { t } = useT();
   const { openQuickExpense, setTripData } = useQuickExpense();
 
   useEffect(() => {
-    setTripData({ days, people, places });
-  }, [days, people, places, setTripData]);
+    setTripData({ days, people, places, transit });
+  }, [days, people, places, transit, setTripData]);
 
   return (
     <button
@@ -32,6 +34,7 @@ export function AddExpenseFab({
           days,
           people,
           places,
+          transit,
           dayId: defaultDayId || undefined,
         })
       }

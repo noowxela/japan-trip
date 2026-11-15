@@ -32,6 +32,7 @@ const item = (
   paidBy: partial.paidBy ?? null,
   splitWith: partial.splitWith ?? [],
   placeId: partial.placeId ?? null,
+  transitId: partial.transitId ?? null,
   ...partial,
 });
 

@@ -57,7 +57,7 @@ import {
   type VelocitySample,
 } from "@/lib/sheet-drag";
 import { nextAgendaItem } from "@/lib/trip-core";
-import type { AgendaItem, Place, Stay, TripDay } from "@/lib/types";
+import type { AgendaItem, Place, SpendItem, Stay, Transit, TripDay } from "@/lib/types";
 import { weatherKind, weatherShort, type TripWeather } from "@/lib/weather";
 
 /**
@@ -84,6 +84,8 @@ function writeScheduleUrl(dayId: string, mode: ScheduleMode) {
 export function ScheduleView({
   days,
   places,
+  transit = [],
+  spend = [],
   byDay,
   initialDayId,
   initialMode = "view",
@@ -98,6 +100,8 @@ export function ScheduleView({
 }: {
   days: TripDay[];
   places: Place[];
+  transit?: Transit[];
+  spend?: SpendItem[];
   byDay: Record<string, DayScheduleSlice>;
   allPins: SchedulePin[];
   initialDayId: string;
@@ -743,6 +747,10 @@ export function ScheduleView({
                       highlightId={nowModeActive ? focusId : null}
                       mutedIds={nowModeActive ? mutedIds : undefined}
                       onFocusItem={focusOnMap}
+                      places={places}
+                      transit={transit}
+                      spend={spend}
+                      people={people}
                     />
                   </>
                 )}

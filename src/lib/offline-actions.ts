@@ -72,6 +72,7 @@ export function spendPayloadFromForm(formData: FormData): AddSpendPayload {
       .map((value) => String(value).trim())
       .filter(Boolean),
     placeId: String(formData.get("placeId") ?? "").trim(),
+    transitId: String(formData.get("transitId") ?? "").trim(),
     dayDate: String(formData.get("dayDate") ?? "").trim().slice(0, 10),
     time: String(formData.get("time") ?? "").trim(),
   });
@@ -92,6 +93,7 @@ export function formDataFromSpendPayload(
   formData.set("paidBy", payload.paidBy);
   for (const name of payload.splitWith ?? []) formData.append("splitWith", name);
   if (payload.placeId) formData.set("placeId", payload.placeId);
+  if (payload.transitId) formData.set("transitId", payload.transitId);
   if (payload.dayDate) formData.set("dayDate", payload.dayDate);
   if (payload.time) formData.set("time", payload.time);
   formData.set("clientId", payload.clientId);
@@ -118,6 +120,7 @@ export function optimisticSpendFromPayload(payload: AddSpendPayload): SpendItem 
     paidBy: payload.paidBy || null,
     splitWith: payload.splitWith ?? [],
     placeId: payload.placeId?.trim() || null,
+    transitId: payload.transitId?.trim() || null,
   };
 }
 

@@ -62,7 +62,7 @@ export default async function BudgetLayout({
           prep,
         })}
       />
-      <QuickExpenseTripSync days={days} people={people} places={places} />
+      <QuickExpenseTripSync days={days} people={people} places={places} transit={transit} />
       <PageShell className="gap-3 py-4">
         <BudgetStack>
           <BudgetBoard
@@ -79,7 +79,7 @@ export default async function BudgetLayout({
           />
         </BudgetStack>
       </PageShell>
-      <AddExpenseFab days={days} people={people} places={places} />
+      <AddExpenseFab days={days} people={people} places={places} transit={transit} />
       {children}
     </>
   );

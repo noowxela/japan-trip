@@ -12,8 +12,8 @@ import { getLocale } from "@/lib/i18n/server";
 import { NotionNotReady } from "@/components/notion-not-ready";
 import { notionReady } from "@/lib/notion";
 import { spendWhen } from "@/lib/spend";
-import { linkedPlaceLabel } from "@/lib/spend-place";
-import { getDays, getEditorNames, getPlaces, getSpendItem } from "@/lib/trip";
+import { linkedScheduleLabel } from "@/lib/spend-link";
+import { getDays, getEditorNames, getPlaces, getSpendItem, getTransit } from "@/lib/trip";
 
 export const dynamic = "force-dynamic";
 
@@ -33,13 +33,14 @@ export default async function ExpenseDetailPage({
   const focus = await searchParams;
   const focusCategory = focus.focus === "category";
   if (id === "new") redirect("/budget");
-  const [item, days, editor, fx, people, places] = await Promise.all([
+  const [item, days, editor, fx, people, places, transit] = await Promise.all([
     getSpendItem(id),
     getDays(),
     getEditorSession(),
     getMyrToJpy(),
     getEditorNames(),
     getPlaces(),
+    getTransit(),
   ]);
   if (!item) notFound();
 
@@ -56,12 +57,12 @@ export default async function ExpenseDetailPage({
     },
     { label: t(locale, "form.time"), value: time || "—" },
   ];
-  const placeLabel = linkedPlaceLabel(item, places);
+  const placeLabel = linkedScheduleLabel(item, places, transit);
   if (placeLabel) {
     rows.splice(1, 0, {
-      label: t(locale, "form.foodPlace"),
+      label: t(locale, "form.scheduleLink"),
       value: placeLabel.missing
-        ? t(locale, "form.foodPlaceMissing")
+        ? t(locale, "form.scheduleLinkMissing")
         : placeLabel.name,
     });
   }
@@ -91,6 +92,7 @@ export default async function ExpenseDetailPage({
           days={days}
           people={people}
           places={places}
+          transit={transit}
           focusCategory={focusCategory}
         />
       ) : (

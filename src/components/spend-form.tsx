@@ -8,7 +8,7 @@ import { ChipGroup } from "@/components/chip-group";
 import { SpendAmountField } from "@/components/spend-amount-field";
 import { useSlideIn } from "@/components/slide-in-page";
 import { SplitWithField } from "@/components/split-with-field";
-import { FoodPlaceField } from "@/components/food-place-field";
+import { ScheduleLinkField } from "@/components/schedule-link-field";
 import { DatePicker } from "@/components/date-picker";
 import { useEditSession } from "@/components/edit-session";
 import { useT } from "@/components/i18n-provider";
@@ -39,7 +39,7 @@ import {
   spendPartyFieldClass,
   spendPartyRowClass,
 } from "@/lib/spend-party-row";
-import { SPEND_CATEGORIES, type Place, type SpendItem, type TripDay } from "@/lib/types";
+import { SPEND_CATEGORIES, type Place, type SpendItem, type Transit, type TripDay } from "@/lib/types";
 
 function dateForDayId(days: TripDay[], dayId: string) {
   return dateKey(days.find((day) => day.id === dayId)?.date ?? null);
@@ -67,6 +67,7 @@ export function SpendForm({
   days,
   people = [],
   places = [],
+  transit = [],
   defaultDayId = "",
   onSuccess,
   focusCategory = false,
@@ -75,6 +76,7 @@ export function SpendForm({
   days: TripDay[];
   people?: string[];
   places?: Place[];
+  transit?: Transit[];
   defaultDayId?: string;
   onSuccess?: () => void;
   /** Highlight category chips (Apple Pay notification deep link). */
@@ -99,6 +101,7 @@ export function SpendForm({
   );
   const [splitWith, setSplitWith] = useState<string[]>(item?.splitWith ?? []);
   const [placeId, setPlaceId] = useState(item?.placeId ?? "");
+  const [transitId, setTransitId] = useState(item?.transitId ?? "");
   const [gift, setGift] = useState<SpendGiftValue>(() => {
     const existing = item ? findGiftBySpendId(readGifts(), item.id) : undefined;
     return {
@@ -216,7 +219,6 @@ export function SpendForm({
           }
           onChange={(next) => {
             setCategory(next);
-            if (next !== "Food") setPlaceId("");
           }}
           options={SPEND_CATEGORIES.map((value) => ({
             value,
@@ -225,16 +227,17 @@ export function SpendForm({
         />
         </div>
 
-        {category === "Food" ? (
-          <FoodPlaceField
-            places={places}
-            dayId={dayId}
-            value={placeId}
-            onChange={setPlaceId}
-          />
-        ) : (
-          <input type="hidden" name="placeId" value="" />
-        )}
+        <ScheduleLinkField
+          places={places}
+          transit={transit}
+          dayId={dayId}
+          placeId={placeId}
+          transitId={transitId}
+          onChange={(next) => {
+            setPlaceId(next.placeId);
+            setTransitId(next.transitId);
+          }}
+        />
 
         <label className="grid gap-1">
           <span className="text-[12px] font-medium text-ink-muted">

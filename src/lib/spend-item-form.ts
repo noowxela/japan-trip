@@ -1,4 +1,5 @@
 import { dateKey, ensureTokyoOffset, formatTime, tokyoWallDateTime } from "@/lib/format";
+import { normalizeScheduleLink } from "@/lib/spend-link";
 import type { SpendItem, TripDay } from "@/lib/types";
 
 /** Start value updateSpend / addSpend write to Notion's Start property. */
@@ -20,6 +21,7 @@ export type SpendItemFormOverrides = {
   dayId?: string;
   time?: string | null;
   placeId?: string | null;
+  transitId?: string | null;
 };
 
 export function dateForSpendItem(item: SpendItem, days: TripDay[]): string {
@@ -61,9 +63,13 @@ export function formDataFromSpendItem(
     overrides.time !== undefined ? overrides.time : formatTime(item.start);
   const category =
     overrides.category !== undefined ? overrides.category : item.category;
-  let placeId =
+  const placeId =
     overrides.placeId !== undefined ? overrides.placeId : (item.placeId ?? "");
-  if (category !== "Food") placeId = "";
+  const transitId =
+    overrides.transitId !== undefined
+      ? overrides.transitId
+      : (item.transitId ?? "");
+  const link = normalizeScheduleLink(placeId, transitId);
 
   const formData = new FormData();
   formData.set("id", item.id);
@@ -78,7 +84,8 @@ export function formDataFromSpendItem(
   if (time) formData.set("time", time);
   formData.set("paidBy", item.paidBy ?? "");
   for (const name of item.splitWith ?? []) formData.append("splitWith", name);
-  if (placeId) formData.set("placeId", placeId);
+  if (link.placeId) formData.set("placeId", link.placeId);
+  if (link.transitId) formData.set("transitId", link.transitId);
   return formData;
 }
 

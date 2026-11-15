@@ -154,6 +154,60 @@ async function withPlaceFallback<T>(
   }
 }
 
+
+function transitIdFrom(formData: FormData) {
+  return String(formData.get("transitId") ?? "").trim();
+}
+
+function transitProp(transitId: string) {
+  return { Transit: { relation: transitId ? [{ id: transitId }] : [] } };
+}
+
+function scheduleLinkFrom(formData: FormData) {
+  const encoded = String(formData.get("scheduleLink") ?? "").trim();
+  if (encoded) {
+    const raw = encoded.startsWith("place:")
+      ? { placeId: encoded.slice(6).trim(), transitId: "" }
+      : encoded.startsWith("transit:")
+        ? { placeId: "", transitId: encoded.slice(8).trim() }
+        : { placeId: placeIdFrom(formData), transitId: transitIdFrom(formData) };
+    if (raw.placeId && raw.transitId) return { placeId: "", transitId: raw.transitId };
+    return raw;
+  }
+  const placeId = placeIdFrom(formData);
+  const transitId = transitIdFrom(formData);
+  if (placeId && transitId) return { placeId: "", transitId };
+  return { placeId, transitId };
+}
+
+/**
+ * Until `npm run migrate:spend-transit` adds a Spend→Transit `Transit` relation,
+ * or if the linked page is gone, retry the write without it.
+ */
+async function withTransitFallback<T>(
+  write: (includeTransit: boolean) => Promise<T>,
+): Promise<T> {
+  try {
+    return await write(true);
+  } catch (error) {
+    if (
+      !APIResponseError.isAPIResponseError(error) ||
+      error.code !== APIErrorCode.ValidationError
+    ) {
+      throw error;
+    }
+    const message = error.message;
+    const mentionsTransit = message.includes("Transit");
+    const relationIssue =
+      /relation|related page|could not find page/i.test(message);
+    if (!mentionsTransit && !relationIssue) throw error;
+    console.warn(
+      "Spend Transit relation skipped; run npm run migrate:spend-transit if the column is missing",
+    );
+    return write(false);
+  }
+}
+
 function startValue(formData: FormData) {
   const start = String(formData.get("start") ?? "").trim();
   const time = String(formData.get("time") ?? "").trim();
@@ -907,7 +961,8 @@ export async function addSpend(formData: FormData): Promise<ActionResult> {
   const dayId = String(formData.get("dayId") ?? "").trim();
   const paidBy = String(formData.get("paidBy") ?? "").trim();
   const splitWith = splitWithFrom(formData);
-  const placeId = placeIdFrom(formData);
+  const { placeId: linkedPlaceId, transitId: linkedTransitId } =
+    scheduleLinkFrom(formData);
   const currency = parseSpendCurrency(String(formData.get("currency") ?? ""));
   const amount = Number(amountRaw);
   const clientCreatedAt = String(formData.get("clientCreatedAt") ?? "").trim();
@@ -938,24 +993,29 @@ export async function addSpend(formData: FormData): Promise<ActionResult> {
     const notion = getNotion();
     created = await withSplitWithFallback((includeSplit) =>
       withPlaceFallback((includePlace) =>
-        notion.pages.create({
-          parent: { data_source_id: ds("SPEND") },
-          properties: {
-            Name: titleProp(name),
-            Amount: { number: amount },
-            Currency: { select: { name: currency } },
-            ...(kind ? { Kind: { select: { name: kind } } } : {}),
-            ...(category ? { Category: { select: { name: category } } } : {}),
-            ...(notes ? { Notes: textProp(notes) } : {}),
-            ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
-            ...(start ? { Start: startProp(start) } : {}),
-            ...(paidBy ? { "Paid by": { select: { name: paidBy } } } : {}),
-            ...(includeSplit && splitWith.length > 0
-              ? splitWithProp(splitWith)
-              : {}),
-            ...(includePlace && placeId ? placeProp(placeId) : {}),
-          },
-        }),
+        withTransitFallback((includeTransit) =>
+          notion.pages.create({
+            parent: { data_source_id: ds("SPEND") },
+            properties: {
+              Name: titleProp(name),
+              Amount: { number: amount },
+              Currency: { select: { name: currency } },
+              ...(kind ? { Kind: { select: { name: kind } } } : {}),
+              ...(category ? { Category: { select: { name: category } } } : {}),
+              ...(notes ? { Notes: textProp(notes) } : {}),
+              ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
+              ...(start ? { Start: startProp(start) } : {}),
+              ...(paidBy ? { "Paid by": { select: { name: paidBy } } } : {}),
+              ...(includeSplit && splitWith.length > 0
+                ? splitWithProp(splitWith)
+                : {}),
+              ...(includePlace && linkedPlaceId ? placeProp(linkedPlaceId) : {}),
+              ...(includeTransit && linkedTransitId
+                ? transitProp(linkedTransitId)
+                : {}),
+            },
+          }),
+        ),
       ),
     );
   } catch (error) {
@@ -977,7 +1037,8 @@ export async function updateSpend(formData: FormData): Promise<ActionResult> {
   const dayId = String(formData.get("dayId") ?? "").trim();
   const paidBy = String(formData.get("paidBy") ?? "").trim();
   const splitWith = splitWithFrom(formData);
-  const placeId = placeIdFrom(formData);
+  const { placeId: linkedPlaceId, transitId: linkedTransitId } =
+    scheduleLinkFrom(formData);
   const currency = parseSpendCurrency(String(formData.get("currency") ?? ""));
   const amount = Number(amountRaw);
   const start = spendStartFromFormData(formData);
@@ -987,20 +1048,50 @@ export async function updateSpend(formData: FormData): Promise<ActionResult> {
     const notion = getNotion();
     await withSplitWithFallback((includeSplit) =>
       withPlaceFallback((includePlace) =>
+        withTransitFallback((includeTransit) =>
+          notion.pages.update({
+            page_id: id,
+            properties: {
+              Name: titleProp(name),
+              Amount: { number: amount },
+              Currency: { select: { name: currency } },
+              Kind: { select: kind ? { name: kind } : null },
+              Category: { select: category ? { name: category } : null },
+              Notes: textProp(notes),
+              Day: { relation: dayId ? [{ id: dayId }] : [] },
+              Start: startProp(start || null),
+              "Paid by": { select: paidBy ? { name: paidBy } : null },
+              ...(includeSplit ? splitWithProp(splitWith) : {}),
+              ...(includePlace ? placeProp(linkedPlaceId) : {}),
+              ...(includeTransit ? transitProp(linkedTransitId) : {}),
+            },
+          }),
+        ),
+      ),
+    );
+  } catch (error) {
+    return spendActionError(error);
+  }
+  bump(TRIP_TAGS.spend);
+  return actionOk(await actionT("action.spendSaved"));
+}
+
+
+export async function linkSpendToSchedule(formData: FormData): Promise<ActionResult> {
+  const locked = await requireEditor();
+  if (locked) return locked;
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) return actionErr(await actionT("action.missingSpend"));
+  const { placeId, transitId } = scheduleLinkFrom(formData);
+  try {
+    const notion = getNotion();
+    await withPlaceFallback((includePlace) =>
+      withTransitFallback((includeTransit) =>
         notion.pages.update({
           page_id: id,
           properties: {
-            Name: titleProp(name),
-            Amount: { number: amount },
-            Currency: { select: { name: currency } },
-            Kind: { select: kind ? { name: kind } : null },
-            Category: { select: category ? { name: category } : null },
-            Notes: textProp(notes),
-            Day: { relation: dayId ? [{ id: dayId }] : [] },
-            Start: startProp(start || null),
-            "Paid by": { select: paidBy ? { name: paidBy } : null },
-            ...(includeSplit ? splitWithProp(splitWith) : {}),
             ...(includePlace ? placeProp(placeId) : {}),
+            ...(includeTransit ? transitProp(transitId) : {}),
           },
         }),
       ),
@@ -1009,7 +1100,9 @@ export async function updateSpend(formData: FormData): Promise<ActionResult> {
     return spendActionError(error);
   }
   bump(TRIP_TAGS.spend);
-  return actionOk(await actionT("action.spendSaved"));
+  return actionOk(
+    await actionT(placeId || transitId ? "action.spendLinked" : "action.spendUnlinked"),
+  );
 }
 
 export async function deleteSpend(formData: FormData): Promise<ActionResult> {

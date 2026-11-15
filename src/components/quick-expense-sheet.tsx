@@ -9,14 +9,14 @@ import { useT } from "@/components/i18n-provider";
 import { Modal } from "@/components/modal";
 import { useOutbox } from "@/components/outbox-provider";
 import { btnPrimaryClass, fieldClass } from "@/components/page-shell";
-import { FoodPlaceField } from "@/components/food-place-field";
+import { ScheduleLinkField } from "@/components/schedule-link-field";
 import { SplitWithField } from "@/components/split-with-field";
 import { useToast } from "@/components/toast-provider";
 import { dateKey, formatDay, tokyoNowTime, tokyoToday } from "@/lib/format";
 import { haptic } from "@/lib/haptic";
 import { labelCategory } from "@/lib/i18n/dictionaries";
 import { deleteOutboxEntry, listOutbox } from "@/lib/outbox";
-import { foodPlacesForDay } from "@/lib/spend-place";
+import { scheduleItemsForDay } from "@/lib/spend-link";
 import { SpendGiftFields, type SpendGiftValue } from "@/components/spend-gift-fields";
 import {
   applySpendGiftFlag,
@@ -28,6 +28,7 @@ import {
   SPEND_CATEGORIES,
   type Place,
   type SpendCurrency,
+  type Transit,
   type TripDay,
 } from "@/lib/types";
 
@@ -48,9 +49,14 @@ export type QuickExpenseDefaults = {
   dayId?: string;
   category?: (typeof SPEND_CATEGORIES)[number];
   currency?: SpendCurrency;
+  name?: string;
+  time?: string;
+  placeId?: string;
+  transitId?: string;
   people?: string[];
   days?: TripDay[];
   places?: Place[];
+  transit?: Transit[];
   gift?: QuickExpenseGiftPrefill;
 };
 
@@ -85,7 +91,16 @@ export function QuickExpenseSheet({
 }) {
   const { t } = useT();
   const sessionKey = open
-    ? `${defaults.dayId ?? ""}:${defaults.category ?? ""}:${(defaults.days ?? []).length}`
+    ? [
+        defaults.dayId ?? "",
+        defaults.category ?? "",
+        defaults.placeId ?? "",
+        defaults.transitId ?? "",
+        defaults.name ?? "",
+        defaults.time ?? "",
+        defaults.currency ?? "",
+        String((defaults.days ?? []).length),
+      ].join(":")
     : "closed";
 
   return (
@@ -118,6 +133,7 @@ function QuickExpenseForm({
   const days = useMemo(() => defaults.days ?? [], [defaults.days]);
   const people = useMemo(() => defaults.people ?? [], [defaults.people]);
   const places = useMemo(() => defaults.places ?? [], [defaults.places]);
+  const transit = useMemo(() => defaults.transit ?? [], [defaults.transit]);
 
   const initialDay =
     days.find((d) => d.id === defaults.dayId) ??
@@ -143,10 +159,11 @@ function QuickExpenseForm({
     readStoredPayer(people, editorName),
   );
   const [splitWith, setSplitWith] = useState<string[]>([]);
-  const [placeId, setPlaceId] = useState("");
-  const [name, setName] = useState(() => defaults.gift?.name ?? "");
+  const [placeId, setPlaceId] = useState(defaults.placeId ?? "");
+  const [transitId, setTransitId] = useState(defaults.transitId ?? "");
+  const [name, setName] = useState(() => defaults.name ?? defaults.gift?.name ?? "");
   const [dayDate, setDayDate] = useState(initialDate);
-  const [time, setTime] = useState(() => tokyoNowTime());
+  const [time, setTime] = useState(() => defaults.time ?? tokyoNowTime());
   const [dayId, setDayId] = useState(
     initialDay?.id ?? dayIdForDate(days, initialDate),
   );
@@ -176,38 +193,47 @@ function QuickExpenseForm({
     const matched = dayIdForDate(days, next);
     if (matched) {
       setDayId(matched);
-      clearPlaceIfNotOnDay(matched);
+      clearLinkIfNotOnDay(matched);
     } else {
       setPlaceId("");
+      setTransitId("");
     }
   }
 
-  function clearPlaceIfNotOnDay(nextDayId: string) {
-    if (!placeId) return;
-    const stillThere = foodPlacesForDay(places, nextDayId).some(
-      (place) => place.id === placeId,
+  function clearLinkIfNotOnDay(nextDayId: string) {
+    const stillThere = scheduleItemsForDay(places, transit, nextDayId).some(
+      (item) =>
+        (item.kind === "place" && item.id === placeId) ||
+        (item.kind === "transit" && item.id === transitId),
     );
-    if (!stillThere) setPlaceId("");
+    if ((placeId || transitId) && !stillThere) {
+      setPlaceId("");
+      setTransitId("");
+    }
   }
 
   function onSelectDay(nextDayId: string) {
     setDayId(nextDayId);
     const matchedDate = dateKey(days.find((day) => day.id === nextDayId)?.date ?? null);
     if (matchedDate) setDayDate(matchedDate);
-    clearPlaceIfNotOnDay(nextDayId);
+    clearLinkIfNotOnDay(nextDayId);
   }
 
   function onSelectCategory(next: (typeof SPEND_CATEGORIES)[number]) {
     setCategory(next);
-    if (next !== "Food") setPlaceId("");
   }
 
-  function onSelectPlace(nextId: string) {
-    const prev = places.find((place) => place.id === placeId);
-    const next = places.find((place) => place.id === nextId);
-    setPlaceId(nextId);
+  function onSelectLink(next: { placeId: string; transitId: string }) {
+    const prev =
+      places.find((place) => place.id === placeId) ??
+      transit.find((item) => item.id === transitId);
+    const selected =
+      places.find((place) => place.id === next.placeId) ??
+      transit.find((item) => item.id === next.transitId);
+    setPlaceId(next.placeId);
+    setTransitId(next.transitId);
     if (!name.trim() || (prev && name.trim() === prev.name)) {
-      setName(next?.name ?? "");
+      setName(selected?.name ?? "");
     }
   }
 
@@ -234,7 +260,8 @@ function QuickExpenseForm({
     formData.set("dayDate", dayDate);
     formData.set("time", time);
     formData.set("clientId", clientId);
-    if (category === "Food" && placeId) formData.set("placeId", placeId);
+    if (placeId) formData.set("placeId", placeId);
+    if (transitId) formData.set("transitId", transitId);
 
     try {
       window.localStorage.setItem(CURRENCY_KEY, currency);
@@ -380,14 +407,14 @@ function QuickExpenseForm({
         options={categoryOptions}
       />
 
-      {category === "Food" ? (
-        <FoodPlaceField
-          places={places}
-          dayId={dayId}
-          value={placeId}
-          onChange={onSelectPlace}
-        />
-      ) : null}
+      <ScheduleLinkField
+        places={places}
+        transit={transit}
+        dayId={dayId}
+        placeId={placeId}
+        transitId={transitId}
+        onChange={onSelectLink}
+      />
 
       {people.length > 0 ? (
         <ChipGroup

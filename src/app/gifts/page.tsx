@@ -12,7 +12,7 @@ import {
   getStays,
   getTransit,
 } from "@/lib/trip";
-import type { SpendItem, TripDay, Place } from "@/lib/types";
+import type { SpendItem, TripDay, Place, Transit } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +25,7 @@ export default async function GiftsPage() {
   let days: TripDay[] = [];
   let places: Place[] = [];
   let people: string[] = [];
+  let transitItems: Transit[] = [];
   let snapshot = null;
   let loadFailed = false;
   try {
@@ -40,6 +41,7 @@ export default async function GiftsPage() {
       ]);
     days = dayList;
     places = placeList;
+    transitItems = transit;
     spends = spend;
     people = editorNames;
     snapshot = makeTripSnapshot({
@@ -61,7 +63,7 @@ export default async function GiftsPage() {
   return (
     <>
       {snapshot ? <TripCacheSync snapshot={snapshot} /> : null}
-      <QuickExpenseTripSync days={days} people={people} places={places} />
+      <QuickExpenseTripSync days={days} people={people} places={places} transit={transitItems} />
       <GiftsView initialSpends={spends} />
     </>
   );

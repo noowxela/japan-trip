@@ -126,6 +126,7 @@ function parseSpend(page: Awaited<ReturnType<typeof queryAll>>[number]): SpendIt
     paidBy: selectOf(page, "Paid by"),
     splitWith: multiSelectOf(page, "Split with"),
     placeId: relationIdsOf(page, "Place")[0] ?? null,
+    transitId: relationIdsOf(page, "Transit")[0] ?? null,
   };
 }
 

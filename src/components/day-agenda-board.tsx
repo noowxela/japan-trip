@@ -10,6 +10,8 @@ import {
 } from "@/app/actions";
 import { useActionToast } from "@/components/action-form";
 import { AgendaItemEditSheet } from "@/components/agenda-item-edit-sheet";
+import { LinkScheduleSpendSheet } from "@/components/link-schedule-spend-sheet";
+import { useQuickExpense } from "@/components/quick-expense-provider";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { SwipeRow } from "@/components/compact/swipe-row";
 import { useCanEdit } from "@/components/edit-session";
@@ -28,6 +30,7 @@ import { useToast } from "@/components/toast-provider";
 import { useTrashUndo } from "@/components/use-trash-undo";
 import { haptic } from "@/lib/haptic";
 import {
+  formatDualRmYen,
   formatGapMinutes,
   formatTime,
   isPastTripDay,
@@ -41,8 +44,14 @@ import { labelMode, labelType } from "@/lib/i18n/dictionaries";
 import { flightListLinks } from "@/lib/flight-path";
 import { isEffectivelySkipped } from "@/lib/schedule-drawer";
 import { isMapFocusable, sightNumbersFromAgenda } from "@/lib/schedule-pins";
+import {
+  linkedSpendTotals,
+  spendsForScheduleItem,
+  suggestedSpendCategory,
+  suggestedSpendCurrency,
+} from "@/lib/spend-link";
 import { compareAgendaItems } from "@/lib/trip-core";
-import type { AgendaItem, Place, TripDay } from "@/lib/types";
+import type { AgendaItem, Place, SpendItem, Transit, TripDay } from "@/lib/types";
 
 type DragPayload = { id: string; from: "pending" | "agenda" };
 
@@ -642,6 +651,28 @@ export function CarryOverBanner({
   );
 }
 
+
+function LinkedSpendMeta({
+  item,
+  spends,
+}: {
+  item: AgendaItem;
+  spends: SpendItem[];
+}) {
+  const { t } = useT();
+  const linked = spendsForScheduleItem(spends, { kind: item.kind, id: item.id });
+  if (linked.length === 0) return null;
+  const totals = linkedSpendTotals(linked);
+  return (
+    <p className="min-w-0 break-words text-[11px] leading-[14px] text-ink-muted">
+      {t("agenda.linkedSpend", {
+        n: totals.count,
+        total: formatDualRmYen(totals.rm),
+      })}
+    </p>
+  );
+}
+
 export function DayAgendaBoard({
   agenda,
   pending,
@@ -653,6 +684,10 @@ export function DayAgendaBoard({
   highlightId = null,
   mutedIds,
   onFocusItem,
+  places = [],
+  transit = [],
+  spend = [],
+  people = [],
 }: {
   agenda: AgendaItem[];
   pending: Place[];
@@ -665,11 +700,16 @@ export function DayAgendaBoard({
   mutedIds?: Set<string>;
   /** Tap a located place row to focus it on the day map. */
   onFocusItem?: (id: string) => void;
+  places?: Place[];
+  transit?: Transit[];
+  spend?: SpendItem[];
+  people?: string[];
 }) {
   const [busy, startTransition] = useTransition();
   const [over, setOver] = useState<string | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
+  const [linkItem, setLinkItem] = useState<AgendaItem | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [popId, setPopId] = useState<string | null>(null);
@@ -679,6 +719,7 @@ export function DayAgendaBoard({
   const trashWithUndo = useTrashUndo();
   const canEdit = useCanEdit();
   const editOrUnlock = useEditOrUnlock();
+  const { openQuickExpense } = useQuickExpense();
   const hiddenIds = useHiddenMapPinIds();
   const { t, locale } = useT();
   const { markVisited, markSkipped, visitedOverlay, skippedOverlay } = useOutbox();
@@ -795,6 +836,33 @@ export function DayAgendaBoard({
     setEditId(null);
     setMenuId(id);
   }
+
+  function addExpenseFor(item: AgendaItem) {
+    setMenuId(null);
+    setEditId(null);
+    const category = suggestedSpendCategory(item);
+    openQuickExpense({
+      days,
+      people,
+      places,
+      transit,
+      dayId,
+      category,
+      currency: suggestedSpendCurrency(category),
+      name: item.name,
+      time: formatTime(item.start) ?? undefined,
+      placeId: item.kind === "place" ? item.id : "",
+      transitId: item.kind === "transit" ? item.id : "",
+    });
+  }
+
+  function openLinkSpend(item: AgendaItem) {
+    setMenuId(null);
+    setEditId(null);
+    setLinkItem(item);
+  }
+
+
 
   function openItemEdit(id: string) {
     setMenuId(null);
@@ -1049,6 +1117,7 @@ export function DayAgendaBoard({
                                 {item.name}
                               </span>
                             </p>
+                            <LinkedSpendMeta item={item} spends={spend} />
                             <ItemDetailExpand
                               item={item}
                               expanded={detailExpanded}
@@ -1146,6 +1215,7 @@ export function DayAgendaBoard({
                                 {item.name}
                               </span>
                             </p>
+                            <LinkedSpendMeta item={item} spends={spend} />
                             <ItemDetailExpand
                               item={item}
                               expanded={detailExpanded}
@@ -1224,6 +1294,26 @@ export function DayAgendaBoard({
             >
               {t("agenda.editItem")}
             </button>
+            {canEdit ? (
+              <>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => addExpenseFor(menuItem)}
+                  className="notebook-btn min-h-11 w-full border border-line bg-surface px-4 py-3 text-left text-sm font-medium text-ink disabled:opacity-60"
+                >
+                  {t("agenda.addSpend")}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => openLinkSpend(menuItem)}
+                  className="notebook-btn min-h-11 w-full border border-line bg-surface px-4 py-3 text-left text-sm font-medium text-ink disabled:opacity-60"
+                >
+                  {t("agenda.linkSpend")}
+                </button>
+              </>
+            ) : null}
             {canEdit ? (
               <button
                 type="button"
@@ -1310,6 +1400,15 @@ export function DayAgendaBoard({
         dayDate={dayDate}
         days={days}
         city={dayCity}
+        onAddSpend={addExpenseFor}
+        onLinkSpend={openLinkSpend}
+      />
+      <LinkScheduleSpendSheet
+        open={linkItem != null}
+        onClose={() => setLinkItem(null)}
+        item={linkItem}
+        dayId={dayId}
+        spends={spend}
       />
       <ConfirmDialog
         open={deleteItem != null}

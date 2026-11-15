@@ -76,7 +76,7 @@ export default async function SchedulePage({
   return (
     <>
       <TripCacheSync snapshot={snapshot} />
-      <QuickExpenseTripSync days={props.days} people={people} places={props.places} />
+      <QuickExpenseTripSync days={props.days} people={people} places={props.places} transit={snapshot.transit} />
       <ScheduleView
         days={props.days}
         places={props.places}
@@ -91,6 +91,8 @@ export default async function SchedulePage({
         nowIso={nowIso}
         weather={props.weather}
         weatherAt={props.weatherAt}
+        spend={snapshot.spend}
+        transit={snapshot.transit}
       />
     </>
   );

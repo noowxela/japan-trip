@@ -40,6 +40,7 @@ function spend(
     paidBy: null,
     splitWith: [],
     placeId: null,
+    transitId: null,
   };
 }
 

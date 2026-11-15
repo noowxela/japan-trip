@@ -38,6 +38,8 @@ export function AgendaItemEditSheet({
   dayDate,
   days,
   city,
+  onAddSpend,
+  onLinkSpend,
 }: {
   open: boolean;
   onClose: () => void;
@@ -46,6 +48,8 @@ export function AgendaItemEditSheet({
   dayDate: string | null;
   days: TripDay[];
   city?: string | null;
+  onAddSpend?: (item: AgendaItem) => void;
+  onLinkSpend?: (item: AgendaItem) => void;
 }) {
   const { t } = useT();
   const title = item?.name ?? t("common.edit");
@@ -61,6 +65,8 @@ export function AgendaItemEditSheet({
           days={days}
           city={city}
           onClose={onClose}
+          onAddSpend={onAddSpend}
+          onLinkSpend={onLinkSpend}
         />
       ) : null}
     </Modal>
@@ -74,6 +80,8 @@ function AgendaItemEditForm({
   days,
   city,
   onClose,
+  onAddSpend,
+  onLinkSpend,
 }: {
   item: AgendaItem;
   dayId: string;
@@ -81,6 +89,8 @@ function AgendaItemEditForm({
   days: TripDay[];
   city?: string | null;
   onClose: () => void;
+  onAddSpend?: (item: AgendaItem) => void;
+  onLinkSpend?: (item: AgendaItem) => void;
 }) {
   const { t, locale } = useT();
   const notify = useActionToast();
@@ -371,6 +381,29 @@ function AgendaItemEditForm({
           </label>
         </div>
       )}
+
+      {onAddSpend || onLinkSpend ? (
+        <div className="grid gap-2">
+          {onAddSpend ? (
+            <button
+              type="button"
+              onClick={() => onAddSpend(item)}
+              className="notebook-btn min-h-11 w-full border border-line bg-surface px-4 py-3 text-left text-sm font-medium text-ink"
+            >
+              {t("agenda.addSpend")}
+            </button>
+          ) : null}
+          {onLinkSpend ? (
+            <button
+              type="button"
+              onClick={() => onLinkSpend(item)}
+              className="notebook-btn min-h-11 w-full border border-line bg-surface px-4 py-3 text-left text-sm font-medium text-ink"
+            >
+              {t("agenda.linkSpend")}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="sticky bottom-0 -mx-4 -mb-4 border-t border-line bg-canvas px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
         <div className="flex gap-2">

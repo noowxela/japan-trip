@@ -31,8 +31,10 @@ export type AddSpendPayload = {
   paidBy: string;
   /** Missing on entries queued before SDD 016; empty = everyone. */
   splitWith?: string[];
-  /** Optional schedule Place id for a food expense link. */
+  /** Optional schedule Place id. XOR with transitId. */
   placeId?: string;
+  /** Optional schedule Transit id. XOR with placeId. */
+  transitId?: string;
   dayDate: string;
   time: string;
 };
@@ -106,6 +108,7 @@ export function buildAddSpendPayload(
     paidBy: input.paidBy,
     splitWith: input.splitWith ?? [],
     placeId: input.placeId ?? "",
+    transitId: input.transitId ?? "",
     dayDate: input.dayDate,
     time: input.time,
   };

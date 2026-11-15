@@ -129,7 +129,7 @@ export default async function OverviewPage() {
           prep,
         })}
       />
-      <QuickExpenseTripSync days={days} people={people} places={places} />
+      <QuickExpenseTripSync days={days} people={people} places={places} transit={transit} />
       <OverviewPullRefresh>
       <PageShell>
         <PageHeader

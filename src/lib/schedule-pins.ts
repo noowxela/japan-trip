@@ -268,6 +268,8 @@ export function schedulePropsFromSnapshot(
   return {
     days,
     places,
+    transit,
+    spend: snapshot.spend ?? [],
     byDay: buildScheduleSlices(days, places, transit, stays),
     allPins: pinsForAllDays(days, places),
     initialDayId,

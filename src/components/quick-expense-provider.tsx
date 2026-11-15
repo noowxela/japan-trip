@@ -15,7 +15,7 @@ import {
 } from "@/components/quick-expense-sheet";
 import { useEditOrUnlock } from "@/components/unlock-provider";
 import { readTripCache } from "@/lib/trip-cache";
-import type { Place, TripDay } from "@/lib/types";
+import type { Place, Transit, TripDay } from "@/lib/types";
 
 const PEOPLE_KEY = "japan-trip-people-v1";
 
@@ -49,6 +49,7 @@ type QuickExpenseContextValue = {
     days?: TripDay[];
     people?: string[];
     places?: Place[];
+    transit?: Transit[];
   }) => void;
 };
 
@@ -63,11 +64,13 @@ export function QuickExpenseProvider({ children }: { children: ReactNode }) {
   const [tripDays, setTripDays] = useState<TripDay[]>([]);
   const [people, setPeople] = useState<string[]>([]);
   const [tripPlaces, setTripPlaces] = useState<Place[]>([]);
+  const [tripTransit, setTripTransit] = useState<Transit[]>([]);
 
   const setTripData = useCallback(
-    (data: { days?: TripDay[]; people?: string[]; places?: Place[] }) => {
+    (data: { days?: TripDay[]; people?: string[]; places?: Place[]; transit?: Transit[] }) => {
       if (data.days) setTripDays(data.days);
       if (data.places) setTripPlaces(data.places);
+      if (data.transit) setTripTransit(data.transit);
       if (data.people) {
         setPeople(data.people);
         syncQuickExpensePeople(data.people);
@@ -83,16 +86,18 @@ export function QuickExpenseProvider({ children }: { children: ReactNode }) {
         const days = next?.days ?? tripDays ?? cache?.days ?? [];
         const nextPeople = next?.people ?? people ?? readPeople();
         const places = next?.places ?? tripPlaces ?? cache?.places ?? [];
+        const transit = next?.transit ?? tripTransit ?? cache?.transit ?? [];
         setDefaults({
           ...next,
           days,
           people: nextPeople,
           places,
+          transit,
         });
         setOpen(true);
       });
     },
-    [editOrUnlock, people, tripDays, tripPlaces],
+    [editOrUnlock, people, tripDays, tripPlaces, tripTransit],
   );
 
   const closeQuickExpense = useCallback(() => setOpen(false), []);
@@ -130,14 +135,16 @@ export function QuickExpenseTripSync({
   days,
   people,
   places,
+  transit,
 }: {
   days: TripDay[];
   people?: string[];
   places?: Place[];
+  transit?: Transit[];
 }) {
   const ctx = useQuickExpenseOptional();
   useEffect(() => {
-    ctx?.setTripData({ days, people, places });
-  }, [ctx, days, people, places]);
+    ctx?.setTripData({ days, people, places, transit });
+  }, [ctx, days, people, places, transit]);
   return null;
 }

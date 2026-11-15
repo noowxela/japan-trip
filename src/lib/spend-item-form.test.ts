@@ -21,6 +21,7 @@ const item = (
   paidBy: partial.paidBy ?? null,
   splitWith: partial.splitWith ?? [],
   placeId: partial.placeId ?? null,
+  transitId: partial.transitId ?? null,
   ...partial,
 });
 
@@ -107,10 +108,16 @@ describe("formDataFromSpendItem", () => {
     });
   });
 
-  it("clears the food place when the category is no longer Food", () => {
+  it("keeps a place link when the category is no longer Food", () => {
     const formData = formDataFromSpendItem(lunch, days, { category: "Airfare" });
     expect(formData.get("category")).toBe("Airfare");
+    expect(formData.get("placeId")).toBe("place-1");
+  });
+
+  it("XOR: a transit override clears the place link", () => {
+    const formData = formDataFromSpendItem(lunch, days, { transitId: "t1" });
     expect(formData.get("placeId")).toBeNull();
+    expect(formData.get("transitId")).toBe("t1");
   });
 
   it("remaps dayId when moving to another trip day and keeps the time", () => {
