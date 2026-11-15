@@ -1,6 +1,6 @@
 import { categoryEmoji } from "@/lib/category-icon";
 import { formatTime } from "@/lib/format";
-import { toRm } from "@/lib/spend";
+import { spendTotalRm } from "@/lib/spend";
 import { compareAgendaItems } from "@/lib/trip-core";
 import {
   JPY_PER_RM,
@@ -158,9 +158,10 @@ export function spendsForScheduleItem(
 export function linkedSpendTotals(
   spends: SpendItem[],
   jpyPerRm = JPY_PER_RM,
+  people: string[] = [],
 ): { count: number; rm: number; yen: number } {
   const rm = spends.reduce(
-    (sum, item) => sum + toRm(item.amount, item.currency, jpyPerRm),
+    (sum, item) => sum + spendTotalRm(item, people, jpyPerRm),
     0,
   );
   return { count: spends.length, rm, yen: Math.round(rm * jpyPerRm) };

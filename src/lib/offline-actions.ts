@@ -67,6 +67,10 @@ export function spendPayloadFromForm(formData: FormData): AddSpendPayload {
     notes: String(formData.get("notes") ?? "").trim(),
     dayId: String(formData.get("dayId") ?? "").trim(),
     paidBy: String(formData.get("paidBy") ?? "").trim(),
+    eachPaidOwn:
+      String(formData.get("eachPaidOwn") ?? "").trim().toLowerCase() === "true" ||
+      String(formData.get("eachPaidOwn") ?? "").trim() === "1" ||
+      String(formData.get("eachPaidOwn") ?? "").trim() === "on",
     splitWith: formData
       .getAll("splitWith")
       .map((value) => String(value).trim())
@@ -92,6 +96,7 @@ export function formDataFromSpendPayload(
   formData.set("dayId", payload.dayId);
   formData.set("paidBy", payload.paidBy);
   for (const name of payload.splitWith ?? []) formData.append("splitWith", name);
+  if (payload.eachPaidOwn) formData.set("eachPaidOwn", "true");
   if (payload.placeId) formData.set("placeId", payload.placeId);
   if (payload.transitId) formData.set("transitId", payload.transitId);
   if (payload.dayDate) formData.set("dayDate", payload.dayDate);
@@ -119,6 +124,7 @@ export function optimisticSpendFromPayload(payload: AddSpendPayload): SpendItem 
     start: payload.createdAt,
     paidBy: payload.paidBy || null,
     splitWith: payload.splitWith ?? [],
+    eachPaidOwn: Boolean(payload.eachPaidOwn),
     placeId: payload.placeId?.trim() || null,
     transitId: payload.transitId?.trim() || null,
   };

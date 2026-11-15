@@ -118,6 +118,36 @@ async function withSplitWithFallback<T>(
   }
 }
 
+function eachPaidOwnFrom(formData: FormData) {
+  const raw = String(formData.get("eachPaidOwn") ?? "").trim().toLowerCase();
+  return raw === "true" || raw === "1" || raw === "on";
+}
+
+function eachPaidOwnProp(value: boolean) {
+  return { "Each Paid Own": { checkbox: value } };
+}
+
+/** Until `npm run migrate:spend-each-paid-own` adds the checkbox, retry without it. */
+async function withEachPaidOwnFallback<T>(
+  write: (include: boolean) => Promise<T>,
+): Promise<T> {
+  try {
+    return await write(true);
+  } catch (error) {
+    if (
+      !APIResponseError.isAPIResponseError(error) ||
+      error.code !== APIErrorCode.ValidationError ||
+      !error.message.includes("Each Paid Own")
+    ) {
+      throw error;
+    }
+    console.warn(
+      "Spend DS has no `Each Paid Own` column; run npm run migrate:spend-each-paid-own",
+    );
+    return write(false);
+  }
+}
+
 function placeIdFrom(formData: FormData) {
   return String(formData.get("placeId") ?? "").trim();
 }
@@ -965,6 +995,7 @@ export async function addSpend(formData: FormData): Promise<ActionResult> {
   const dayId = String(formData.get("dayId") ?? "").trim();
   const paidBy = String(formData.get("paidBy") ?? "").trim();
   const splitWith = splitWithFrom(formData);
+  const eachPaidOwn = eachPaidOwnFrom(formData);
   const { placeId: linkedPlaceId, transitId: linkedTransitId } =
     scheduleLinkFrom(formData);
   const currency = parseSpendCurrency(String(formData.get("currency") ?? ""));
@@ -998,27 +1029,34 @@ export async function addSpend(formData: FormData): Promise<ActionResult> {
     created = await withSplitWithFallback((includeSplit) =>
       withPlaceFallback((includePlace) =>
         withTransitFallback((includeTransit) =>
-          notion.pages.create({
-            parent: { data_source_id: ds("SPEND") },
-            properties: {
-              Name: titleProp(name),
-              Amount: { number: amount },
-              Currency: { select: { name: currency } },
-              ...(kind ? { Kind: { select: { name: kind } } } : {}),
-              ...(category ? { Category: { select: { name: category } } } : {}),
-              ...(notes ? { Notes: textProp(notes) } : {}),
-              ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
-              ...(start ? { Start: startProp(start) } : {}),
-              ...(paidBy ? { "Paid by": { select: { name: paidBy } } } : {}),
-              ...(includeSplit && splitWith.length > 0
-                ? splitWithProp(splitWith)
-                : {}),
-              ...(includePlace && linkedPlaceId ? placeProp(linkedPlaceId) : {}),
-              ...(includeTransit && linkedTransitId
-                ? transitProp(linkedTransitId)
-                : {}),
-            },
-          }),
+          withEachPaidOwnFallback((includeEachPaidOwn) =>
+            notion.pages.create({
+              parent: { data_source_id: ds("SPEND") },
+              properties: {
+                Name: titleProp(name),
+                Amount: { number: amount },
+                Currency: { select: { name: currency } },
+                ...(kind ? { Kind: { select: { name: kind } } } : {}),
+                ...(category
+                  ? { Category: { select: { name: category } } }
+                  : {}),
+                ...(notes ? { Notes: textProp(notes) } : {}),
+                ...(dayId ? { Day: { relation: [{ id: dayId }] } } : {}),
+                ...(start ? { Start: startProp(start) } : {}),
+                ...(paidBy ? { "Paid by": { select: { name: paidBy } } } : {}),
+                ...(includeSplit && splitWith.length > 0
+                  ? splitWithProp(splitWith)
+                  : {}),
+                ...(includePlace && linkedPlaceId
+                  ? placeProp(linkedPlaceId)
+                  : {}),
+                ...(includeTransit && linkedTransitId
+                  ? transitProp(linkedTransitId)
+                  : {}),
+                ...(includeEachPaidOwn ? eachPaidOwnProp(eachPaidOwn) : {}),
+              },
+            }),
+          ),
         ),
       ),
     );
@@ -1041,6 +1079,7 @@ export async function updateSpend(formData: FormData): Promise<ActionResult> {
   const dayId = String(formData.get("dayId") ?? "").trim();
   const paidBy = String(formData.get("paidBy") ?? "").trim();
   const splitWith = splitWithFrom(formData);
+  const eachPaidOwn = eachPaidOwnFrom(formData);
   const { placeId: linkedPlaceId, transitId: linkedTransitId } =
     scheduleLinkFrom(formData);
   const currency = parseSpendCurrency(String(formData.get("currency") ?? ""));
@@ -1053,23 +1092,26 @@ export async function updateSpend(formData: FormData): Promise<ActionResult> {
     await withSplitWithFallback((includeSplit) =>
       withPlaceFallback((includePlace) =>
         withTransitFallback((includeTransit) =>
-          notion.pages.update({
-            page_id: id,
-            properties: {
-              Name: titleProp(name),
-              Amount: { number: amount },
-              Currency: { select: { name: currency } },
-              Kind: { select: kind ? { name: kind } : null },
-              Category: { select: category ? { name: category } : null },
-              Notes: textProp(notes),
-              Day: { relation: dayId ? [{ id: dayId }] : [] },
-              Start: startProp(start || null),
-              "Paid by": { select: paidBy ? { name: paidBy } : null },
-              ...(includeSplit ? splitWithProp(splitWith) : {}),
-              ...(includePlace ? placeProp(linkedPlaceId) : {}),
-              ...(includeTransit ? transitProp(linkedTransitId) : {}),
-            },
-          }),
+          withEachPaidOwnFallback((includeEachPaidOwn) =>
+            notion.pages.update({
+              page_id: id,
+              properties: {
+                Name: titleProp(name),
+                Amount: { number: amount },
+                Currency: { select: { name: currency } },
+                Kind: { select: kind ? { name: kind } : null },
+                Category: { select: category ? { name: category } : null },
+                Notes: textProp(notes),
+                Day: { relation: dayId ? [{ id: dayId }] : [] },
+                Start: startProp(start || null),
+                "Paid by": { select: paidBy ? { name: paidBy } : null },
+                ...(includeSplit ? splitWithProp(splitWith) : {}),
+                ...(includePlace ? placeProp(linkedPlaceId) : {}),
+                ...(includeTransit ? transitProp(linkedTransitId) : {}),
+                ...(includeEachPaidOwn ? eachPaidOwnProp(eachPaidOwn) : {}),
+              },
+            }),
+          ),
         ),
       ),
     );

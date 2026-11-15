@@ -48,9 +48,18 @@ Transit Mode needs `Ride-hailing` (zh 网约车) and `Train` (zh 电车) select 
 npm run migrate:transit-ride-hailing
 npm run migrate:transit-train
 npm run migrate:spend-transit
+npm run migrate:spend-each-paid-own
 ```
 
 If those commands cannot reach Notion, add the Mode option and the `Transit` relation manually. Until the relation exists, the expense still saves and the transit link is skipped.
+
+Spend can mark a fare as `Each Paid Own` (各付各的): the Amount is one person's cost, and trip totals count Amount × participants (`Split with`, empty = everyone). That needs a checkbox property named exactly `Each Paid Own` on the Spend data source. The one-shot migrate only adds the schema:
+
+```bash
+npm run migrate:spend-each-paid-own
+```
+
+Until the checkbox exists, the expense still saves and the flag is skipped.
 
 Wallet / Shortcuts ingest: an explicit ¥0 amount (train gate-in / detect) is logged as a successful entry detect and does not create a Notion expense. A missing or empty amount still returns 400 so real fares are not silently skipped.
 

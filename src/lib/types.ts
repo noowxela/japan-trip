@@ -68,6 +68,8 @@ export type SpendItem = {
   paidBy: string | null;
   /** Empty = split among everyone. */
   splitWith: string[];
+  /** Amount is one person's fare; totals count Amount × participants. Missing/false = usual split. */
+  eachPaidOwn?: boolean;
   /** Optional relation to a schedule Place. */
   placeId: string | null;
   /** Optional relation to a schedule Transit. XOR with placeId. */

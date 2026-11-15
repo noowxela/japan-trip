@@ -47,7 +47,7 @@ export default async function BudgetLayout({
       getMyrToJpy(),
       getEditorNames(),
     ]);
-  const money = moneySummary(spend, fx.jpyPerRm);
+  const money = moneySummary(spend, fx.jpyPerRm, people);
   const actuals = spend.filter((item) => item.kind === "Actual");
 
   return (

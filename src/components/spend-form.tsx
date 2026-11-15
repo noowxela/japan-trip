@@ -100,6 +100,7 @@ export function SpendForm({
     item?.paidBy ?? editorName ?? people[0] ?? "",
   );
   const [splitWith, setSplitWith] = useState<string[]>(item?.splitWith ?? []);
+  const [eachPaidOwn, setEachPaidOwn] = useState(Boolean(item?.eachPaidOwn));
   const [placeId, setPlaceId] = useState(item?.placeId ?? "");
   const [transitId, setTransitId] = useState(item?.transitId ?? "");
   const [gift, setGift] = useState<SpendGiftValue>(() => {
@@ -254,8 +255,29 @@ export function SpendForm({
           />
         </label>
 
+        <div className="grid gap-2">
+          <label className="flex min-h-11 items-center gap-2 text-[13px] text-ink">
+            <input
+              type="checkbox"
+              name="eachPaidOwn"
+              value="true"
+              checked={eachPaidOwn}
+              onChange={(event) => setEachPaidOwn(event.target.checked)}
+              className="h-4 w-4 accent-accent"
+            />
+            {t("form.eachPaidOwn")}
+          </label>
+          {eachPaidOwn ? (
+            <p className="text-[11px] text-ink-muted">{t("form.eachPaidOwnHint")}</p>
+          ) : null}
+        </div>
+
         <div className={spendPartyRowClass}>
-          <PaidByField people={people} value={paidBy} onChange={setPaidBy} />
+          {eachPaidOwn ? (
+            <input type="hidden" name="paidBy" value={paidBy} />
+          ) : (
+            <PaidByField people={people} value={paidBy} onChange={setPaidBy} />
+          )}
           <SplitWithField people={people} value={splitWith} onChange={setSplitWith} />
         </div>
 

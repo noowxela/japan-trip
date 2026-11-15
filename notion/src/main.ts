@@ -272,6 +272,11 @@ notion.database({
 					type: "select",
 					options: [],
 				},
+				{
+					resourceId: "spend-each-paid-own-prop",
+					name: "Each Paid Own",
+					type: "checkbox",
+				},
 				{ resourceId: "spend-notes-prop", name: "Notes", type: "text" },
 				{
 					resourceId: "spend-place-prop",

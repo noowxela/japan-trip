@@ -24,31 +24,65 @@ export function toRm(
   return currency === "Yen" ? amount / jpyPerRm : amount;
 }
 
-export function sumRm(items: SpendItem[], kind?: string, jpyPerRm = JPY_PER_RM) {
+export function isEachPaidOwn(
+  item: Pick<SpendItem, "eachPaidOwn">,
+): boolean {
+  return item.eachPaidOwn === true;
+}
+
+/** How many times to count Amount in trip totals. Usual spends are 1. */
+export function spendMultiplier(
+  item: Pick<SpendItem, "eachPaidOwn" | "splitWith" | "paidBy">,
+  people: string[] = [],
+): number {
+  if (!isEachPaidOwn(item)) return 1;
+  return Math.max(splitParticipants(item, people).length, 1);
+}
+
+/** Trip cost of one spend in RM: Amount, or Amount × participants when each paid own. */
+export function spendTotalRm(
+  item: SpendItem,
+  people: string[] = [],
+  jpyPerRm = JPY_PER_RM,
+): number {
+  return toRm(item.amount, item.currency, jpyPerRm) * spendMultiplier(item, people);
+}
+
+export function sumRm(
+  items: SpendItem[],
+  kind?: string,
+  jpyPerRm = JPY_PER_RM,
+  people: string[] = [],
+) {
   return items
     .filter((item) => (kind ? item.kind === kind : true))
-    .reduce(
-      (sum, item) => sum + toRm(item.amount, item.currency, jpyPerRm),
-      0,
-    );
+    .reduce((sum, item) => sum + spendTotalRm(item, people, jpyPerRm), 0);
 }
 
 export function byDay(items: SpendItem[], dayId: string) {
   return items.filter((item) => item.dayIds.includes(dayId));
 }
 
-export function byCategory(items: SpendItem[], jpyPerRm = JPY_PER_RM) {
+export function byCategory(
+  items: SpendItem[],
+  jpyPerRm = JPY_PER_RM,
+  people: string[] = [],
+) {
   const map = new Map<string, number>();
   for (const item of items) {
     const key = item.category ?? "Other";
-    map.set(key, (map.get(key) ?? 0) + toRm(item.amount, item.currency, jpyPerRm));
+    map.set(key, (map.get(key) ?? 0) + spendTotalRm(item, people, jpyPerRm));
   }
   return [...map.entries()].sort((a, b) => b[1] - a[1]);
 }
 
-export function moneySummary(items: SpendItem[], jpyPerRm = JPY_PER_RM) {
-  const estimate = sumRm(items, "Estimate", jpyPerRm);
-  const actual = sumRm(items, "Actual", jpyPerRm);
+export function moneySummary(
+  items: SpendItem[],
+  jpyPerRm = JPY_PER_RM,
+  people: string[] = [],
+) {
+  const estimate = sumRm(items, "Estimate", jpyPerRm, people);
+  const actual = sumRm(items, "Actual", jpyPerRm, people);
   return {
     estimate,
     actual,
@@ -100,6 +134,8 @@ export function timelineGroupLabel(
 export type TimelineGroupOptions = {
   /** Override the RM amount used for group totals (e.g. one person's share). */
   itemRm?: (item: SpendItem) => number;
+  /** Editors list, used when each-paid-own items have an empty splitWith (everyone). */
+  people?: string[];
 };
 
 export function timelineGroups(
@@ -133,16 +169,17 @@ export function timelineGroups(
       if (timeA !== timeB) return timeA.localeCompare(timeB);
       return a.name.localeCompare(b.name);
     });
+    const people = options?.people ?? [];
     const amountRm = (item: SpendItem) =>
       options?.itemRm
         ? options.itemRm(item)
-        : toRm(item.amount, item.currency, jpyPerRm);
+        : spendTotalRm(item, people, jpyPerRm);
     return {
       key,
       date: key === BEFORE_TRIP_KEY ? null : key,
       items: groupItems,
       totalRm: groupItems.reduce((sum, item) => sum + amountRm(item), 0),
-      fullTotalRm: sumRm(groupItems, undefined, jpyPerRm),
+      fullTotalRm: sumRm(groupItems, undefined, jpyPerRm, people),
     };
   });
 }
@@ -156,6 +193,7 @@ export type CategoryRow = {
 export function categoryBreakdown(
   items: SpendItem[],
   jpyPerRm = JPY_PER_RM,
+  people: string[] = [],
 ): CategoryRow[] {
   const totals = new Map<string, number>(
     SPEND_CATEGORIES.map((category) => [category, 0]),
@@ -166,7 +204,7 @@ export function categoryBreakdown(
     )
       ? (item.category as (typeof SPEND_CATEGORIES)[number])
       : "Other";
-    totals.set(key, (totals.get(key) ?? 0) + toRm(item.amount, item.currency, jpyPerRm));
+    totals.set(key, (totals.get(key) ?? 0) + spendTotalRm(item, people, jpyPerRm));
   }
   const total = [...totals.values()].reduce((sum, value) => sum + value, 0);
   return SPEND_CATEGORIES.map((category) => {
@@ -206,8 +244,9 @@ export type SettleResult = {
 
 /**
  * Who owes whom, in RM. Each Actual expense is split equally among `splitWith`
- * (empty = everyone). Transfers greedily pair the largest debtor with the
- * largest creditor, so there are at most n−1 of them.
+ * (empty = everyone). Each-paid-own items create no debt: every participant
+ * paid and owes their own Amount. Transfers greedily pair the largest debtor
+ * with the largest creditor, so there are at most n−1 of them.
  */
 export function settleUp(
   items: SpendItem[],
@@ -215,12 +254,14 @@ export function settleUp(
   jpyPerRm = JPY_PER_RM,
 ): SettleResult {
   const counted = items.filter((item) => item.kind !== "Estimate");
-  const unassigned = counted.filter((item) => !item.paidBy);
-  const assigned = counted.filter((item) => item.paidBy);
+  const unassigned = counted.filter(
+    (item) => !item.paidBy && !isEachPaidOwn(item),
+  );
+  const assigned = counted.filter((item) => item.paidBy || isEachPaidOwn(item));
   const everyone =
     people.length > 0
       ? people
-      : [...new Set(assigned.map((item) => item.paidBy as string))];
+      : [...new Set(assigned.map((item) => item.paidBy).filter(Boolean))] as string[];
 
   const order: string[] = [...everyone];
   const paid = new Map<string, number>();
@@ -230,16 +271,23 @@ export function settleUp(
   };
 
   for (const item of assigned) {
-    const payer = item.paidBy as string;
     const rm = toRm(item.amount, item.currency, jpyPerRm);
-    const listed = [...new Set(item.splitWith)];
-    const participants = listed.length > 0 ? listed : everyone;
-    const split = participants.length > 0 ? participants : [payer];
+    const split = splitParticipants(item, everyone);
+    if (isEachPaidOwn(item)) {
+      for (const name of split) {
+        touch(name);
+        paid.set(name, (paid.get(name) ?? 0) + rm);
+        share.set(name, (share.get(name) ?? 0) + rm);
+      }
+      continue;
+    }
+    const payer = item.paidBy as string;
+    const participants = split.length > 0 ? split : [payer];
     touch(payer);
     paid.set(payer, (paid.get(payer) ?? 0) + rm);
-    for (const name of split) {
+    for (const name of participants) {
       touch(name);
-      share.set(name, (share.get(name) ?? 0) + rm / split.length);
+      share.set(name, (share.get(name) ?? 0) + rm / participants.length);
     }
   }
 
@@ -278,13 +326,13 @@ export function topSpend(
   items: SpendItem[],
   n = 10,
   jpyPerRm = JPY_PER_RM,
+  people: string[] = [],
 ): SpendItem[] {
   return items
     .slice()
     .sort(
       (a, b) =>
-        toRm(b.amount, b.currency, jpyPerRm) -
-        toRm(a.amount, a.currency, jpyPerRm),
+        spendTotalRm(b, people, jpyPerRm) - spendTotalRm(a, people, jpyPerRm),
     )
     .slice(0, n);
 }
@@ -307,7 +355,10 @@ export function spendFilterPeople(people: string[], items: SpendItem[]): string[
  * Who shares an expense. Empty `splitWith` means everyone (same rule as settle-up).
  * If there is no people list, fall back to the payer so a personal item still has a share.
  */
-export function splitParticipants(item: SpendItem, people: string[]): string[] {
+export function splitParticipants(
+  item: Pick<SpendItem, "splitWith" | "paidBy">,
+  people: string[],
+): string[] {
   const listed = [
     ...new Set(item.splitWith.map((name) => name.trim()).filter(Boolean)),
   ];
@@ -326,7 +377,7 @@ export function personHasShare(
   return splitParticipants(item, people).includes(person);
 }
 
-/** This person's equal share in RM, or null when they are not a splitter. */
+/** This person's share in RM, or null when they are not a participant. Each-paid-own uses the full Amount. */
 export function personShareRm(
   item: SpendItem,
   person: string,
@@ -335,7 +386,8 @@ export function personShareRm(
 ): number | null {
   const split = splitParticipants(item, people);
   if (split.length === 0 || !split.includes(person)) return null;
-  return toRm(item.amount, item.currency, jpyPerRm) / split.length;
+  const rm = toRm(item.amount, item.currency, jpyPerRm);
+  return isEachPaidOwn(item) ? rm : rm / split.length;
 }
 
 export function sumPersonShareRm(
@@ -358,7 +410,11 @@ export function filterSpendByPerson(
 ): SpendItem[] {
   if (!person || person === "all") return items;
   if (mode === "payer") {
-    return items.filter((item) => item.paidBy === person);
+    return items.filter(
+      (item) =>
+        item.paidBy === person ||
+        (isEachPaidOwn(item) && personHasShare(item, person, people)),
+    );
   }
   return items.filter((item) => personHasShare(item, person, people));
 }

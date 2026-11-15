@@ -84,6 +84,7 @@ export function formDataFromSpendItem(
   if (time) formData.set("time", time);
   formData.set("paidBy", item.paidBy ?? "");
   for (const name of item.splitWith ?? []) formData.append("splitWith", name);
+  formData.set("eachPaidOwn", item.eachPaidOwn ? "true" : "false");
   if (link.placeId) formData.set("placeId", link.placeId);
   if (link.transitId) formData.set("transitId", link.transitId);
   return formData;

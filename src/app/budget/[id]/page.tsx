@@ -11,7 +11,7 @@ import { labelCategory, t } from "@/lib/i18n/dictionaries";
 import { getLocale } from "@/lib/i18n/server";
 import { NotionNotReady } from "@/components/notion-not-ready";
 import { notionReady } from "@/lib/notion";
-import { spendWhen } from "@/lib/spend";
+import { isEachPaidOwn, spendMultiplier, spendWhen } from "@/lib/spend";
 import { linkedScheduleLabel } from "@/lib/spend-link";
 import { getDays, getEditorNames, getPlaces, getSpendItem, getTransit } from "@/lib/trip";
 
@@ -47,9 +47,16 @@ export default async function ExpenseDetailPage({
   const when = spendWhen(item, days);
   const dayName = days.find((day) => item.dayIds.includes(day.id))?.name;
   const time = formatTime(when);
+  const eachPaidOwnBadge = isEachPaidOwn(item)
+    ? t(locale, "spend.eachPaidOwnBadge", {
+        n: spendMultiplier(item, people),
+      })
+    : null;
   const rows = [
     { label: t(locale, "form.category"), value: labelCategory(locale, item.category) },
-    { label: t(locale, "form.paidBy"), value: item.paidBy || "—" },
+    eachPaidOwnBadge
+      ? { label: t(locale, "form.eachPaidOwn"), value: eachPaidOwnBadge }
+      : { label: t(locale, "form.paidBy"), value: item.paidBy || "—" },
     { label: t(locale, "form.day"), value: dayName || "—" },
     {
       label: t(locale, "form.date"),
@@ -77,7 +84,7 @@ export default async function ExpenseDetailPage({
             {[
               labelCategory(locale, item.category),
               placeLabel && !placeLabel.missing ? placeLabel.name : null,
-              item.paidBy,
+              eachPaidOwnBadge ?? item.paidBy,
               dayName,
             ]
               .filter(Boolean)

@@ -16,7 +16,7 @@ import {
   haptic,
   type GestureOrigin,
 } from "@/lib/haptic";
-import { toRm } from "@/lib/spend";
+import { isEachPaidOwn, spendMultiplier, toRm } from "@/lib/spend";
 import { linkedPlaceLabel } from "@/lib/spend-place";
 import { LONG_PRESS_MS, shouldCancelLongPress } from "@/lib/swipe";
 import { JPY_PER_RM, type Place, type SpendItem, type TripDay } from "@/lib/types";
@@ -31,6 +31,7 @@ export function SpendItemCard({
   timeLabel,
   places = [],
   days = [],
+  people = [],
   shareRm = null,
 }: {
   item: SpendItem;
@@ -41,6 +42,7 @@ export function SpendItemCard({
   timeLabel?: string | null;
   places?: Place[];
   days?: TripDay[];
+  people?: string[];
   /** When set, show this RM share as the primary amount, with the full amount second. */
   shareRm?: number | null;
 }) {
@@ -67,12 +69,17 @@ export function SpendItemCard({
   const categoryLabel = labelCategory(locale, item.category);
   const emoji = spendCategoryEmoji(item.category);
 
+  const eachPaidOwnBadge = isEachPaidOwn(item)
+    ? t("spend.eachPaidOwnBadge", { n: spendMultiplier(item, people) })
+    : null;
+
   const bodyProps = {
     item,
     compact,
     timeLabel,
     pendingSync,
     placeChip,
+    eachPaidOwnBadge,
     categoryLabel,
     emoji,
     displayYen,
@@ -247,12 +254,14 @@ function SpendItemBody({
   jpyPerRm,
   shareRm,
   pendingLabel,
+  eachPaidOwnBadge,
 }: {
   item: SpendItem;
   compact: boolean;
   timeLabel?: string | null;
   pendingSync: boolean;
   placeChip: string | null;
+  eachPaidOwnBadge: string | null;
   categoryLabel: string | null;
   emoji: string;
   displayYen: boolean;
@@ -280,14 +289,18 @@ function SpendItemBody({
             </span>
             <span className={`${textWrapClass} flex-1 font-medium`}>{item.name}</span>
           </p>
-          {pendingSync || item.paidBy || placeChip ? (
+          {pendingSync || eachPaidOwnBadge || item.paidBy || placeChip ? (
             <div className="mt-0.5 flex flex-wrap gap-1">
               {pendingSync ? (
                 <span className="w-fit rounded-full bg-maybe-soft px-1.5 py-px text-[10px] font-medium text-maybe">
                   {pendingLabel}
                 </span>
               ) : null}
-              {item.paidBy ? (
+              {eachPaidOwnBadge ? (
+                <span className="w-fit rounded-full bg-canvas px-1.5 py-px text-[10px] font-medium text-ink-muted">
+                  {eachPaidOwnBadge}
+                </span>
+              ) : item.paidBy ? (
                 <span className="w-fit rounded-full bg-canvas px-1.5 py-px text-[10px] font-medium text-ink-muted">
                   {item.paidBy}
                 </span>
@@ -325,7 +338,11 @@ function SpendItemBody({
               {pendingLabel}
             </span>
           ) : null}
-          {item.paidBy ? (
+          {eachPaidOwnBadge ? (
+            <span className="w-fit rounded-full bg-canvas px-2 py-0.5 text-[11px] font-medium text-ink-muted">
+              {eachPaidOwnBadge}
+            </span>
+          ) : item.paidBy ? (
             <span className="w-fit rounded-full bg-canvas px-2 py-0.5 text-[11px] font-medium text-ink-muted">
               {item.paidBy}
             </span>

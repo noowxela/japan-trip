@@ -88,9 +88,9 @@ export default async function OverviewPage() {
   const next = nextAgendaItem(agenda, { now, isToday: isFocusToday });
   const lodging = focus ? staysForOverviewDate(stays, focus.date) : [];
   const dayMoney = focus
-    ? moneySummary(byDay(spend, focus.id), fx.jpyPerRm)
+    ? moneySummary(byDay(spend, focus.id), fx.jpyPerRm, people)
     : { actual: 0, estimate: 0, remaining: 0 };
-  const tripMoney = moneySummary(spend, fx.jpyPerRm);
+  const tripMoney = moneySummary(spend, fx.jpyPerRm, people);
   const isTonight = Boolean(focus && dateKey(focus.date) === today);
 
   let nextDayItem: AgendaItem | null = null;

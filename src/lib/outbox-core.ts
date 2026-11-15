@@ -33,6 +33,8 @@ export type AddSpendPayload = {
   paidBy: string;
   /** Missing on entries queued before SDD 016; empty = everyone. */
   splitWith?: string[];
+  /** Missing on entries queued before each-paid-own shipped. */
+  eachPaidOwn?: boolean;
   /** Optional schedule Place id. XOR with transitId. */
   placeId?: string;
   /** Optional schedule Transit id. XOR with placeId. */
@@ -113,6 +115,7 @@ export function buildAddSpendPayload(
     dayId: input.dayId,
     paidBy: input.paidBy,
     splitWith: input.splitWith ?? [],
+    eachPaidOwn: Boolean(input.eachPaidOwn),
     placeId: input.placeId ?? "",
     transitId: input.transitId ?? "",
     dayDate: input.dayDate,

@@ -12,8 +12,11 @@ import {
   personShareRm,
   settleUp,
   spendFilterPeople,
+  spendMultiplier,
+  spendTotalRm,
   splitParticipants,
   sumPersonShareRm,
+  sumRm,
   timelineGroupLabel,
   timelineGroups,
   toRm,
@@ -510,6 +513,49 @@ describe("person share and person filter", () => {
     expect(groups[0]!.fullTotalRm).toBe(43);
     expect(groups[1]!.totalRm).toBe(30);
     expect(groups[1]!.fullTotalRm).toBe(90);
+  });
+});
+
+describe("each paid own", () => {
+  const people = ["Alex", "Xin"];
+  const fare = item({
+    id: "bus",
+    amount: 230,
+    currency: "Yen",
+    kind: "Actual",
+    category: "Transit",
+    paidBy: "Xin",
+    splitWith: ["Xin", "Alex"],
+    eachPaidOwn: true,
+  });
+
+  it("counts Amount × participants in trip totals", () => {
+    expect(spendMultiplier(fare, people)).toBe(2);
+    expect(spendTotalRm(fare, people, 39.3)).toBeCloseTo((230 / 39.3) * 2);
+    expect(sumRm([fare], "Actual", 39.3, people)).toBeCloseTo((230 / 39.3) * 2);
+  });
+
+  it("gives each participant the full Amount in both filter modes", () => {
+    expect(personShareRm(fare, "Alex", people, 39.3)).toBeCloseTo(230 / 39.3);
+    expect(personShareRm(fare, "Xin", people, 39.3)).toBeCloseTo(230 / 39.3);
+    expect(filterSpendByPerson([fare], "Alex", "payer", people).map((row) => row.id)).toEqual(
+      ["bus"],
+    );
+    expect(filterSpendByPerson([fare], "Alex", "split", people).map((row) => row.id)).toEqual(
+      ["bus"],
+    );
+  });
+
+  it("creates no settlement debt", () => {
+    const result = settleUp([fare], people, 39.3);
+    expect(result.transfers).toEqual([]);
+    expect(result.unassigned).toEqual([]);
+    const alex = result.balances.find((row) => row.name === "Alex");
+    const xin = result.balances.find((row) => row.name === "Xin");
+    expect(alex?.netRm).toBeCloseTo(0);
+    expect(xin?.netRm).toBeCloseTo(0);
+    expect(alex?.paidRm).toBeCloseTo(230 / 39.3);
+    expect(xin?.paidRm).toBeCloseTo(230 / 39.3);
   });
 });
 

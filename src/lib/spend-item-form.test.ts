@@ -104,6 +104,7 @@ describe("formDataFromSpendItem", () => {
       time: "12:15",
       paidBy: "Alex",
       splitWith: ["Alex", "Sam"],
+      eachPaidOwn: "false",
       placeId: "place-1",
     });
   });

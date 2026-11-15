@@ -12,8 +12,11 @@ import { labelCategory } from "@/lib/i18n/dictionaries";
 import {
   categoryBreakdown,
   filterSpendItems,
+  isEachPaidOwn,
+  personShareRm,
   settleUp,
   spendFilterPeople,
+  spendTotalRm,
   sumPersonShareRm,
   sumRm,
   topSpend,
@@ -89,19 +92,26 @@ export function BudgetBoard({
   );
   const sharePerson = personFilter !== "all" && personMode === "split" ? personFilter : null;
   const filteredFullRm = useMemo(
-    () => sumRm(filteredActuals, undefined, jpyPerRm),
-    [filteredActuals, jpyPerRm],
+    () => sumRm(filteredActuals, undefined, jpyPerRm, filterPeople),
+    [filterPeople, filteredActuals, jpyPerRm],
   );
   const filteredSpentRm = useMemo(() => {
     if (personFilter === "all") return spentRm;
     if (sharePerson) {
       return sumPersonShareRm(filteredActuals, sharePerson, filterPeople, jpyPerRm);
     }
-    return filteredFullRm;
+    return filteredActuals.reduce((sum, item) => {
+      if (isEachPaidOwn(item)) {
+        return (
+          sum +
+          (personShareRm(item, personFilter, filterPeople, jpyPerRm) ?? 0)
+        );
+      }
+      return sum + toRm(item.amount, item.currency, jpyPerRm);
+    }, 0);
   }, [
     filterPeople,
     filteredActuals,
-    filteredFullRm,
     jpyPerRm,
     personFilter,
     sharePerson,
@@ -114,8 +124,8 @@ export function BudgetBoard({
     estimateRm > 0 ? Math.round((spentRm / estimateRm) * 100) : null;
   const remainingRm = estimateRm - spentRm;
   const over = usedPct != null && spentRm > estimateRm;
-  const categories = categoryBreakdown(mergedActuals, jpyPerRm);
-  const topItems = topSpend(mergedActuals, 10, jpyPerRm);
+  const categories = categoryBreakdown(mergedActuals, jpyPerRm, people);
+  const topItems = topSpend(mergedActuals, 10, jpyPerRm, people);
   const settle = useMemo(
     () => settleUp(mergedActuals, people, jpyPerRm),
     [mergedActuals, people, jpyPerRm],
@@ -326,6 +336,7 @@ export function BudgetBoard({
           totalLabel={t("budget.total")}
           places={places}
           days={days}
+          people={people}
         />
       ) : null}
 
@@ -344,6 +355,7 @@ export function BudgetBoard({
                   compact
                   places={places}
                   days={days}
+                  people={people}
                 />
               </li>
             ))}
@@ -363,6 +375,7 @@ export function BudgetBoard({
           fxTitle={fxTitle}
           places={places}
           days={days}
+          people={people}
         />
       ) : null}
     </>
@@ -376,6 +389,7 @@ function SettlePanel({
   fxTitle,
   places = [],
   days = [],
+  people = [],
 }: {
   settle: ReturnType<typeof settleUp>;
   displayYen: boolean;
@@ -383,6 +397,7 @@ function SettlePanel({
   fxTitle: string;
   places?: Place[];
   days?: TripDay[];
+  people?: string[];
 }) {
   const { t } = useT();
   const money = (rm: number) => formatAmount(rm, displayYen, jpyPerRm);
@@ -483,6 +498,7 @@ function SettlePanel({
                 compact
                 places={places}
                 days={days}
+                people={people}
               />
             ))}
           </div>
@@ -554,6 +570,7 @@ function CategorySummary({
   totalLabel,
   places = [],
   days = [],
+  people = [],
 }: {
   rows: ReturnType<typeof categoryBreakdown>;
   items: SpendItem[];
@@ -564,6 +581,7 @@ function CategorySummary({
   totalLabel: string;
   places?: Place[];
   days?: TripDay[];
+  people?: string[];
 }) {
   const { t } = useT();
   const largest = useMemo(() => {
@@ -589,8 +607,8 @@ function CategorySummary({
           .slice()
           .sort(
             (a, b) =>
-              toRm(b.amount, b.currency, jpyPerRm) -
-              toRm(a.amount, a.currency, jpyPerRm),
+              spendTotalRm(b, people, jpyPerRm) -
+              spendTotalRm(a, people, jpyPerRm),
           );
         const canOpen = groupItems.length > 0;
         const open = canOpen && openCategory === row.category;
@@ -670,6 +688,7 @@ function CategorySummary({
                       compact
                       places={places}
                       days={days}
+                      people={people}
                     />
                   </li>
                 ))}

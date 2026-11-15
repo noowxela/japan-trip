@@ -39,17 +39,12 @@ export function SpendTimeline({
   people?: string[];
 }) {
   const { t, locale } = useT();
-  const groups = timelineGroups(
-    items,
-    days,
-    jpyPerRm,
-    sharePerson
-      ? {
-          itemRm: (item) =>
-            personShareRm(item, sharePerson, people, jpyPerRm) ?? 0,
-        }
+  const groups = timelineGroups(items, days, jpyPerRm, {
+    people,
+    itemRm: sharePerson
+      ? (item) => personShareRm(item, sharePerson, people, jpyPerRm) ?? 0
       : undefined,
-  );
+  });
   const today = useMemo(() => tokyoToday(), []);
   const [openByKey, setOpenByKey] = useState<Record<string, boolean>>({});
 
@@ -131,6 +126,7 @@ export function SpendTimeline({
                           timeLabel={time}
                           places={places}
                           days={days}
+                          people={people}
                           shareRm={shareRm}
                         />
                       </li>

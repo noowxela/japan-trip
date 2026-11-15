@@ -36,6 +36,15 @@ describe("agenda.skipPending", () => {
   });
 });
 
+describe("each paid own copy", () => {
+  it("has zh and en toggle and badge labels", () => {
+    expect(t("en", "form.eachPaidOwn")).toBe("Each paid own");
+    expect(t("zh", "form.eachPaidOwn")).toBe("各付各的");
+    expect(t("en", "spend.eachPaidOwnBadge", { n: 2 })).toBe("Each paid ×2");
+    expect(t("zh", "spend.eachPaidOwnBadge", { n: 2 })).toBe("各付 ×2");
+  });
+});
+
 describe("pending and skip move copy", () => {
   it("includes the old time and batch counts in zh and en", () => {
     expect(t("en", "action.movedToPendingWithTime", { time: "14:30" })).toBe(

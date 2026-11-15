@@ -159,6 +159,7 @@ function QuickExpenseForm({
     readStoredPayer(people, editorName),
   );
   const [splitWith, setSplitWith] = useState<string[]>([]);
+  const [eachPaidOwn, setEachPaidOwn] = useState(false);
   const [placeId, setPlaceId] = useState(defaults.placeId ?? "");
   const [transitId, setTransitId] = useState(defaults.transitId ?? "");
   const [name, setName] = useState(() => defaults.name ?? defaults.gift?.name ?? "");
@@ -257,6 +258,7 @@ function QuickExpenseForm({
     formData.set("dayId", dayId);
     formData.set("paidBy", paidBy);
     for (const person of splitWith) formData.append("splitWith", person);
+    if (eachPaidOwn) formData.set("eachPaidOwn", "true");
     formData.set("dayDate", dayDate);
     formData.set("time", time);
     formData.set("clientId", clientId);
@@ -265,7 +267,7 @@ function QuickExpenseForm({
 
     try {
       window.localStorage.setItem(CURRENCY_KEY, currency);
-      if (paidBy) window.localStorage.setItem(PAYER_KEY, paidBy);
+      if (paidBy && !eachPaidOwn) window.localStorage.setItem(PAYER_KEY, paidBy);
     } catch {
       /* ignore quota */
     }
@@ -417,7 +419,18 @@ function QuickExpenseForm({
         onChange={onSelectLink}
       />
 
-      {people.length > 0 ? (
+      <label className="flex min-h-11 items-center gap-2 text-[13px] text-ink">
+        <input
+          type="checkbox"
+          checked={eachPaidOwn}
+          onChange={(event) => setEachPaidOwn(event.target.checked)}
+          className="h-4 w-4 accent-accent"
+        />
+        {t("form.eachPaidOwn")}
+      </label>
+      {eachPaidOwn ? (
+        <p className="-mt-1 text-[11px] text-ink-muted">{t("form.eachPaidOwnHint")}</p>
+      ) : people.length > 0 ? (
         <ChipGroup
           label={t("form.paidBy")}
           value={paidBy || people[0]}
