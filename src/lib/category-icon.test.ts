@@ -14,6 +14,7 @@ describe("categoryEmoji", () => {
     expect(categoryEmoji("transit", "Flight")).toBe("✈️");
     expect(categoryEmoji("transit", "Shinkansen")).toBe("🚅");
     expect(categoryEmoji("transit", "Metro")).toBe("🚇");
+    expect(categoryEmoji("transit", "Train")).toBe("🚃");
     expect(categoryEmoji("transit", "Bus")).toBe("🚌");
     expect(categoryEmoji("transit", "Walk")).toBe("🚶");
     expect(categoryEmoji("transit", "Ride-hailing")).toBe("🚗");

@@ -42,10 +42,11 @@ npm run migrate:spend-place
 
 If that command cannot reach Notion, add the `Place` relation manually. Until it exists, adding a food expense still saves; the place link is skipped.
 
-Transit Mode needs a `Ride-hailing` select option (zh 网约车). Spend can also link an expense to a same-day transit leg via a `Transit` relation on Spend (two-way when the API allows it). Schema only; existing rows are unchanged:
+Transit Mode needs `Ride-hailing` (zh 网约车) and `Train` (zh 电车) select options. Spend can also link an expense to a same-day transit leg via a `Transit` relation on Spend (two-way when the API allows it). Schema only; existing rows are unchanged:
 
 ```bash
 npm run migrate:transit-ride-hailing
+npm run migrate:transit-train
 npm run migrate:spend-transit
 ```
 

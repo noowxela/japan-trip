@@ -106,6 +106,7 @@ export const PLACE_TYPES = ["Sight", "Food", "Shop", "Cafe", "Other"] as const;
 export const TRANSIT_MODES = [
   "Shinkansen",
   "Metro",
+  "Train",
   "Bus",
   "Flight",
   "Walk",

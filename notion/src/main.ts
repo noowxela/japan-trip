@@ -172,6 +172,7 @@ notion.database({
 					options: [
 						{ name: "Shinkansen", color: "blue" },
 						{ name: "Metro", color: "green" },
+						{ name: "Train", color: "yellow" },
 						{ name: "Bus", color: "orange" },
 						{ name: "Flight", color: "purple" },
 						{ name: "Walk", color: "gray" },

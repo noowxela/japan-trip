@@ -9,6 +9,7 @@ const PLACE_TYPE_EMOJI: Record<string, string> = {
 const TRANSIT_MODE_EMOJI: Record<string, string> = {
   Shinkansen: "🚅",
   Metro: "🚇",
+  Train: "🚃",
   Bus: "🚌",
   Flight: "✈️",
   Walk: "🚶",

@@ -18,6 +18,7 @@
     "migrate:spend-place": "node notion/scripts/add-spend-place.mjs",
     "migrate:spend-ride-hailing": "node notion/scripts/add-ride-hailing-category.mjs",
     "migrate:transit-ride-hailing": "node notion/scripts/add-transit-ride-hailing-mode.mjs",
+    "migrate:transit-train": "node notion/scripts/add-transit-train-mode.mjs",
     "migrate:spend-transit": "node notion/scripts/add-spend-transit.mjs"
   },
   "dependencies": {
