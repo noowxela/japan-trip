@@ -51,6 +51,14 @@ describe("each paid own copy", () => {
     expect(t("zh", "form.eachPaidOwn")).toBe("各付各的");
     expect(t("en", "spend.eachPaidOwnBadge", { n: 2 })).toBe("Each paid ×2");
     expect(t("zh", "spend.eachPaidOwnBadge", { n: 2 })).toBe("各付 ×2");
+    expect(t("en", "spend.eachPaidOwnUnit", { amount: "¥1,200", n: 2 })).toBe(
+      "Each paid ¥1,200 ×2",
+    );
+    expect(t("zh", "spend.eachPaidOwnUnit", { amount: "¥1,200", n: 2 })).toBe(
+      "各付 ¥1,200 ×2",
+    );
+    expect(t("en", "form.subtotal")).toBe("Subtotal");
+    expect(t("zh", "form.subtotal")).toBe("小计");
   });
 });
 

@@ -6,6 +6,10 @@ import { deleteSpend, updateSpend } from "@/app/actions";
 import { ActionForm } from "@/components/action-form";
 import { ChipGroup } from "@/components/chip-group";
 import { SpendAmountField } from "@/components/spend-amount-field";
+import {
+  EachPaidOwnSubtotal,
+  eachPaidOwnCount,
+} from "@/components/each-paid-own-subtotal";
 import { useSlideIn } from "@/components/slide-in-page";
 import { SplitWithField } from "@/components/split-with-field";
 import { ScheduleLinkField } from "@/components/schedule-link-field";
@@ -39,7 +43,15 @@ import {
   spendPartyFieldClass,
   spendPartyRowClass,
 } from "@/lib/spend-party-row";
-import { SPEND_CATEGORIES, type Place, type SpendItem, type Transit, type TripDay } from "@/lib/types";
+import {
+  DEFAULT_SPEND_CURRENCY,
+  JPY_PER_RM,
+  SPEND_CATEGORIES,
+  type Place,
+  type SpendItem,
+  type Transit,
+  type TripDay,
+} from "@/lib/types";
 
 function dateForDayId(days: TripDay[], dayId: string) {
   return dateKey(days.find((day) => day.id === dayId)?.date ?? null);
@@ -71,6 +83,7 @@ export function SpendForm({
   defaultDayId = "",
   onSuccess,
   focusCategory = false,
+  jpyPerRm = JPY_PER_RM,
 }: {
   item?: SpendItem;
   days: TripDay[];
@@ -81,6 +94,7 @@ export function SpendForm({
   onSuccess?: () => void;
   /** Highlight category chips (Apple Pay notification deep link). */
   focusCategory?: boolean;
+  jpyPerRm?: number;
 }) {
   const router = useRouter();
   const categoryRef = useRef<HTMLDivElement>(null);
@@ -101,6 +115,10 @@ export function SpendForm({
   );
   const [splitWith, setSplitWith] = useState<string[]>(item?.splitWith ?? []);
   const [eachPaidOwn, setEachPaidOwn] = useState(Boolean(item?.eachPaidOwn));
+  const [amount, setAmount] = useState(
+    item?.amount != null && Number.isFinite(item.amount) ? String(item.amount) : "",
+  );
+  const [currency, setCurrency] = useState(item?.currency ?? DEFAULT_SPEND_CURRENCY);
   const [placeId, setPlaceId] = useState(item?.placeId ?? "");
   const [transitId, setTransitId] = useState(item?.transitId ?? "");
   const [gift, setGift] = useState<SpendGiftValue>(() => {
@@ -160,6 +178,10 @@ export function SpendForm({
     router.refresh();
   }
 
+  const amountValue = Number(amount);
+  const parsedAmount =
+    amount.trim() !== "" && Number.isFinite(amountValue) ? amountValue : null;
+
   return (
     <>
       <ActionForm
@@ -187,6 +209,10 @@ export function SpendForm({
           <SpendAmountField
             defaultCurrency={item?.currency}
             defaultAmount={item?.amount}
+            amount={amount}
+            currency={currency}
+            onAmountChange={setAmount}
+            onCurrencyChange={setCurrency}
           />
         </label>
 
@@ -280,6 +306,14 @@ export function SpendForm({
           )}
           <SplitWithField people={people} value={splitWith} onChange={setSplitWith} />
         </div>
+        {eachPaidOwn ? (
+          <EachPaidOwnSubtotal
+            amount={parsedAmount}
+            currency={currency}
+            count={eachPaidOwnCount(splitWith, people, paidBy)}
+            jpyPerRm={jpyPerRm}
+          />
+        ) : null}
 
         <label className="grid gap-1">
           <span className="text-[12px] font-medium text-ink-muted">{t("form.notes")}</span>

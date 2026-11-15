@@ -6,12 +6,12 @@ import { SpendForm } from "@/components/spend-form";
 import { SpendAmounts } from "@/components/spend-item-card";
 import { getEditorSession } from "@/lib/edit-session";
 import { getMyrToJpy } from "@/lib/exchange";
-import { formatDay, formatTime } from "@/lib/format";
+import { formatDay, formatRm, formatSpend, formatTime } from "@/lib/format";
 import { labelCategory, t } from "@/lib/i18n/dictionaries";
 import { getLocale } from "@/lib/i18n/server";
 import { NotionNotReady } from "@/components/notion-not-ready";
 import { notionReady } from "@/lib/notion";
-import { isEachPaidOwn, spendMultiplier, spendWhen } from "@/lib/spend";
+import { isEachPaidOwn, spendMultiplier, spendWhen, toRm } from "@/lib/spend";
 import { linkedScheduleLabel } from "@/lib/spend-link";
 import { getDays, getEditorNames, getPlaces, getSpendItem, getTransit } from "@/lib/trip";
 
@@ -47,16 +47,33 @@ export default async function ExpenseDetailPage({
   const when = spendWhen(item, days);
   const dayName = days.find((day) => item.dayIds.includes(day.id))?.name;
   const time = formatTime(when);
-  const eachPaidOwnBadge = isEachPaidOwn(item)
-    ? t(locale, "spend.eachPaidOwnBadge", {
-        n: spendMultiplier(item, people),
-      })
+  const multiplier = spendMultiplier(item, people);
+  const eachPaidOwn = isEachPaidOwn(item);
+  const eachPaidOwnBadge = eachPaidOwn
+    ? t(locale, "spend.eachPaidOwnBadge", { n: multiplier })
     : null;
+  const subtotalAmount = item.amount * multiplier;
+  const subtotalLabel = eachPaidOwn
+    ? formatSpend(subtotalAmount, item.currency) +
+      (item.currency === "Yen"
+        ? ` ≈ ${formatRm(toRm(subtotalAmount, item.currency, fx.jpyPerRm))}`
+        : "")
+    : null;
+  const splitLabel =
+    item.splitWith.length === 0
+      ? t(locale, "form.splitAll")
+      : item.splitWith.join(" · ");
   const rows = [
     { label: t(locale, "form.category"), value: labelCategory(locale, item.category) },
-    eachPaidOwnBadge
+    eachPaidOwn
       ? { label: t(locale, "form.eachPaidOwn"), value: eachPaidOwnBadge }
       : { label: t(locale, "form.paidBy"), value: item.paidBy || "—" },
+    ...(eachPaidOwn
+      ? [
+          { label: t(locale, "form.splitWith"), value: splitLabel },
+          { label: t(locale, "form.subtotal"), value: subtotalLabel },
+        ]
+      : []),
     { label: t(locale, "form.day"), value: dayName || "—" },
     {
       label: t(locale, "form.date"),
@@ -101,6 +118,7 @@ export default async function ExpenseDetailPage({
           places={places}
           transit={transit}
           focusCategory={focusCategory}
+          jpyPerRm={fx.jpyPerRm}
         />
       ) : (
         <div className="overflow-hidden rounded-xl border border-line/80 bg-surface">
@@ -110,6 +128,7 @@ export default async function ExpenseDetailPage({
               item={item}
               displayYen={false}
               jpyPerRm={fx.jpyPerRm}
+              people={people}
             />
           </div>
           {rows.map((row) => (

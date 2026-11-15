@@ -69,17 +69,13 @@ export function SpendItemCard({
   const categoryLabel = labelCategory(locale, item.category);
   const emoji = spendCategoryEmoji(item.category);
 
-  const eachPaidOwnBadge = isEachPaidOwn(item)
-    ? t("spend.eachPaidOwnBadge", { n: spendMultiplier(item, people) })
-    : null;
-
   const bodyProps = {
     item,
     compact,
     timeLabel,
     pendingSync,
     placeChip,
-    eachPaidOwnBadge,
+    people,
     categoryLabel,
     emoji,
     displayYen,
@@ -254,14 +250,14 @@ function SpendItemBody({
   jpyPerRm,
   shareRm,
   pendingLabel,
-  eachPaidOwnBadge,
+  people,
 }: {
   item: SpendItem;
   compact: boolean;
   timeLabel?: string | null;
   pendingSync: boolean;
   placeChip: string | null;
-  eachPaidOwnBadge: string | null;
+  people: string[];
   categoryLabel: string | null;
   emoji: string;
   displayYen: boolean;
@@ -289,18 +285,14 @@ function SpendItemBody({
             </span>
             <span className={`${textWrapClass} flex-1 font-medium`}>{item.name}</span>
           </p>
-          {pendingSync || eachPaidOwnBadge || item.paidBy || placeChip ? (
+          {pendingSync || (!isEachPaidOwn(item) && item.paidBy) || placeChip ? (
             <div className="mt-0.5 flex flex-wrap gap-1">
               {pendingSync ? (
                 <span className="w-fit rounded-full bg-maybe-soft px-1.5 py-px text-[10px] font-medium text-maybe">
                   {pendingLabel}
                 </span>
               ) : null}
-              {eachPaidOwnBadge ? (
-                <span className="w-fit rounded-full bg-canvas px-1.5 py-px text-[10px] font-medium text-ink-muted">
-                  {eachPaidOwnBadge}
-                </span>
-              ) : item.paidBy ? (
+              {!isEachPaidOwn(item) && item.paidBy ? (
                 <span className="w-fit rounded-full bg-canvas px-1.5 py-px text-[10px] font-medium text-ink-muted">
                   {item.paidBy}
                 </span>
@@ -319,6 +311,7 @@ function SpendItemBody({
           jpyPerRm={jpyPerRm}
           compact
           shareRm={shareRm}
+          people={people}
         />
       </>
     );
@@ -338,11 +331,7 @@ function SpendItemBody({
               {pendingLabel}
             </span>
           ) : null}
-          {eachPaidOwnBadge ? (
-            <span className="w-fit rounded-full bg-canvas px-2 py-0.5 text-[11px] font-medium text-ink-muted">
-              {eachPaidOwnBadge}
-            </span>
-          ) : item.paidBy ? (
+          {!isEachPaidOwn(item) && item.paidBy ? (
             <span className="w-fit rounded-full bg-canvas px-2 py-0.5 text-[11px] font-medium text-ink-muted">
               {item.paidBy}
             </span>
@@ -354,7 +343,7 @@ function SpendItemBody({
           ) : null}
         </div>
       </div>
-      <SpendAmounts item={item} displayYen={displayYen} jpyPerRm={jpyPerRm} shareRm={shareRm} />
+      <SpendAmounts item={item} displayYen={displayYen} jpyPerRm={jpyPerRm} shareRm={shareRm} people={people} />
     </>
   );
 }
@@ -365,20 +354,33 @@ export function SpendAmounts({
   jpyPerRm,
   compact = false,
   shareRm = null,
+  people = [],
 }: {
   item: SpendItem;
   displayYen: boolean;
   jpyPerRm: number;
   compact?: boolean;
   shareRm?: number | null;
+  people?: string[];
 }) {
   const { t } = useT();
-  const rm = toRm(item.amount, item.currency, jpyPerRm);
-  const showShare = shareRm != null && Math.abs(shareRm - rm) > 1e-9;
+  const multiplier = spendMultiplier(item, people);
+  const eachPaidOwn = isEachPaidOwn(item);
+  const unitRm = toRm(item.amount, item.currency, jpyPerRm);
+  const totalRm = unitRm * (eachPaidOwn ? multiplier : 1);
+  const showShare =
+    !eachPaidOwn && shareRm != null && Math.abs(shareRm - unitRm) > 1e-9;
   const showConversion =
     !showShare &&
     ((displayYen && item.currency === "RM") ||
       (!displayYen && item.currency === "Yen"));
+  const conversionRm = eachPaidOwn ? totalRm : unitRm;
+  const mainLabel = eachPaidOwn
+    ? formatSpend(item.amount * multiplier, item.currency)
+    : formatSpend(item.amount, item.currency);
+  const mutedClass = `whitespace-nowrap tabular-nums text-ink-muted ${
+    compact ? "text-[10px] leading-3" : "mt-0.5 text-xs"
+  }`;
 
   return (
     <div className="shrink-0 text-right">
@@ -389,27 +391,34 @@ export function SpendAmounts({
       >
         {showShare
           ? formatAmount(shareRm, displayYen, jpyPerRm)
-          : formatSpend(item.amount, item.currency)}
+          : mainLabel}
       </p>
       {showShare ? (
-        <p
-          className={`whitespace-nowrap tabular-nums text-ink-muted ${
-            compact ? "text-[10px] leading-3" : "mt-0.5 text-xs"
-          }`}
-        >
+        <p className={mutedClass}>
           {t("budget.fullAmount", {
-            amount: formatAmount(rm, displayYen, jpyPerRm),
+            amount: formatAmount(unitRm, displayYen, jpyPerRm),
           })}
         </p>
-      ) : showConversion ? (
-        <p
-          className={`whitespace-nowrap tabular-nums text-ink-muted ${
-            compact ? "text-[11px] leading-3" : "mt-0.5 text-xs"
-          }`}
-        >
-          ≈ {displayYen ? formatYen(yenForMyr(rm, jpyPerRm)) : formatRm(rm)}
-        </p>
-      ) : null}
+      ) : (
+        <>
+          {showConversion ? (
+            <p className={mutedClass}>
+              ≈{" "}
+              {displayYen
+                ? formatYen(yenForMyr(conversionRm, jpyPerRm))
+                : formatRm(conversionRm)}
+            </p>
+          ) : null}
+          {eachPaidOwn ? (
+            <p className={mutedClass}>
+              {t("spend.eachPaidOwnUnit", {
+                amount: formatSpend(item.amount, item.currency),
+                n: multiplier,
+              })}
+            </p>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }

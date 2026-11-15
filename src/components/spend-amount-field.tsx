@@ -11,12 +11,28 @@ import {
 export function SpendAmountField({
   defaultCurrency = DEFAULT_SPEND_CURRENCY,
   defaultAmount,
+  amount,
+  currency: currencyProp,
+  onAmountChange,
+  onCurrencyChange,
 }: {
   defaultCurrency?: SpendCurrency;
   defaultAmount?: number;
+  amount?: string;
+  currency?: SpendCurrency;
+  onAmountChange?: (value: string) => void;
+  onCurrencyChange?: (currency: SpendCurrency) => void;
 } = {}) {
   const { t } = useT();
-  const [currency, setCurrency] = useState<SpendCurrency>(defaultCurrency);
+  const [uncontrolledCurrency, setUncontrolledCurrency] =
+    useState<SpendCurrency>(defaultCurrency);
+  const currency = currencyProp ?? uncontrolledCurrency;
+  const controlled = amount !== undefined;
+
+  function setCurrency(next: SpendCurrency) {
+    if (currencyProp === undefined) setUncontrolledCurrency(next);
+    onCurrencyChange?.(next);
+  }
 
   return (
     <div className="flex overflow-hidden rounded-xl border border-line focus-within:border-accent">
@@ -27,7 +43,12 @@ export function SpendAmountField({
         min="0"
         step={currency === "Yen" ? "1" : "0.01"}
         inputMode="decimal"
-        defaultValue={defaultAmount ?? undefined}
+        {...(controlled
+          ? {
+              value: amount,
+              onChange: (event) => onAmountChange?.(event.target.value),
+            }
+          : { defaultValue: defaultAmount ?? undefined })}
         placeholder={currency === "Yen" ? t("form.amountYen") : t("form.amountRm")}
         className="min-w-0 flex-1 bg-transparent px-3 py-2 text-base outline-none"
       />

@@ -11,6 +11,10 @@ import { useOutbox } from "@/components/outbox-provider";
 import { btnPrimaryClass, fieldClass } from "@/components/page-shell";
 import { ScheduleLinkField } from "@/components/schedule-link-field";
 import { SplitWithField } from "@/components/split-with-field";
+import {
+  EachPaidOwnSubtotal,
+  eachPaidOwnCount,
+} from "@/components/each-paid-own-subtotal";
 import { useToast } from "@/components/toast-provider";
 import { dateKey, formatDay, tokyoNowTime, tokyoToday } from "@/lib/format";
 import { haptic } from "@/lib/haptic";
@@ -25,6 +29,7 @@ import {
   writeGifts,
 } from "@/lib/gifts";
 import {
+  JPY_PER_RM,
   SPEND_CATEGORIES,
   type Place,
   type SpendCurrency,
@@ -454,6 +459,18 @@ function QuickExpenseForm({
       )}
 
       <SplitWithField people={people} value={splitWith} onChange={setSplitWith} />
+      {eachPaidOwn ? (
+        <EachPaidOwnSubtotal
+          amount={
+            amount.trim() !== "" && Number.isFinite(Number(amount))
+              ? Number(amount)
+              : null
+          }
+          currency={currency}
+          count={eachPaidOwnCount(splitWith, people, paidBy)}
+          jpyPerRm={JPY_PER_RM}
+        />
+      ) : null}
 
       <label className="grid gap-1">
         <span className="text-xs font-medium text-ink-muted">
