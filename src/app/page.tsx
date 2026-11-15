@@ -90,6 +90,7 @@ export default async function OverviewPage() {
   const dayMoney = focus
     ? moneySummary(byDay(spend, focus.id), fx.jpyPerRm)
     : { actual: 0, estimate: 0, remaining: 0 };
+  const tripMoney = moneySummary(spend, fx.jpyPerRm);
   const isTonight = Boolean(focus && dateKey(focus.date) === today);
 
   let nextDayItem: AgendaItem | null = null;
@@ -169,9 +170,10 @@ export default async function OverviewPage() {
           <div className="grid gap-2">
             <TripCompleteRow dayCount={dated.length} href="/budget" />
             <TodaySpendRow
-              actual={dayMoney.actual}
-              estimate={dayMoney.estimate}
+              actual={tripMoney.actual}
+              estimate={tripMoney.estimate}
               href="/budget"
+              scope="trip"
             />
           </div>
         ) : focus ? (

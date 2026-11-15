@@ -178,18 +178,21 @@ export async function TodaySpendRow({
   actual,
   estimate,
   href,
+  scope = "today",
 }: {
   actual: number;
   estimate: number;
   href: string;
+  scope?: "today" | "trip";
 }) {
   const locale = await getLocale();
+  const isTrip = scope === "trip";
   return (
     <CompactRowList>
       <li>
         <CompactRow
           href={href}
-          title={t(locale, "overview.spendToday")}
+          title={t(locale, isTrip ? "overview.spendTrip" : "overview.spendToday")}
           meta={
             <span className="tabular-nums font-medium text-ink">
               {formatRm(actual)}
@@ -198,7 +201,9 @@ export async function TodaySpendRow({
           secondary={
             estimate > 0
               ? t(locale, "overview.estimatedLine", { amount: formatRm(estimate) })
-              : t(locale, "overview.noEstimate")
+              : isTrip
+                ? t(locale, "overview.noTripEstimate")
+                : t(locale, "overview.noEstimate")
           }
           trailing={
             <span className="pr-2 text-[12px] text-ink-muted" aria-hidden>
