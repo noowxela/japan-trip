@@ -42,6 +42,15 @@ npm run migrate:spend-place
 
 If that command cannot reach Notion, add the `Place` relation manually. Until it exists, adding a food expense still saves; the place link is skipped.
 
+Transit Mode needs a `Ride-hailing` select option (zh 网约车). Spend can also link an expense to a same-day transit leg via a `Transit` relation on Spend (two-way when the API allows it). Schema only; existing rows are unchanged:
+
+```bash
+npm run migrate:transit-ride-hailing
+npm run migrate:spend-transit
+```
+
+If those commands cannot reach Notion, add the Mode option and the `Transit` relation manually. Until the relation exists, the expense still saves and the transit link is skipped.
+
 Wallet / Shortcuts ingest: an explicit ¥0 amount (train gate-in / detect) is logged as a successful entry detect and does not create a Notion expense. A missing or empty amount still returns 400 so real fares are not silently skipped.
 
 ## Run

@@ -70,7 +70,7 @@ Pages are `export const dynamic = "force-dynamic"`. No webhooks, no poll, no mul
 | `NOTION_PLACES_DS` | Stops (type, start, lat/lng, visited, pending) |
 | `NOTION_STAYS_DS` | Hotels (check-in/out, address) |
 | `NOTION_TRANSIT_DS` | Legs (mode, from/to, start, visited) |
-| `NOTION_SPEND_DS` | Expenses (Yen/RM, category, paid by, `Split with` multi-select; empty = everyone) |
+| `NOTION_SPEND_DS` | Expenses (Yen/RM, category, paid by, `Split with` multi-select; empty = everyone). Optional `Place` and `Transit` relations link a spend to one schedule stop (XOR); many spends may point at the same stop. See [SDD 023](sdd/023-schedule-spend-links.md). |
 | `NOTION_EDITORS_DS` | Optional editor name + PIN |
 | `NOTION_PREP_DS` | Optional packing/checklist |
 

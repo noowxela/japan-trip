@@ -28,3 +28,4 @@ Living specs for this repo. Change specs stay `draft` until approved. Do not tre
 | [018](018-global-search.md) | Global search | draft | Client-only search sheet over the trip snapshot + phrases; works offline |
 | [022](022-expense-save-error.md) | Expense save Notion date error | implemented | `ERROR 1112746976` was an invalid Start payload; save now succeeds or toasts, and no longer freezes reload |
 
+| [023](023-schedule-spend-links.md) | Link expenses to a schedule place or transit | implemented | Spend→Place and Spend→Transit relations; schedule add/link expense; row totals |

@@ -15,6 +15,9 @@ Run it against the live workspace (uses `NOTION_TOKEN` from `.env.local`) before
 | Column | Database | Since |
 | --- | --- | --- |
 | `Split with` (multi-select) | Spend | [SDD 016](sdd/016-settle-up-split.md) — added to live Notion 2026-11-04 |
+| `Ride-hailing` (Mode select) | Transit | [SDD 023](sdd/023-schedule-spend-links.md) — `npm run migrate:transit-ride-hailing` |
+| `Place` (relation) | Spend → Places | [SDD 023](sdd/023-schedule-spend-links.md) — `npm run migrate:spend-place` |
+| `Transit` (relation) | Spend → Transit | [SDD 023](sdd/023-schedule-spend-links.md) — `npm run migrate:spend-transit` |
 
 ## External services (no keys)
 
