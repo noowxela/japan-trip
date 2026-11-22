@@ -34,7 +34,7 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
-    "@serwist/turbopack": "^9.5.13",
+    "@serwist/turbopack": "^9.5.15",
     "@tailwindcss/postcss": "^4",
     "@types/leaflet": "^1.9.22",
     "@types/node": "^22.12.0",
